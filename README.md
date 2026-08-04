@@ -16,6 +16,9 @@ Octopus Notes is currently in **beta testing** on the Google Play Store! If you'
 
 
 # Download the app:
-Google Play : (May show up as item not available because of still being in beta testing.
-https://play.google.com/store/apps/details?id=com.lochan.octopusnotes
-Download from releases.
+- Google Play : (May show up as item not available because of still being in beta testing.
+-   https://play.google.com/store/apps/details?id=com.lochan.octopusnotes
+- Download from releases.
+
+# Sponsor
+If you find Octopus Notes helpful and want to support further development, feel free to sponsor the project via my GitHub Profile. Thank you for your support!
