@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@android:color/transparent"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/popupTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="8dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:singleLine="true"
+        android:ellipsize="end" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutlineVariant" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="12dp">
+        <View android:id="@+id/c1" android:layout_width="34dp" android:layout_height="34dp" android:background="@drawable/bg_color_slot" android:backgroundTint="#4285F4" android:layout_marginEnd="14dp"/>
+        <View android:id="@+id/c2" android:layout_width="34dp" android:layout_height="34dp" android:background="@drawable/bg_color_slot" android:backgroundTint="#34A853" android:layout_marginEnd="14dp"/>
+        <View android:id="@+id/c3" android:layout_width="34dp" android:layout_height="34dp" android:background="@drawable/bg_color_slot" android:backgroundTint="#FBBC05" android:layout_marginEnd="14dp"/>
+        <View android:id="@+id/c4" android:layout_width="34dp" android:layout_height="34dp" android:background="@drawable/bg_color_slot" android:backgroundTint="#EA4335" android:layout_marginEnd="14dp"/>
+        <View android:id="@+id/c5" android:layout_width="34dp" android:layout_height="34dp" android:background="@drawable/bg_color_slot" android:backgroundTint="#9C27B0"/>
+    </LinearLayout>
+
+    <TextView android:id="@+id/bsCustomColor" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="20dp" android:paddingVertical="14dp" android:text="Customize color" android:drawablePadding="16dp" android:drawableStart="@drawable/ic_color"/>
+    <TextView android:id="@+id/bsRename" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="20dp" android:paddingVertical="14dp" android:text="Rename" android:drawablePadding="16dp" android:drawableStart="@drawable/ic_pen"/>
+    <TextView android:id="@+id/bsMove" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="20dp" android:paddingVertical="14dp" android:text="Move to" android:drawablePadding="16dp" android:drawableStart="@drawable/ic_folder"/>
+    <TextView android:id="@+id/bsDelete" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="20dp" android:paddingVertical="14dp" android:text="Delete" android:textColor="#F44336" android:drawablePadding="16dp" android:drawableStart="@drawable/ic_eraser"/>
+</LinearLayout>

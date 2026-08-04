@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/outlineRow"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="64dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="6dp"
+    android:paddingEnd="4dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:background="?attr/selectableItemBackground">
+
+    <ImageButton
+        android:id="@+id/outlineChevron"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:padding="9dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/arrow_forward_ios_24px"
+        android:contentDescription="Expand"
+        android:tint="?attr/colorOnSurfaceVariant"
+        android:background="?attr/selectableItemBackgroundBorderless" />
+
+    <ImageView
+        android:id="@+id/outlineThumb"
+        android:layout_width="42dp"
+        android:layout_height="56dp"
+        android:layout_marginEnd="14dp"
+        android:scaleType="fitCenter"
+        android:background="#FFFFFF"
+        android:elevation="1dp"
+        android:contentDescription="@null" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/outlineTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/outlineSub"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/outlinePage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="13sp" />
+
+    <ImageButton
+        android:id="@+id/outlineMenu"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:layout_marginStart="4dp"
+        android:padding="8dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_more_vert"
+        android:contentDescription="Options"
+        android:tint="?attr/colorOnSurfaceVariant"
+        android:background="?attr/selectableItemBackgroundBorderless" />
+
+</LinearLayout>

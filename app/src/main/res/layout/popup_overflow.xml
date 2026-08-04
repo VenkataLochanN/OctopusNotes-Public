@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="260dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/popup_background"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:elevation="8dp">
+
+    <LinearLayout android:id="@+id/overflowStylus" style="@style/AddPageRow">
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_gesture" />
+        <TextView
+            style="@style/AddPageRowTitle"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="@string/gesture_settings" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/overflowIndex" style="@style/AddPageRow">
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_search" />
+        <TextView
+            style="@style/AddPageRowTitle"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="@string/index_pdf" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/overflowTemplate" style="@style/AddPageRow">
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_grid" />
+        <TextView
+            style="@style/AddPageRowTitle"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="Change template" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/overflowExport" style="@style/AddPageRow">
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_content_copy" />
+        <TextView
+            style="@style/AddPageRowTitle"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="Export" />
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,5 @@
+<resources>
+    <declare-styleable name="AutofitRecyclerView">
+        <attr name="columnWidth" format="dimension" />
+    </declare-styleable>
+</resources>

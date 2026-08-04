@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keyed view tag marking that the skeleton shimmer animation is running. -->
+    <item name="skeleton_anim_tag" type="id" />
+</resources>

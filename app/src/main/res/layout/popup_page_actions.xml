@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="220dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_toolbar_pill"
+    android:elevation="20dp"
+    android:paddingVertical="6dp">
+
+    <TextView
+        android:id="@+id/actionAddOutline"
+        style="@style/PageActionRow"
+        android:text="Add to outline"
+        android:drawableStart="@drawable/ic_outline_list" />
+
+    <TextView
+        android:id="@+id/actionDuplicate"
+        style="@style/PageActionRow"
+        android:text="Duplicate"
+        android:drawableStart="@drawable/ic_content_copy" />
+
+    <TextView
+        android:id="@+id/actionRotateLeft"
+        style="@style/PageActionRow"
+        android:text="Rotate left"
+        android:drawableStart="@drawable/ic_rotate_left" />
+
+    <TextView
+        android:id="@+id/actionRotateRight"
+        style="@style/PageActionRow"
+        android:text="Rotate right"
+        android:drawableStart="@drawable/ic_rotate_right" />
+
+    <TextView
+        android:id="@+id/actionDelete"
+        style="@style/PageActionRow"
+        android:text="Delete"
+        android:textColor="#E53935"
+        android:drawableStart="@drawable/ic_delete"
+        android:drawableTint="#E53935" />
+
+</LinearLayout>

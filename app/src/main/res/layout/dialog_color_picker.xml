@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="16dp">
+
+    <!-- Title row: eyedropper sits opposite a spacer so the title stays optically centred. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageButton
+            android:id="@+id/eyedropperButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_eyedropper"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:contentDescription="Pick a colour from the page"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Colors"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="20sp"
+            android:textStyle="normal" />
+
+        <!-- Balances the eyedropper's width. -->
+        <Space
+            android:layout_width="40dp"
+            android:layout_height="1dp" />
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/modeToggle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="12dp"
+        app:singleSelection="true"
+        app:selectionRequired="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tabGrid"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="104dp"
+            android:text="Grid" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tabSpectrum"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="104dp"
+            android:text="Spectrum" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <!-- Both panes live in the same frame so switching tabs never resizes the dialog. -->
+    <FrameLayout
+        android:id="@+id/paneContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp">
+
+        <com.lochan.octopusnotes.ColorPaletteGridView
+            android:id="@+id/paletteGrid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <LinearLayout
+            android:id="@+id/spectrumPane"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <com.lochan.octopusnotes.SaturationValueView
+                android:id="@+id/saturationValue"
+                android:layout_width="match_parent"
+                android:layout_height="180dp" />
+
+            <com.lochan.octopusnotes.HueBarView
+                android:id="@+id/hueBar"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_marginTop="16dp" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Preview + numeric entry -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <View
+            android:id="@+id/colorPreview"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/bg_color_preview" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2.1"
+            android:orientation="vertical"
+            android:layout_marginEnd="8dp">
+
+            <TextView
+                style="@style/ColorFieldLabel"
+                android:text="Hex" />
+
+            <EditText
+                android:id="@+id/hexField"
+                style="@style/ColorFieldInput"
+                android:inputType="textCapCharacters"
+                android:maxLength="7"
+                android:importantForAutofill="no"
+                android:contentDescription="Hex colour value"
+                tools:text="#FEC800" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginEnd="8dp">
+
+            <TextView
+                style="@style/ColorFieldLabel"
+                android:text="R" />
+
+            <EditText
+                android:id="@+id/redField"
+                style="@style/ColorFieldInput"
+                android:inputType="number"
+                android:maxLength="3"
+                android:importantForAutofill="no"
+                android:contentDescription="Red value"
+                tools:text="254" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginEnd="8dp">
+
+            <TextView
+                style="@style/ColorFieldLabel"
+                android:text="G" />
+
+            <EditText
+                android:id="@+id/greenField"
+                style="@style/ColorFieldInput"
+                android:inputType="number"
+                android:maxLength="3"
+                android:importantForAutofill="no"
+                android:contentDescription="Green value"
+                tools:text="200" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/ColorFieldLabel"
+                android:text="B" />
+
+            <EditText
+                android:id="@+id/blueField"
+                style="@style/ColorFieldInput"
+                android:inputType="number"
+                android:maxLength="3"
+                android:importantForAutofill="no"
+                android:contentDescription="Blue value"
+                tools:text="0" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

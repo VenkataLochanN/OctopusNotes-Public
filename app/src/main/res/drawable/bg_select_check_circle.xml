@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Badge behind the selection tick. Separate from bg_select_circle (which the sort
+  buttons also use) because this one needs a ring: the badge sits on top of arbitrary
+  page thumbnails, and a bare primary circle disappears against a light one.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="?attr/colorPrimary" />
+    <stroke
+        android:width="2dp"
+        android:color="?attr/colorSurface" />
+</shape>

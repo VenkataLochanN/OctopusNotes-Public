@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content" android:layout_height="50dp"
+    android:background="@drawable/popup_background"
+    android:orientation="horizontal" android:gravity="center_vertical" android:paddingHorizontal="12dp">
+
+    <View android:id="@+id/selColorBtn"
+        android:layout_width="24dp" android:layout_height="24dp"
+        android:background="@drawable/bg_color_slot" />
+
+    <TextView android:id="@+id/selAngleBtn"
+        android:layout_width="40dp" android:layout_height="match_parent"
+        android:gravity="center" android:text="0°" android:textSize="16sp" android:textColor="?attr/colorOnSurface"/>
+
+    <View android:layout_width="1dp" android:layout_height="24dp"
+        android:background="?attr/colorOutlineVariant" android:layout_marginHorizontal="8dp"/>
+
+    <!-- No padding: siblings have none, and the default fitCenter scales the glyph to the
+         button, so any padding here would render this icon smaller than the rest. -->
+    <ImageButton android:id="@+id/selDupBtn"
+        android:layout_width="40dp" android:layout_height="match_parent"
+        android:src="@drawable/ic_duplicate" android:tint="?attr/colorOnSurface"
+        android:contentDescription="Duplicate"
+        android:background="?attr/selectableItemBackgroundBorderless"/>
+
+    <ImageButton android:id="@+id/selDelBtn"
+        android:layout_width="40dp" android:layout_height="match_parent"
+        android:src="@drawable/ic_close" android:tint="#F44336" android:background="?attr/selectableItemBackgroundBorderless"/>
+
+    <ImageButton android:id="@+id/selMoreBtn"
+        android:layout_width="40dp" android:layout_height="match_parent"
+        android:src="@drawable/ic_more_vert" android:tint="?attr/colorOnSurface" android:background="?attr/selectableItemBackgroundBorderless"/>
+</LinearLayout>

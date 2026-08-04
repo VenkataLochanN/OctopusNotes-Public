@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="260dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/popup_background"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:elevation="8dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="8dp"
+        android:text="@string/add_page"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        android:textSize="14sp" />
+
+    <LinearLayout
+        android:id="@+id/optionBefore"
+        style="@style/AddPageRow">
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/arrow_back_ios_24px" />
+        <LinearLayout style="@style/AddPageRowText">
+            <TextView style="@style/AddPageRowTitle" android:text="@string/add_before" />
+            <TextView style="@style/AddPageRowSub" android:text="@string/add_before_sub" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/optionAfter"
+        style="@style/AddPageRow">
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/arrow_forward_ios_24px" />
+        <LinearLayout style="@style/AddPageRowText">
+            <TextView style="@style/AddPageRowTitle" android:text="@string/add_after" />
+            <TextView style="@style/AddPageRowSub" android:text="@string/add_after_sub" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/optionEnd"
+        style="@style/AddPageRow">
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_notes" />
+        <LinearLayout style="@style/AddPageRowText">
+            <TextView style="@style/AddPageRowTitle" android:text="@string/add_end" />
+            <TextView style="@style/AddPageRowSub" android:text="@string/add_end_sub" />
+        </LinearLayout>
+    </LinearLayout>
+
+</LinearLayout>

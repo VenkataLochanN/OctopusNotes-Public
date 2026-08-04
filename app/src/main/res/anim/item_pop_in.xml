@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/decelerate_quint"
+    android:duration="320">
+
+    <alpha
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0" />
+
+    <scale
+        android:fromXScale="0.88"
+        android:toXScale="1.0"
+        android:fromYScale="0.88"
+        android:toYScale="1.0"
+        android:pivotX="50%"
+        android:pivotY="50%" />
+
+    <translate
+        android:fromYDelta="18%"
+        android:toYDelta="0" />
+</set>

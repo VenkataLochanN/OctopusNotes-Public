@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:minWidth="230dp"
+    android:orientation="vertical"
+    android:background="@android:color/transparent"
+    android:paddingVertical="8dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="6dp">
+
+        <ImageButton
+            android:id="@+id/sortDesc"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_arrow_downward"
+            android:contentDescription="Descending"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <ImageButton
+            android:id="@+id/sortAsc"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="10dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_arrow_upward"
+            android:contentDescription="Ascending"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp"
+        android:layout_marginVertical="4dp" android:background="?attr/colorOutlineVariant" />
+
+    <TextView android:id="@+id/sortModified" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="16dp" android:paddingVertical="12dp" android:text="Last modified"/>
+    <TextView android:id="@+id/sortOpened" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="16dp" android:paddingVertical="12dp" android:text="Last open"/>
+    <TextView android:id="@+id/sortCreated" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="16dp" android:paddingVertical="12dp" android:text="Date created"/>
+    <TextView android:id="@+id/sortName" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="16dp" android:paddingVertical="12dp" android:text="Name"/>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp"
+        android:layout_marginVertical="4dp" android:background="?attr/colorOutlineVariant" />
+
+    <CheckBox
+        android:id="@+id/sortKeepFolders"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:text="Keep folders on top"
+        android:textColor="?attr/colorOnSurface" />
+</LinearLayout>

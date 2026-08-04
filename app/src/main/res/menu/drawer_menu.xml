@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group android:id="@+id/group_main_nav" android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_all_notes"
+            android:icon="@drawable/ic_notes"
+            android:title="All Notes" />
+        <item
+            android:id="@+id/nav_favorites"
+            android:icon="@drawable/ic_color"
+            android:title="Favorites" />
+    </group>
+
+    <!-- We will add folders dynamically to this group below -->
+    <group android:id="@+id/group_folders" android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_folders_submenu_container"
+            android:title="Folders">
+            <menu>
+                <!-- Folders will be programmatically inserted here -->
+            </menu>
+        </item>
+    </group>
+</menu>

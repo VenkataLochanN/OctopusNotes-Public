@@ -1,0 +1,71 @@
+<resources>
+    <string name="app_name">Octopus Notes</string>
+    <string name="add_new_notebook">Add new notebook</string>
+    <string name="create_dialog_title">Create New</string>
+    <string name="create_dialog_subtitle">Start something new</string>
+    <string name="create_folder">New Folder</string>
+    <string name="create_folder_sub">Organize notes into folders</string>
+    <string name="create_notebook">New Notebook</string>
+    <string name="create_notebook_sub">Start writing with a template</string>
+    <string name="create_pdf">Import PDF</string>
+    <string name="create_pdf_sub">Annotate an existing document</string>
+    <string name="notebook_preview">Notebook preview</string>
+    <string name="create_button_text">Create</string>
+    <string name="nav_open">Open</string>
+    <string name="nav_close">Close</string>
+
+    <string name="tool_pen">Pen</string>
+    <string name="tool_eraser">Eraser</string>
+    <string name="tool_lasso">Lasso select</string>
+    <string name="add_page">Add page</string>
+
+    <string name="color_palette">Color Palette</string>
+    <string name="thickness">Thickness</string>
+    <string name="eraser_type">Eraser Type</string>
+    <string name="eraser_pixel">Pixel Eraser</string>
+    <string name="eraser_stroke">Stroke Eraser</string>
+    <string name="eraser_size">Eraser Size</string>
+
+    <string name="nav_back">Back</string>
+
+    <string name="add_before">Before current page</string>
+    <string name="add_before_sub">Insert a blank page here</string>
+    <string name="add_after">After current page</string>
+    <string name="add_after_sub">Insert on the next page</string>
+    <string name="add_end">At end of notebook</string>
+    <string name="add_end_sub">Append a blank page</string>
+    <string name="edit_color">Edit colour</string>
+
+    <string name="tool_gesture">Stylus &amp; finger settings</string>
+    <string name="gesture_settings">Stylus &amp; finger</string>
+    <string name="single_finger">Single finger</string>
+    <string name="finger_ignored">Ignored</string>
+    <string name="finger_draw">Draw</string>
+    <string name="finger_scroll">Scroll</string>
+    <string name="gesture_two_finger_note">Two fingers always zoom and pan.</string>
+
+    <string name="search_pdf">Search PDF</string>
+    <string name="search_hint">Search text…</string>
+    <string name="search_prev">Previous match</string>
+    <string name="search_next">Next match</string>
+    <string name="search_close">Close search</string>
+    <string name="search_no_matches">No matches</string>
+
+    <string name="search_indexing">Indexing PDF… first search may take a moment</string>
+
+    <string name="overflow_menu">More options</string>
+    <string name="index_pdf">Index PDF for search</string>
+    <string name="index_pdf_title">Index PDF for search</string>
+    <string name="index_pdf_warning">Pages that already contain text are indexed instantly. Image-only (scanned) pages are read with on-device OCR, which can take a while and may be less accurate.\n\nIndex now?</string>
+    <string name="indexing_done">Indexing complete</string>
+    <string name="already_indexed">PDF is already indexed</string>
+    <string name="search_not_indexed">Index the PDF first: ⋮ → Index PDF</string>
+    <string name="importing_pdf">Importing PDF…</string>
+
+    <string name="cancel">Cancel</string>
+    <string name="indexing_cancelled">Indexing cancelled</string>
+
+    <string name="pages_overview">All pages</string>
+    <string name="pages_title">Pages</string>
+
+</resources>

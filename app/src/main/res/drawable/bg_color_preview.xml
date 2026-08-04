@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Circle whose fill is set at runtime; the outline keeps light colours visible on a light surface. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#FEC800" />
+    <stroke
+        android:width="1dp"
+        android:color="#33888888" />
+</shape>

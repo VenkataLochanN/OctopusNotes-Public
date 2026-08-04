@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_toolbar_pill"
+    android:elevation="20dp"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="4dp"
+        android:text="Shape"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="2dp">
+
+        <ImageButton
+            android:id="@+id/hlShapeFree"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:padding="12dp" android:scaleType="fitCenter"
+            android:src="@drawable/ic_line_wavy"
+            android:contentDescription="Free"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="@drawable/selectable_tool_background"
+            android:foreground="?attr/selectableItemBackgroundBorderless" />
+
+        <ImageButton
+            android:id="@+id/hlShapeStraight"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:layout_marginStart="4dp"
+            android:padding="12dp" android:scaleType="fitCenter"
+            android:src="@drawable/ic_line_straight"
+            android:contentDescription="Straight"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="@drawable/selectable_tool_background"
+            android:foreground="?attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginVertical="8dp"
+        android:background="?attr/colorOutlineVariant" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="4dp"
+        android:text="Mode"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="2dp">
+
+        <TextView
+            android:id="@+id/hlModeNormal"
+            android:layout_width="wrap_content" android:layout_height="44dp"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:text="Normal"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp"
+            android:background="@drawable/selectable_tool_background"
+            android:foreground="?attr/selectableItemBackgroundBorderless" />
+
+        <TextView
+            android:id="@+id/hlModeText"
+            android:layout_width="wrap_content" android:layout_height="44dp"
+            android:layout_marginStart="4dp"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:text="Text"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp"
+            android:background="@drawable/selectable_tool_background"
+            android:foreground="?attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+</LinearLayout>

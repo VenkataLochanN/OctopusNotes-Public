@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="6dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/thumbCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground">
+
+        <ImageView
+            android:id="@+id/thumbImage"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:scaleType="fitCenter"
+            android:background="#FFFFFF"
+            android:elevation="2dp"
+            android:contentDescription="@string/notebook_preview"
+            app:layout_constraintDimensionRatio="1:1.41"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <View
+            android:id="@+id/thumbBorder"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"
+            android:elevation="3dp"
+            android:background="@drawable/thumb_current_border"
+            app:layout_constraintStart_toStartOf="@id/thumbImage"
+            app:layout_constraintEnd_toEndOf="@id/thumbImage"
+            app:layout_constraintTop_toTopOf="@id/thumbImage"
+            app:layout_constraintBottom_toBottomOf="@id/thumbImage" />
+
+        <ImageView
+            android:id="@+id/thumbBookmark"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:padding="3dp"
+            android:elevation="4dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_bookmark_border"
+            android:contentDescription="Bookmark page"
+            app:layout_constraintEnd_toEndOf="@id/thumbImage"
+            app:layout_constraintTop_toTopOf="@id/thumbImage" />
+
+        <View
+            android:id="@+id/thumbSelectOverlay"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"
+            android:elevation="3dp"
+            android:background="#552196F3"
+            app:layout_constraintStart_toStartOf="@id/thumbImage"
+            app:layout_constraintEnd_toEndOf="@id/thumbImage"
+            app:layout_constraintTop_toTopOf="@id/thumbImage"
+            app:layout_constraintBottom_toBottomOf="@id/thumbImage" />
+
+        <ImageView
+            android:id="@+id/thumbSelectCheck"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:visibility="gone"
+            android:elevation="5dp"
+            android:src="@drawable/ic_check_circle"
+            android:contentDescription="Selected"
+            app:tint="#2196F3"
+            app:layout_constraintStart_toStartOf="@id/thumbImage"
+            app:layout_constraintTop_toTopOf="@id/thumbImage"
+            android:layout_margin="4dp" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingVertical="2dp">
+
+        <TextView
+            android:id="@+id/thumbLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp" />
+
+        <ImageButton
+            android:id="@+id/thumbMenu"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:padding="2dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_arrow_drop_down"
+            android:contentDescription="Page options"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+
+</LinearLayout>

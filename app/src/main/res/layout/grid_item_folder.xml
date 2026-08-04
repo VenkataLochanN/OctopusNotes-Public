@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- Colored folder shape; same A4 aspect box as the notebook thumbnail so rows align -->
+    <ImageView
+        android:id="@+id/folderIconImageView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_folder_shape"
+        android:contentDescription="Folder"
+        app:layout_constraintDimensionRatio="1:1.41"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/folderLetter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFF"
+        android:textSize="40sp"
+        android:textStyle="bold"
+        tools:text="O"
+        app:layout_constraintStart_toStartOf="@id/folderIconImageView"
+        app:layout_constraintEnd_toEndOf="@id/folderIconImageView"
+        app:layout_constraintTop_toTopOf="@id/folderIconImageView"
+        app:layout_constraintBottom_toBottomOf="@id/folderIconImageView"
+        app:layout_constraintVertical_bias="0.56" />
+
+    <View
+        android:id="@+id/folderSelectOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="16dp"
+        android:clickable="false"
+        android:background="@drawable/bg_item_selected"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/folderIconImageView"
+        app:layout_constraintBottom_toBottomOf="@id/folderIconImageView"
+        app:layout_constraintStart_toStartOf="@id/folderIconImageView"
+        app:layout_constraintEnd_toEndOf="@id/folderIconImageView" />
+
+    <ImageView
+        android:id="@+id/folderSelectCheck"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:padding="5dp"
+        android:background="@drawable/bg_select_check_circle"
+        android:src="@drawable/ic_check"
+        android:tint="?attr/colorOnPrimary"
+        android:contentDescription="Selected"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/folderIconImageView"
+        app:layout_constraintEnd_toEndOf="@id/folderIconImageView"
+        app:layout_constraintVertical_bias="0.2" />
+
+    <LinearLayout
+        android:id="@+id/folderNameRow"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="8dp"
+            app:layout_constraintTop_toBottomOf="@id/folderIconImageView"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+        <TextView
+            android:id="@+id/folderNameTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Folder Name"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="14sp"
+            android:gravity="start" />
+
+        <ImageView
+            android:id="@+id/folderMenuButton"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="2dp"
+            android:src="@drawable/ic_arrow_drop_down"
+            android:contentDescription="Folder options"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="?attr/colorOnSurfaceVariant" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

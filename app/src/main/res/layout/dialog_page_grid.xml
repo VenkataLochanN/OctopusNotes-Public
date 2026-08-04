@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?attr/colorSurface"
+    android:fitsSystemWindows="true">
+
+    <!-- Top bar: tabs + actions -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="8dp">
+
+        <HorizontalScrollView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:scrollbars="none">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/pageTabs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleLine="true"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/tabAll"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="All"
+                    android:checked="true" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/tabBookmark"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Bookmark" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/tabOutline"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Outline" />
+            </com.google.android.material.chip.ChipGroup>
+        </HorizontalScrollView>
+
+        <ImageButton
+            android:id="@+id/pageAddButton"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
+            android:src="@drawable/ic_add"
+            android:contentDescription="@string/add_page"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <ImageButton
+            android:id="@+id/outlineReloadButton"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
+            android:src="@drawable/ic_refresh"
+            android:contentDescription="Reload outlines from PDF"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:visibility="gone" />
+
+        <ImageButton
+            android:id="@+id/pageSelectButton"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
+            android:src="@drawable/ic_check_circle"
+            android:contentDescription="Select pages"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <ImageButton
+            android:id="@+id/pageGridClose"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
+            android:src="@drawable/ic_close"
+            android:contentDescription="@string/search_close"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+
+    <!-- Select-mode action bar -->
+    <LinearLayout
+        android:id="@+id/selectActionBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="6dp"
+        android:background="?attr/colorSurfaceVariant">
+
+        <TextView
+            android:id="@+id/selectCount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/selectDelete"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Delete"
+            android:textColor="#E53935" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/pageGridRecycler"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:padding="6dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/pageOutlineRecycler"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            android:clipToPadding="false"
+            android:paddingVertical="6dp" />
+
+        <TextView
+            android:id="@+id/pageEmptyText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="15sp" />
+
+        <ProgressBar
+            android:id="@+id/pageLoading"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:visibility="gone" />
+
+        <!-- Scroll pill track (invisible positioning area on the right edge) -->
+        <View
+            android:id="@+id/gridPillTrack"
+            android:layout_width="24dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="end"
+            android:layout_marginVertical="8dp" />
+
+        <!-- Scroll pill thumb (draggable indicator) -->
+        <ImageView
+            android:id="@+id/gridPillThumb"
+            android:layout_width="32dp"
+            android:layout_height="64dp"
+            android:layout_gravity="end|top"
+            android:alpha="0.6"
+            android:background="@drawable/bg_scroll_pill"
+            android:src="@drawable/ic_drag_indicator"
+            android:scaleType="center"
+            android:elevation="6dp"
+            android:visibility="invisible" />
+    </FrameLayout>
+
+</LinearLayout>

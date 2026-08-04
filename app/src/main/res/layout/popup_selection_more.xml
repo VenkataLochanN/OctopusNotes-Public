@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:background="@drawable/popup_background"
+    android:orientation="vertical" android:padding="8dp">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:paddingBottom="8dp">
+
+        <ImageButton android:id="@+id/btnFlipH"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:padding="12dp" android:scaleType="fitCenter"
+            android:src="@drawable/ic_flip_horizontal"
+            android:tint="?attr/colorOnSurface"
+            android:contentDescription="Flip horizontally"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+
+        <ImageButton android:id="@+id/btnFlipV"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:padding="12dp" android:scaleType="fitCenter"
+            android:src="@drawable/ic_flip_vertical"
+            android:tint="?attr/colorOnSurface"
+            android:contentDescription="Flip vertically"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+    </LinearLayout>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/colorOutlineVariant" android:layout_marginBottom="8dp"/>
+
+    <TextView android:id="@+id/btnCopy" style="@style/AddPageRowTitle"
+        android:layout_width="match_parent" android:padding="12dp" android:text="Copy"
+        android:drawableStart="@drawable/ic_content_copy" android:drawablePadding="16dp"
+        android:drawableTint="?attr/colorOnSurfaceVariant"
+        android:gravity="center_vertical"
+        android:background="?attr/selectableItemBackground"/>
+
+    <TextView android:id="@+id/btnCut" style="@style/AddPageRowTitle"
+        android:layout_width="match_parent" android:padding="12dp" android:text="Cut"
+        android:drawableStart="@drawable/ic_cut" android:drawablePadding="16dp"
+        android:drawableTint="?attr/colorOnSurfaceVariant"
+        android:gravity="center_vertical"
+        android:background="?attr/selectableItemBackground"/>
+
+    <TextView android:id="@+id/btnPaste" style="@style/AddPageRowTitle"
+        android:layout_width="match_parent" android:padding="12dp" android:text="Paste"
+        android:drawableStart="@drawable/ic_paste" android:drawablePadding="16dp"
+        android:drawableTint="?attr/colorOnSurfaceVariant"
+        android:gravity="center_vertical"
+        android:background="?attr/selectableItemBackground"/>
+</LinearLayout>

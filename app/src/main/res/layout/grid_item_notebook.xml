@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/notebookCardView"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="4dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/notebookPreviewImageView"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:contentDescription="@string/notebook_preview"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bg_thumb_skeleton"
+            app:layout_constraintDimensionRatio="1:1.41"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageView
+            android:id="@+id/notebookSelectCheck"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_margin="8dp"
+            android:padding="5dp"
+            android:background="@drawable/bg_select_check_circle"
+            android:src="@drawable/ic_check"
+            android:tint="?attr/colorOnPrimary"
+            android:contentDescription="Selected"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="@id/notebookPreviewImageView"
+            app:layout_constraintEnd_toEndOf="@id/notebookPreviewImageView" />
+
+        <LinearLayout
+            android:id="@+id/notebookNameRow"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="10dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/notebookPreviewImageView">
+
+            <TextView
+                android:id="@+id/notebookNameTextView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Notebook Name"
+                android:textAppearance="?attr/textAppearanceBody2"
+                android:textColor="?android:attr/textColorPrimary" />
+
+            <ImageView
+                android:id="@+id/notebookMenuButton"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_arrow_drop_down"
+                android:contentDescription="Options"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>
