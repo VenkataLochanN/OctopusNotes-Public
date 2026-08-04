@@ -13,3 +13,9 @@ Octopus Notes is currently in **beta testing** on the Google Play Store! If you'
 
 * **Email:** [lochan.silhouettes@gmail.com](mailto:lochan.silhouettes@gmail.com)
 * **Reddit:** [u/TopEntity](https://www.reddit.com/user/TopEntity)
+
+
+# Download the app:
+Google Play : (May show up as item not available because of still being in beta testing.
+https://play.google.com/store/apps/details?id=com.lochan.octopusnotes
+Download from releases.
