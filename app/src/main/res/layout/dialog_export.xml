@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:paddingHorizontal="24dp"
     android:paddingTop="12dp">
-
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -19,7 +18,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingTop="4dp">
-
         <RadioButton
             android:id="@+id/fmtPdf"
             android:layout_width="match_parent"
@@ -50,7 +48,6 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingTop="4dp">
-
         <EditText
             android:id="@+id/exportFrom"
             android:layout_width="0dp"

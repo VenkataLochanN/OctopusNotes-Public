@@ -5,12 +5,6 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
-/**
- * A determinate progress dialog with a **Cancel** button, used for import/export.
- *
- * Shows a real percentage instead of a spinner. [onCancel] fires when the user cancels
- * (the worker should poll [isCancelled] and stop). Update from the UI thread via [setProgress].
- */
 class ProgressDialogController(
     activity: Activity,
     title: String,
@@ -28,7 +22,8 @@ class ProgressDialogController(
         view.findViewById<TextView>(R.id.progressTitle).text = title
         bar = view.findViewById(R.id.progressBar)
         percent = view.findViewById(R.id.progressPercent)
-        bar.isIndeterminate = true // until the first real progress arrives
+        bar.isIndeterminate = true
+        percent.text = ""
         dialog = MaterialAlertDialogBuilder(activity)
             .setView(view)
             .setCancelable(false)
@@ -45,9 +40,8 @@ class ProgressDialogController(
         dismiss()
     }
 
-    /** [done]/[total] → percentage. total <= 0 keeps the bar indeterminate. */
     fun setProgress(done: Int, total: Int) {
-        if (total <= 0) { bar.isIndeterminate = true; return }
+        if (total <= 0) { bar.isIndeterminate = true; percent.text = ""; return }
         bar.isIndeterminate = false
         val pct = ((done.toLong() * 100) / total).toInt().coerceIn(0, 100)
         bar.progress = pct

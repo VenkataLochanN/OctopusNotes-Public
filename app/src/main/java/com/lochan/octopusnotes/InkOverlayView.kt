@@ -7,13 +7,6 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 
-/**
- * A lightweight transparent overlay that draws ink strokes and search
- * highlights on top of a single PDF page bitmap.
- *
- * Each RecyclerView item gets its own instance; the adapter sets [pageIndex],
- * [strokeManager], and [highlightsByPage] before the view is displayed.
- */
 class InkOverlayView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -23,14 +16,11 @@ class InkOverlayView @JvmOverloads constructor(
     var pageIndex: Int = -1
     var strokeManager: StrokeManager? = null
 
-    /** Page dimensions in the coordinate space strokes were authored in. */
     var strokePageWidth: Float = 0f
     var strokePageHeight: Float = 0f
 
-    /** Current zoom level for stroke width scaling. */
     var zoomLevel: Float = 1f
 
-    /** Shared search-highlight map — same object the activity uses. */
     var highlightsByPage: Map<Int, List<RectF>>? = null
 
     var searchFillPaint: Paint? = null
@@ -48,7 +38,7 @@ class InkOverlayView @JvmOverloads constructor(
         val scaleX = viewW / strokePageWidth
         val scaleY = viewH / strokePageHeight
 
-        sm.drawPageStrokes(pageIndex, canvas, scaleX, scaleY)
+        sm.drawInkLayer(canvas, pageIndex, viewW, viewH, scaleX, scaleY)
 
         val highlights = highlightsByPage?.get(pageIndex) ?: return
         val fillPaint = searchFillPaint ?: return

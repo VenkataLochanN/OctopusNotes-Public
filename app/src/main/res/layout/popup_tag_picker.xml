@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:minWidth="240dp"
+    android:orientation="vertical"
+    android:background="@android:color/transparent"
+    android:paddingTop="4dp"
+    android:paddingBottom="8dp">
+    <TextView
+        android:id="@+id/popupTitle"
+        style="@style/PopupMenuHeader" />
+
+    <View style="@style/PopupMenuDivider" />
+
+    <TextView
+        android:id="@+id/tagRow0"
+        style="@style/PopupMenuTagRow" />
+    <TextView
+        android:id="@+id/tagRow1"
+        style="@style/PopupMenuTagRow" />
+    <TextView
+        android:id="@+id/tagRow2"
+        style="@style/PopupMenuTagRow" />
+    <TextView
+        android:id="@+id/tagRow3"
+        style="@style/PopupMenuTagRow" />
+    <TextView
+        android:id="@+id/tagRow4"
+        style="@style/PopupMenuTagRow" />
+    <TextView
+        android:id="@+id/tagRow5"
+        style="@style/PopupMenuTagRow" />
+    <TextView
+        android:id="@+id/tagRow6"
+        style="@style/PopupMenuTagRow" />
+
+    <View style="@style/PopupMenuDivider" />
+
+    <TextView
+        android:id="@+id/bsRemoveTag"
+        style="@style/PopupMenuRow"
+        android:drawableStart="@drawable/ic_close"
+        android:text="Remove tag" />
+</LinearLayout>

@@ -13,7 +13,6 @@ import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** One outline node — from the PDF's embedded outline or a user-added entry. */
 data class OutlineUiEntry(
     val title: String,
     val page: Int,
@@ -22,11 +21,6 @@ data class OutlineUiEntry(
     val children: List<OutlineUiEntry> = emptyList()
 )
 
-/**
- * Outline tab list: page thumbnail, title, "From PDF"/"Added by you" subtitle, page number,
- * a chevron to expand nested chapters, and a per-row overflow menu. The entry for the
- * currently open page is tinted with the primary colour.
- */
 class OutlineAdapter(
     private val roots: List<OutlineUiEntry>,
     private val currentPage: Int,
@@ -78,7 +72,6 @@ class OutlineAdapter(
         val e = visible[position]
         val density = holder.itemView.resources.displayMetrics.density
 
-        // Indent nested levels.
         holder.row.setPaddingRelative(
             (8 * density).toInt() + (16 * density).toInt() * e.depth,
             holder.row.paddingTop,
@@ -90,7 +83,6 @@ class OutlineAdapter(
         holder.sub.text = if (e.isUser) "Added by you" else "From PDF"
         holder.page.text = if (e.page >= 0) "${e.page + 1}" else ""
 
-        // Current page → primary tint on title + page number (like the reference design).
         val primary = MaterialColors.getColor(holder.title, com.google.android.material.R.attr.colorPrimary)
         val onSurface = MaterialColors.getColor(holder.title, com.google.android.material.R.attr.colorOnSurface)
         val variant = MaterialColors.getColor(holder.title, com.google.android.material.R.attr.colorOnSurfaceVariant)
@@ -98,7 +90,6 @@ class OutlineAdapter(
         holder.title.setTextColor(if (isCurrent) primary else onSurface)
         holder.page.setTextColor(if (isCurrent) primary else variant)
 
-        // Chevron only for nodes with children; rotate 90° when expanded.
         if (e.children.isEmpty()) {
             holder.chevron.visibility = View.INVISIBLE
             holder.chevron.setOnClickListener(null)
@@ -114,7 +105,6 @@ class OutlineAdapter(
         }
         holder.menu.setOnClickListener { onMenu(e, it) }
 
-        // Page thumbnail (async, small cache).
         holder.thumb.setImageBitmap(null)
         if (e.page >= 0) {
             val cached = thumbCache.get(e.page)
@@ -123,8 +113,7 @@ class OutlineAdapter(
             } else {
                 holder.thumb.tag = e.page
                 scope.launch {
-                    // Cancellable render on the renderer's own workers — a recycled row's
-                    // queued render is skipped instead of running against a closed renderer.
+
                     val bmp = try {
                         renderer.renderSuspend(e.page, (84 * density).toInt())
                     } catch (t: Throwable) { null } ?: return@launch

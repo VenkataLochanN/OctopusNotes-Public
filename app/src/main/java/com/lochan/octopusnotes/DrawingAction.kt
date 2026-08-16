@@ -11,7 +11,8 @@ sealed class DrawingAction {
 
     data class DeleteStrokes(val pageIndex: Int, val strokes: List<StrokeData>) : DrawingAction() {
         override fun execute(manager: StrokeManager) {
-            strokes.forEach { manager.removeStrokeFromPage(pageIndex, it.id) }
+
+            manager.removeStrokesFromPage(pageIndex, strokes.mapTo(HashSet()) { it.id })
         }
         override fun undo(manager: StrokeManager) {
             strokes.forEach { manager.addStrokeToPage(pageIndex, it) }
@@ -20,11 +21,11 @@ sealed class DrawingAction {
 
     data class ReplaceStrokes(val pageIndex: Int, val originalStrokes: List<StrokeData>, val newStrokes: List<StrokeData>) : DrawingAction() {
         override fun execute(manager: StrokeManager) {
-            originalStrokes.forEach { manager.removeStrokeFromPage(pageIndex, it.id) }
+            manager.removeStrokesFromPage(pageIndex, originalStrokes.mapTo(HashSet()) { it.id })
             newStrokes.forEach { manager.addStrokeToPage(pageIndex, it) }
         }
         override fun undo(manager: StrokeManager) {
-            newStrokes.forEach { manager.removeStrokeFromPage(pageIndex, it.id) }
+            manager.removeStrokesFromPage(pageIndex, newStrokes.mapTo(HashSet()) { it.id })
             originalStrokes.forEach { manager.addStrokeToPage(pageIndex, it) }
         }
     }
@@ -34,14 +35,13 @@ sealed class DrawingAction {
         override fun undo(manager: StrokeManager) = manager.translateStrokes(pageIndex, strokeIds, -dx, -dy)
     }
 
-    // For pixel eraser: stores original strokes and the resulting split strokes
     data class PixelErase(val pageIndex: Int, val originalStrokes: List<StrokeData>, val newStrokes: List<StrokeData>) : DrawingAction() {
         override fun execute(manager: StrokeManager) {
-            originalStrokes.forEach { manager.removeStrokeFromPage(pageIndex, it.id) }
+            manager.removeStrokesFromPage(pageIndex, originalStrokes.mapTo(HashSet()) { it.id })
             newStrokes.forEach { manager.addStrokeToPage(pageIndex, it) }
         }
         override fun undo(manager: StrokeManager) {
-            newStrokes.forEach { manager.removeStrokeFromPage(pageIndex, it.id) }
+            manager.removeStrokesFromPage(pageIndex, newStrokes.mapTo(HashSet()) { it.id })
             originalStrokes.forEach { manager.addStrokeToPage(pageIndex, it) }
         }
     }

@@ -12,14 +12,8 @@ import android.os.Build
 import android.provider.MediaStore
 import org.json.JSONObject
 
-/**
- * A page background template (blank / ruled / grid / dotted / custom image).
- *
- * Stored per notebook as JSON (same field names that MainActivity uses when it
- * persists the creation template) so a notebook can regenerate matching pages later.
- */
 data class PageTemplate(
-    val type: String,            // BLANK, RULE, GRID, DOTS
+    val type: String,
     val bgColor: Int,
     val density: Float,
     val brightness: Float,
@@ -43,7 +37,6 @@ data class PageTemplate(
         put("customUri", customUri)
     }.toString()
 
-    /** Renders the template to a bitmap of the given pixel size. */
     fun renderBitmap(ctx: Context, wPx: Int, hPx: Int): Bitmap {
         val w = wPx.coerceAtLeast(1)
         val h = hPx.coerceAtLeast(1)
@@ -54,7 +47,7 @@ data class PageTemplate(
             try {
                 val src = decodeSoftwareBitmap(ctx, Uri.parse(customUri))
                     ?: throw IllegalStateException("decode failed")
-                canvas.drawColor(Color.WHITE) // avoid black showing through transparent PNGs
+                canvas.drawColor(Color.WHITE)
                 canvas.drawBitmap(src, null, Rect(0, 0, w, h), null)
                 return bmp
             } catch (e: Exception) {
@@ -124,11 +117,6 @@ data class PageTemplate(
             }
         }
 
-        /**
-         * Decodes [uri] to a **software** (non-hardware) bitmap. Hardware bitmaps (the default
-         * from [ImageDecoder]) throw when drawn onto a software [Canvas] — which is exactly what
-         * PDF page rasterization uses — and the failure surfaced as black pages.
-         */
         fun decodeSoftwareBitmap(ctx: Context, uri: Uri): Bitmap? {
             return try {
                 if (Build.VERSION.SDK_INT < 28) {
@@ -145,12 +133,6 @@ data class PageTemplate(
             }
         }
 
-        /**
-         * Copies a picked image (usually a transient `GetContent()` URI) into app storage and
-         * returns a stable `file://` URI, so a custom template stays readable after the picker's
-         * grant expires (later page-adds, thumbnail generation, app restarts). Falls back to the
-         * original URI on failure.
-         */
         fun copyTemplateImage(ctx: Context, src: Uri): Uri {
             return try {
                 val dir = java.io.File(ctx.filesDir, "templates").apply { mkdirs() }
@@ -164,7 +146,6 @@ data class PageTemplate(
             }
         }
 
-        /** A quick preset (white page, light grey lines) sized to the given page. */
         fun preset(type: String, pageW: Int, pageH: Int): PageTemplate =
             PageTemplate(
                 type = type,

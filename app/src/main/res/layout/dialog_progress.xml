@@ -4,7 +4,6 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="24dp">
-
     <TextView
         android:id="@+id/progressTitle"
         android:layout_width="match_parent"
@@ -18,7 +17,6 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:layout_marginTop="18dp">
-
         <ProgressBar
             android:id="@+id/progressBar"
             style="?android:attr/progressBarStyleHorizontal"

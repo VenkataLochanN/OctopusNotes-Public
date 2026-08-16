@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/table_title"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:textColor="?attr/colorOnSurface"
+        android:layout_marginBottom="12dp" />
+
+    <com.lochan.octopusnotes.TableGridPreviewView
+        android:id="@+id/tablePreview"
+        android:layout_width="132dp"
+        android:layout_height="76dp"
+        android:layout_marginBottom="14dp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/table_rows_short"
+            android:textSize="13sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginEnd="2dp" />
+
+        <ImageButton
+            android:id="@+id/tableRowsMinus"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="7dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_remove"
+            android:contentDescription="@string/table_rows_decrease"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <TextView
+            android:id="@+id/tableRowsValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="24dp"
+            android:gravity="center"
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold"
+            android:textSize="15sp"
+            android:text="3" />
+
+        <ImageButton
+            android:id="@+id/tableRowsPlus"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="7dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_add"
+            android:contentDescription="@string/table_rows_increase"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="20dp"
+            android:background="?attr/colorOutlineVariant"
+            android:layout_marginHorizontal="10dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/table_cols_short"
+            android:textSize="13sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginEnd="2dp" />
+
+        <ImageButton
+            android:id="@+id/tableColsMinus"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="7dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_remove"
+            android:contentDescription="@string/table_cols_decrease"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <TextView
+            android:id="@+id/tableColsValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="24dp"
+            android:gravity="center"
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold"
+            android:textSize="15sp"
+            android:text="3" />
+
+        <ImageButton
+            android:id="@+id/tableColsPlus"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="7dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_add"
+            android:contentDescription="@string/table_cols_increase"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+        <TextView
+            android:id="@+id/tableHeaderButton"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical|start"
+            android:paddingHorizontal="8dp"
+            android:text="@string/table_header_on"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="13sp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="20dp"
+            android:background="?attr/colorOutlineVariant"
+            android:layout_marginHorizontal="6dp" />
+
+        <TextView
+            android:id="@+id/tableColHeaderButton"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical|end"
+            android:paddingHorizontal="8dp"
+            android:text="@string/table_col_header_off"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/table_more_options_hint"
+        android:textSize="11sp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:layout_marginBottom="8dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutlineVariant"
+        android:layout_marginVertical="4dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+        <TextView
+            android:id="@+id/tableCancelButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:text="@string/table_cancel"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+</LinearLayout>

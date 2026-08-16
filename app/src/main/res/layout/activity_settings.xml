@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/settingsRoot"
     android:layout_width="match_parent"
@@ -16,11 +17,11 @@
         android:gravity="center_vertical"
         android:paddingHorizontal="8dp"
         android:paddingVertical="12dp">
-
         <ImageButton
             android:id="@+id/settingsBackButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
+            android:elevation="4dp"
             android:padding="12dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_arrow_back"
@@ -41,400 +42,963 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
-
+        android:layout_weight="1"
+        android:scrollbars="none">
         <LinearLayout
             android:id="@+id/settingsContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingTop="8dp">
+            android:paddingTop="4dp"
+            android:paddingBottom="32dp">
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="8dp"
-                android:text="About"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                style="@style/SettingsSectionHeader"
+                android:text="Editing" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="14dp">
-
+            <com.google.android.material.card.MaterialCardView style="@style/SettingsCard">
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:orientation="vertical">
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Version"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="16sp" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Add pages continuously" />
 
-                    <TextView
-                        android:id="@+id/versionValue"
-                        android:layout_width="wrap_content"
+                            <TextView
+                                android:id="@+id/continuousPagesSummary"
+                                style="@style/SettingsRowSummary"
+                                tools:text="Automatically add a new page when you write on the last one" />
+                        </LinearLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/continuousPagesSwitch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="13sp"
-                        tools:text="1.0 (1)" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Show tool options" />
+
+                            <TextView
+                                android:id="@+id/toolOptionsSummary"
+                                style="@style/SettingsRowSummary"
+                                tools:text="Options appear automatically when you switch tools" />
+                        </LinearLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/toolOptionsSwitch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Tabs mode" />
+
+                            <TextView
+                                android:id="@+id/tabsModeSummary"
+                                style="@style/SettingsRowSummary"
+                                tools:text="Switch between open notes from a tab strip above the toolbar" />
+                        </LinearLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/tabsModeSwitch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:id="@+id/canvasColorRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Canvas color" />
+
+                            <TextView
+                                style="@style/SettingsRowSummary"
+                                android:text="Color behind the pages. Matches your wallpaper by default (Material You)" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/canvasColorReset"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="8dp"
+                            android:layout_marginEnd="4dp"
+                            android:text="Reset"
+                            android:textColor="?attr/colorPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:visibility="invisible" />
+
+                        <View
+                            android:id="@+id/canvasColorSwatch"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_color_slot" />
+
+                        <ImageView
+                            style="@style/SettingsRowChevron"
+                            android:layout_marginStart="6dp" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:minHeight="64dp"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp">
+                        <TextView
+                            style="@style/SettingsRowTitle"
+                            android:text="Scribble to erase" />
+
+                        <TextView
+                            style="@style/SettingsRowSummary"
+                            android:text="Scribbling back and forth over ink with the pen erases the strokes underneath. Easy needs only a few back-and-forth passes; hard requires a denser scribble, so accidental wiggles are less likely to erase." />
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/scribbleEraseGroup"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            app:singleSelection="true"
+                            app:selectionRequired="true">
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/scribbleEraseEasy"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Easy (3 reversals)" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/scribbleEraseHard"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Hard (4 reversals)" />
+                        </com.google.android.material.chip.ChipGroup>
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Long-press pen to erase" />
+
+                            <TextView
+                                style="@style/SettingsRowSummary"
+                                android:text="Press and hold the pen still on the page to temporarily switch to the eraser until you lift. Drawing first and then holding still still snaps to shapes and positions lines." />
+                        </LinearLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/longPressEraseSwitch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
                 </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-                <ImageButton
-                    android:id="@+id/copyVersionButton"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:padding="10dp"
-                    android:scaleType="centerInside"
-                    android:src="@drawable/ic_content_copy"
-                    android:contentDescription="Copy version"
-                    android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="?attr/selectableItemBackgroundBorderless" />
-            </LinearLayout>
+            <TextView
+                style="@style/SettingsSectionHeader"
+                android:text="Fonts" />
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginHorizontal="8dp"
-                android:background="?attr/colorOutlineVariant" />
+            <com.google.android.material.card.MaterialCardView style="@style/SettingsCard">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="12dp">
+                        <Button
+                            android:id="@+id/fontImportButton"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:drawableStart="@drawable/ic_add"
+                            android:drawableTint="?attr/colorOnSecondaryContainer"
+                            android:text="@string/font_import" />
+
+                        <TextView
+                            style="@style/SettingsRowSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/font_import_summary" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <TextView
+                        android:id="@+id/fontsEmptyHint"
+                        style="@style/SettingsRowSummary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="12dp"
+                        android:text="@string/font_none" />
+
+                    <LinearLayout
+                        android:id="@+id/fontsListContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                style="@style/SettingsSectionHeader"
+                android:text="Home screen" />
+
+            <com.google.android.material.card.MaterialCardView style="@style/SettingsCard">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:minHeight="64dp"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp">
+                        <TextView
+                            style="@style/SettingsRowTitle"
+                            android:text="View layout" />
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/viewModeGroup"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            app:singleLine="true"
+                            app:singleSelection="true"
+                            app:selectionRequired="true">
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/viewGrid"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="true"
+                                android:text="Grid" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/viewList"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="List" />
+                        </com.google.android.material.chip.ChipGroup>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/columnsContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <View style="@style/SettingsDivider" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:minHeight="56dp"
+                            android:paddingHorizontal="16dp"
+                            android:paddingTop="8dp">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:text="Items per row" />
+
+                            <TextView
+                                android:id="@+id/columnsValue"
+                                style="@style/SettingsRowSummary"
+                                tools:text="Auto" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/columnsSlider"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="12dp"
+                            android:valueFrom="2"
+                            android:valueTo="6"
+                            android:stepSize="1" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:id="@+id/notebookThumbRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Notebook thumbnail" />
+
+                            <TextView
+                                android:id="@+id/notebookThumbValue"
+                                style="@style/SettingsRowSummary"
+                                tools:text="Last page" />
+                        </LinearLayout>
+
+                        <ImageView
+                            style="@style/SettingsRowChevron"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:id="@+id/pdfThumbRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Imported PDF thumbnail" />
+
+                            <TextView
+                                android:id="@+id/pdfThumbValue"
+                                style="@style/SettingsRowSummary"
+                                tools:text="First page" />
+                        </LinearLayout>
+
+                        <ImageView
+                            style="@style/SettingsRowChevron"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Marquee text" />
+
+                            <TextView
+                                android:id="@+id/marqueeTextSummary"
+                                style="@style/SettingsRowSummary"
+                                android:text="Scroll long notebook names slowly until they finish, then repeat" />
+                        </LinearLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/marqueeTextSwitch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                style="@style/SettingsSectionHeader"
+                android:text="Data" />
+
+            <com.google.android.material.card.MaterialCardView style="@style/SettingsCard">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp">
+                        <TextView
+                            style="@style/SettingsRowTitle"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:text="Storage used" />
+
+                        <TextView
+                            android:id="@+id/storageValue"
+                            style="@style/SettingsRowSummary"
+                            android:text="Calculating…" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="12dp">
+                        <Button
+                            android:id="@+id/exportDataButton"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="8dp"
+                            android:drawableStart="@drawable/ic_arrow_upward"
+                            android:drawableTint="?attr/colorOnSecondaryContainer"
+                            android:text="Export (Backup)" />
+
+                        <Button
+                            android:id="@+id/importDataButton"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:drawableStart="@drawable/ic_arrow_downward"
+                            android:drawableTint="?attr/colorOnSecondaryContainer"
+                            android:text="Import (Restore)" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                style="@style/SettingsSectionHeader"
+                android:text="Sync folder" />
+
+            <com.google.android.material.card.MaterialCardView style="@style/SettingsCard">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Sync folder" />
+
+                            <TextView
+                                android:id="@+id/syncFolderSummary"
+                                style="@style/SettingsRowSummary"
+                                android:text="Off — your notes stay only in this app. Turn it on if you want them mirrored to a folder for manual backup or syncing." />
+                        </LinearLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/syncEnabledSwitch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:id="@+id/syncActionsRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="12dp">
+                        <Button
+                            android:id="@+id/chooseSyncFolderButton"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="8dp"
+                            android:drawableStart="@drawable/ic_folder"
+                            android:drawableTint="?attr/colorOnSecondaryContainer"
+                            android:text="Choose folder" />
+
+                        <Button
+                            android:id="@+id/syncNowButton"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:drawableStart="@drawable/ic_refresh"
+                            android:drawableTint="?attr/colorOnSecondaryContainer"
+                            android:text="Sync now" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/syncProgressContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="16dp"
+                        android:paddingBottom="12dp"
+                        android:visibility="gone">
+                        <TextView
+                            android:id="@+id/syncProgressText"
+                            style="@style/SettingsRowSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:text="Syncing to folder…" />
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/syncProgressBar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:indeterminate="false"
+                            android:max="100"
+                            app:indicatorColor="?attr/colorPrimary"
+                            app:trackColor="?attr/colorSurfaceVariant"
+                            app:trackThickness="4dp" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/restoreFromFolderDivider"
+                        style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:id="@+id/restoreFromFolderRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:paddingHorizontal="16dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Restore from folder" />
+
+                            <TextView
+                                style="@style/SettingsRowSummary"
+                                android:text="Bring back notebooks, PDFs, images, folders and settings that are in the folder" />
+                        </LinearLayout>
+
+                        <ImageView
+                            style="@style/SettingsRowChevron" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/stopSyncDivider"
+                        style="@style/SettingsDivider"
+                        android:visibility="gone" />
+
+                    <LinearLayout
+                        android:id="@+id/stopSyncingRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:paddingHorizontal="16dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:visibility="gone">
+                        <TextView
+                            style="@style/SettingsRowTitle"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:text="Stop syncing"
+                            android:textColor="?attr/colorError" />
+
+                        <ImageView
+                            style="@style/SettingsRowChevron" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                style="@style/SettingsSectionHeader"
+                android:text="About" />
+
+            <com.google.android.material.card.MaterialCardView style="@style/SettingsCard">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp">
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+                            <TextView
+                                style="@style/SettingsRowTitle"
+                                android:text="Version" />
+
+                            <TextView
+                                android:id="@+id/versionValue"
+                                style="@style/SettingsRowSummary"
+                                tools:text="v2026.8.6" />
+                        </LinearLayout>
+
+                        <ImageButton
+                            android:id="@+id/copyVersionButton"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:padding="8dp"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/ic_content_copy"
+                            android:contentDescription="Copy version"
+                            android:tint="?attr/colorOnSurfaceVariant"
+                            android:background="?attr/selectableItemBackgroundBorderless" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:id="@+id/changelogRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:paddingHorizontal="16dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+                        <TextView
+                            style="@style/SettingsRowTitle"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:text="Changelog" />
+
+                        <ImageView
+                            style="@style/SettingsRowChevron" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:id="@+id/licensesRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:paddingHorizontal="16dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+                        <TextView
+                            style="@style/SettingsRowTitle"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:text="Open source licenses" />
+
+                        <ImageView
+                            style="@style/SettingsRowChevron" />
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider" />
+
+                    <LinearLayout
+                        android:id="@+id/showIntroAgainRow"
+                        style="@style/SettingsRowClickable">
+                        <TextView
+                            style="@style/SettingsRowTitle"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:text="@string/settings_show_intro_again" />
+
+                        <ImageView
+                            style="@style/SettingsRowChevron" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <LinearLayout
-                android:id="@+id/changelogRow"
+                android:id="@+id/devOptionsSection"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="14dp"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true">
-
+                android:orientation="vertical"
+                android:visibility="gone">
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Changelog"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="16sp" />
+                    style="@style/SettingsSectionHeader"
+                    android:text="Developer options" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_chevron_right"
-                    android:tint="?attr/colorOnSurfaceVariant"
-                    android:scaleType="centerInside" />
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginHorizontal="8dp"
-                android:background="?attr/colorOutlineVariant" />
-
-            <LinearLayout
-                android:id="@+id/licensesRow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="14dp"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Open source licenses"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="16sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_chevron_right"
-                    android:tint="?attr/colorOnSurfaceVariant"
-                    android:scaleType="centerInside" />
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginHorizontal="8dp"
-                android:background="?attr/colorOutlineVariant" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="14dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                <com.google.android.material.card.MaterialCardView style="@style/SettingsCard">
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Storage used"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="16sp" />
+                        android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/storageValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Calculating…"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="13sp" />
-                </LinearLayout>
-            </LinearLayout>
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:minHeight="64dp"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="8dp">
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    style="@style/SettingsRowTitle"
+                                    android:text="Developer options" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="8dp"
-                android:text="Editing"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                                <TextView
+                                    style="@style/SettingsRowSummary"
+                                    android:text="Hide the developer tools. Tap the version number five times to bring them back." />
+                            </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="10dp">
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/devOptionsToggle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                        <View style="@style/SettingsDivider" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Add pages continuously"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="16sp" />
+                        <LinearLayout
+                            android:id="@+id/penInputMonitorRow"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:minHeight="64dp"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="8dp"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true">
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    style="@style/SettingsRowTitle"
+                                    android:text="Input monitor" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Automatically add a new page when you write on the last one"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="13sp" />
-                </LinearLayout>
+                                <TextView
+                                    style="@style/SettingsRowSummary"
+                                    android:text="Show every touch, hover and key event so you can see what your pen's buttons report" />
+                            </LinearLayout>
 
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/continuousPagesSwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-            </LinearLayout>
+                            <ImageView
+                                style="@style/SettingsRowChevron" />
+                        </LinearLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="8dp"
-                android:text="Home"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                        <View style="@style/SettingsDivider" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="4dp"
-                android:text="View layout"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="16sp" />
+                        <LinearLayout
+                            android:id="@+id/creditsRow"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:minHeight="64dp"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="8dp"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true">
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    style="@style/SettingsRowTitle"
+                                    android:text="Credits" />
 
-            <RadioGroup
-                android:id="@+id/viewModeGroup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingHorizontal="8dp"
-                android:paddingBottom="8dp">
+                                <TextView
+                                    style="@style/SettingsRowSummary"
+                                    android:text="Meet the people behind the app" />
+                            </LinearLayout>
 
-                <RadioButton
-                    android:id="@+id/viewGrid"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Grid" />
+                            <ImageView
+                                style="@style/SettingsRowChevron" />
+                        </LinearLayout>
 
-                <RadioButton
-                    android:id="@+id/viewList"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="List" />
-            </RadioGroup>
+                        <View style="@style/SettingsDivider" />
 
-            <LinearLayout
-                android:id="@+id/columnsContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
+                        <LinearLayout
+                            android:id="@+id/visionRow"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:minHeight="64dp"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="8dp"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true">
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+                                <TextView
+                                    style="@style/SettingsRowTitle"
+                                    android:text="the vision?" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="8dp">
+                                <TextView
+                                    style="@style/SettingsRowSummary"
+                                    android:text="Why this app exists" />
+                            </LinearLayout>
 
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Items per row"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:id="@+id/columnsValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="14sp" />
-                </LinearLayout>
-
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/columnsSlider"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:valueFrom="2"
-                    android:valueTo="6"
-                    android:stepSize="1" />
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="8dp"
-                android:text="Notebook thumbnail"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <RadioGroup
-                android:id="@+id/notebookThumbGroup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp">
-
-                <RadioButton
-                    android:id="@+id/nbFirst"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="First page" />
-
-                <RadioButton
-                    android:id="@+id/nbLast"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Last page" />
-
-                <RadioButton
-                    android:id="@+id/nbLastUsed"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Last used page" />
-            </RadioGroup>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="8dp"
-                android:text="Imported PDF thumbnail"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <RadioGroup
-                android:id="@+id/pdfThumbGroup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:paddingBottom="24dp">
-
-                <RadioButton
-                    android:id="@+id/pdfFirst"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="First page" />
-
-                <RadioButton
-                    android:id="@+id/pdfLast"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Last page" />
-            </RadioGroup>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="8dp"
-                android:text="Data"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingHorizontal="8dp"
-                android:paddingBottom="24dp">
-
-                <Button
-                    android:id="@+id/exportDataButton"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="8dp"
-                    android:text="Export data" />
-
-                <Button
-                    android:id="@+id/importDataButton"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:text="Import data" />
+                            <ImageView
+                                style="@style/SettingsRowChevron" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

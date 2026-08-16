@@ -9,5 +9,5 @@ data class Drawing(
     val id: Long = 0,
     val notebookId: Long,
     val pageNumber: Int,
-    val filePath: String // Path to the saved .png file for this page's drawing
+    val filePath: String
 )

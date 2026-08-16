@@ -8,10 +8,13 @@ data class Folder(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val name: String,
+
     val colorHex: String,
-    // Parent folder id for nesting; 0 = root.
+
     val parentId: Long = 0,
     val createdAt: Long = 0,
     var inBin: Boolean = false,
-    var deletedAt: Long = 0
+    var deletedAt: Long = 0,
+
+    var tagColorHex: String? = null
 )

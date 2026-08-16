@@ -16,12 +16,15 @@ android {
     flavorDimensions += "app"
     productFlavors {
         create("prod") {
+
             dimension = "app"
         }
         create("tst") {
+
             dimension = "app"
             applicationIdSuffix = ".test"
             versionNameSuffix = "-test"
+
             buildConfigField("String", "APP_DISPLAY_NAME", "\"Test Octo\"")
             buildConfigField("String", "DB_NAME", "\"notes_database_test\"")
         }
@@ -31,8 +34,8 @@ android {
         applicationId = "com.lochan.octopusnotes"
         minSdk = 26
         targetSdk = 36
-        versionCode = 15
-        versionName = "2026.8.4"
+        versionCode = 28
+        versionName = "v2026.8.16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -65,15 +68,13 @@ android {
 }
 
 dependencies {
+
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-
-    // PDF parsing/manipulation (insert/delete/duplicate pages, templates). Rendering is native PdfRenderer.
-    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 
     val room_version = "2.8.4"
     implementation("androidx.room:room-runtime:$room_version")
@@ -86,4 +87,6 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
+
+    testImplementation("junit:junit:4.13.2")
 }

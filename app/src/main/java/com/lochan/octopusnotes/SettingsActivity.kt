@@ -4,9 +4,12 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -44,12 +47,91 @@ class SettingsActivity : AppCompatActivity() {
             Toast.makeText(this, "Version copied", Toast.LENGTH_SHORT).show()
         }
 
+        setupDeveloperOptions(versionText)
+
         setupPreferences()
+        setupFonts()
         loadStorageUsage()
         findViewById<View>(R.id.changelogRow).setOnClickListener { showChangelog() }
+
+        findViewById<View>(R.id.showIntroAgainRow).setOnClickListener {
+            getSharedPreferences("OctopusNotesPrefs", Context.MODE_PRIVATE)
+                .edit().putBoolean("onboarding_completed", false).apply()
+            startActivity(Intent(this, OnboardingActivity::class.java))
+        }
         findViewById<View>(R.id.licensesRow).setOnClickListener { showLicenses() }
         findViewById<View>(R.id.exportDataButton).setOnClickListener { startExport() }
         findViewById<View>(R.id.importDataButton).setOnClickListener { pickImportFile() }
+
+        setupSyncFolder()
+        refreshSyncFolderUi()
+    }
+
+    private fun setupDeveloperOptions(versionText: TextView) {
+        val devPrefs = getSharedPreferences("OctopusNotesPrefs", Context.MODE_PRIVATE)
+        val devSection = findViewById<View>(R.id.devOptionsSection)
+        val devToggle =
+            findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.devOptionsToggle)
+        var devTaps = 0
+
+        fun refreshDevOptions() {
+            val enabled = devPrefs.getBoolean("dev_options_enabled", false)
+            devSection.visibility = if (enabled) View.VISIBLE else View.GONE
+            devToggle.isChecked = enabled
+        }
+        refreshDevOptions()
+
+        versionText.setOnClickListener {
+            if (devPrefs.getBoolean("dev_options_enabled", false)) return@setOnClickListener
+            devTaps++
+            val remaining = 5 - devTaps
+            if (remaining > 0) {
+                Toast.makeText(
+                    this,
+                    "$remaining tap${if (remaining == 1) "" else "s"} to open developer options",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                devPrefs.edit().putBoolean("dev_options_enabled", true).apply()
+                refreshDevOptions()
+                Toast.makeText(this, "Developer options enabled", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        findViewById<View>(R.id.penInputMonitorRow).setOnClickListener {
+            startActivity(Intent(this, PenInputMonitorActivity::class.java))
+        }
+
+        findViewById<View>(R.id.creditsRow).setOnClickListener { showCredits() }
+
+        findViewById<View>(R.id.visionRow).setOnClickListener {
+            startActivity(Intent(this, VisionActivity::class.java))
+        }
+
+        devToggle.setOnCheckedChangeListener { _, isChecked ->
+            devPrefs.edit().putBoolean("dev_options_enabled", isChecked).apply()
+            if (!isChecked) devTaps = 0
+            refreshDevOptions()
+        }
+    }
+
+    private fun showCredits() {
+        val spannable = android.text.SpannableString(
+            "Oh! You found me.. LOL!\n\n" +
+                "this app might not be a success if few friends were not here to help me " +
+                "trest and report bugs and suggest festures\n\n" +
+                "1. Vaku, my love.\n" +
+                "2. Nick. who i met on telegram ( a great friend now)"
+        )
+        spannable.setSpan(
+            android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, 25,
+            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Credits")
+            .setMessage(spannable)
+            .setPositiveButton("Close", null)
+            .show()
     }
 
     private val exportLauncher = registerForActivityResult(
@@ -64,30 +146,446 @@ class SettingsActivity : AppCompatActivity() {
         if (uri != null) showImportOptions(uri)
     }
 
+    private val fontImportLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) onFontPicked(uri)
+    }
+
+    private val syncFolderLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) onSyncFolderPicked(uri)
+    }
+
+    private val restoreFolderLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) onRestoreFolderPicked(uri)
+    }
+
+    private fun setupSyncFolder() {
+        findViewById<View>(R.id.chooseSyncFolderButton).setOnClickListener {
+            syncFolderLauncher.launch(null)
+        }
+
+        findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.syncEnabledSwitch)
+            .setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked == SyncFolderManager.isEnabled(this)) return@setOnCheckedChangeListener
+                if (isChecked) {
+                    SyncFolderManager.setEnabled(this, true)
+                    if (!SyncFolderManager.isActive(this)) syncFolderLauncher.launch(null)
+                    refreshSyncFolderUi()
+                } else {
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle("Turn off sync folder?")
+                        .setMessage("Your notes stay safe in the app — this only stops the folder mirror. You can turn it back on anytime.")
+                        .setPositiveButton("Turn off") { _, _ ->
+                            SyncFolderManager.setEnabled(this, false)
+                            refreshSyncFolderUi()
+                        }
+                        .setNegativeButton("Cancel") { _, _ ->
+                            findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.syncEnabledSwitch).isChecked = true
+                        }
+                        .show()
+                }
+            }
+        findViewById<View>(R.id.syncNowButton).setOnClickListener {
+            if (!SyncFolderManager.isEnabled(this)) {
+                Toast.makeText(this, "Turn on the sync folder first", Toast.LENGTH_SHORT).show()
+            } else if (!SyncFolderManager.isActive(this)) {
+                Toast.makeText(this, "Choose a folder first", Toast.LENGTH_SHORT).show()
+            } else {
+                runSyncWithProgress {
+                    Toast.makeText(this@SettingsActivity, "Synced", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        findViewById<View>(R.id.restoreFromFolderRow).setOnClickListener { startRestore() }
+        findViewById<View>(R.id.stopSyncingRow).setOnClickListener {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("Stop syncing?")
+                .setMessage("Your notes stay in the folder, but the app will stop updating it and forget this folder.")
+                .setPositiveButton("Stop") { _, _ ->
+                    SyncFolderManager.setEnabled(this, false)
+                    SyncFolderManager.clearFolder(this)
+                    releaseSyncFolderPermission()
+                    refreshSyncFolderUi()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+    }
+
+    private fun onSyncFolderPicked(uri: Uri) {
+        val flags = SyncFolderManager.grantFlags()
+        try {
+            contentResolver.takePersistableUriPermission(uri, flags)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Couldn't access that folder", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Erase data in this folder?")
+            .setMessage(
+                "OctopusNotes mirrors your notes, PDFs and images into this folder — any existing " +
+                    "content in it will be deleted and replaced with the mirror. Only choose a " +
+                    "folder you don't use for anything else.\n\n" +
+                    "Don't delete or rename this folder while syncing is on: your backups live " +
+                    "here and the app keeps writing to it after every edit."
+            )
+            .setPositiveButton("Use this folder") { _, _ -> enableSyncFolder(uri) }
+            .setNegativeButton("Cancel") { _, _ ->
+                try { contentResolver.releasePersistableUriPermission(uri, flags) } catch (_: Exception) {}
+                syncFolderLauncher.launch(null)
+            }
+            .show()
+    }
+
+    private fun releaseSyncFolderPermission() {
+        val s = SyncFolderManager.uriString(this) ?: return
+        try {
+            contentResolver.releasePersistableUriPermission(Uri.parse(s), SyncFolderManager.grantFlags())
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun enableSyncFolder(uri: Uri) {
+        SyncFolderManager.setFolder(this, uri)
+        runSyncWithProgress {
+            refreshSyncFolderUi()
+            Toast.makeText(this@SettingsActivity, "Sync folder set", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun runSyncWithProgress(onDone: () -> Unit) {
+        showSyncProgress()
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                SyncFolderManager.mirrorAll(
+                    this@SettingsActivity,
+                    AppDatabase.getDatabase(this@SettingsActivity).notesDao().getAllNotebooksIncludingBin()
+                ) { done, total ->
+                    runOnUiThread { updateSyncProgress(done, total) }
+                }
+            }
+            hideSyncProgress()
+            onDone()
+        }
+    }
+
+    private fun showSyncProgress() {
+        findViewById<View>(R.id.syncProgressContainer).visibility = View.VISIBLE
+        findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.syncProgressBar)
+            .isIndeterminate = true
+        findViewById<TextView>(R.id.syncProgressText).text = "Syncing to folder…"
+        setSyncActionsEnabled(false)
+    }
+
+    private fun hideSyncProgress() {
+        findViewById<View>(R.id.syncProgressContainer).visibility = View.GONE
+        setSyncActionsEnabled(true)
+    }
+
+    private fun updateSyncProgress(done: Long, total: Long) {
+        if (isFinishing || isDestroyed) return
+        val bar = findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.syncProgressBar)
+        if (total <= 0L) {
+            bar.isIndeterminate = true
+            return
+        }
+        bar.isIndeterminate = false
+        val pct = ((done * 100) / total).toInt().coerceIn(0, 100)
+        bar.setProgressCompat(pct, true)
+        findViewById<TextView>(R.id.syncProgressText).text = "Syncing to folder… $pct%"
+    }
+
+    private fun setSyncActionsEnabled(enabled: Boolean) {
+        findViewById<View>(R.id.syncNowButton).isEnabled = enabled
+        findViewById<View>(R.id.chooseSyncFolderButton).isEnabled = enabled
+    }
+
+    private fun startRestore() {
+        val name = SyncFolderManager.folderDisplayName(this)
+        if (name == null || !SyncFolderManager.isReachable(this)) {
+
+            if (name != null) {
+                Toast.makeText(this, "The sync folder isn't reachable — pick the folder to restore from", Toast.LENGTH_LONG).show()
+            }
+            restoreFolderLauncher.launch(null)
+            return
+        }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Restore from folder")
+            .setItems(
+                arrayOf(
+                    "Restore from sync folder — $name",
+                    "Restore from a different folder…"
+                )
+            ) { _, which ->
+                if (which == 0) showRestoreConfirm() else restoreFolderLauncher.launch(null)
+            }
+            .show()
+    }
+
+    private fun showRestoreConfirm() {
+        val name = SyncFolderManager.folderDisplayName(this) ?: "your folder"
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Restore from folder")
+            .setMessage(
+                "Import notebooks, PDFs, images, folders and settings from \"$name\" that aren't " +
+                    "already in this app. Notes already here are left untouched.\n\n" +
+                    "Nothing in the folder is deleted."
+            )
+            .setPositiveButton("Restore") { _, _ -> runRestore() }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun onRestoreFolderPicked(uri: Uri) {
+        val flags = SyncFolderManager.grantFlags()
+        try {
+            contentResolver.takePersistableUriPermission(uri, flags)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Couldn't access that folder", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (uri.toString() == SyncFolderManager.uriString(this)) {
+            showRestoreConfirm()
+            return
+        }
+
+        releaseSyncFolderPermission()
+        SyncFolderManager.clearFolder(this)
+        SyncFolderManager.setEnabled(this, false)
+
+        val pickedName = try {
+            androidx.documentfile.provider.DocumentFile.fromTreeUri(this, uri)?.name
+        } catch (e: Exception) {
+            null
+        } ?: "this folder"
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Sync to this folder?")
+            .setMessage(
+                "Restore from \"$pickedName\" and keep syncing your notes here from now on? " +
+                    "If not, syncing stays off and the folder is only used for this restore."
+            )
+            .setPositiveButton("Yes, sync here") { _, _ ->
+                SyncFolderManager.setFolder(this, uri)
+                SyncFolderManager.setEnabled(this, true)
+
+                runRestore { runSyncWithProgress { refreshSyncFolderUi() } }
+            }
+            .setNegativeButton("No, just restore") { _, _ ->
+                SyncFolderManager.setFolder(this, uri)
+                runRestore { refreshSyncFolderUi() }
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun runRestore(onDone: () -> Unit = {}) {
+        val progress = ProgressDialogController(this, "Restoring from folder…") {}
+        progress.show()
+        lifecycleScope.launch {
+            try {
+                val summary = withContext(Dispatchers.IO) {
+                    val dao = AppDatabase.getDatabase(this@SettingsActivity).notesDao()
+                    DataManager(dao, cacheDir, filesDir).restoreFromSyncFolder(this@SettingsActivity) { done, total ->
+                        runOnUiThread { progress.setProgress(done.toInt(), total.toInt()) }
+                    }
+                }
+                progress.dismiss()
+                val msg = if (summary.notebooks == 0 && summary.pdfs == 0 && summary.images == 0 && summary.templates == 0 && summary.folders == 0) {
+                    "Nothing new to restore — the folder matches this app"
+                } else {
+                    "Restored ${summary.notebooks} notebook(s), ${summary.pdfs} PDF(s), ${summary.images} image(s), ${summary.templates} template(s), ${summary.folders} folder(s)"
+                }
+                Toast.makeText(this@SettingsActivity, msg, Toast.LENGTH_LONG).show()
+                onDone()
+            } catch (e: Exception) {
+                progress.dismiss()
+                Toast.makeText(this@SettingsActivity, "Restore failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun refreshSyncFolderUi() {
+        val summary = findViewById<TextView>(R.id.syncFolderSummary)
+        val stopRow = findViewById<View>(R.id.stopSyncingRow)
+        val stopDivider = findViewById<View>(R.id.stopSyncDivider)
+        val chooseButton = findViewById<Button>(R.id.chooseSyncFolderButton)
+        val syncNowButton = findViewById<View>(R.id.syncNowButton)
+        val restoreRow = findViewById<View>(R.id.restoreFromFolderRow)
+        val restoreDivider = findViewById<View>(R.id.restoreFromFolderDivider)
+        val switch = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.syncEnabledSwitch)
+        val enabled = SyncFolderManager.isEnabled(this)
+        switch.isChecked = enabled
+        when {
+            !enabled -> {
+                findViewById<View>(R.id.syncProgressContainer).visibility = View.GONE
+                summary.text = "Off — your notes stay only in this app. Turn it on if you want them mirrored to a folder for manual backup or syncing."
+                findViewById<View>(R.id.syncActionsRow).visibility = View.GONE
+
+                restoreRow.visibility = View.VISIBLE
+                restoreDivider.visibility = View.GONE
+                stopRow.visibility = View.GONE
+                stopDivider.visibility = View.GONE
+                chooseButton.text = "Choose folder"
+            }
+            !SyncFolderManager.isActive(this) -> {
+                summary.text = "On, but no folder chosen yet. Pick one and your notes, PDFs and images are mirrored there automatically."
+                findViewById<View>(R.id.syncActionsRow).visibility = View.VISIBLE
+                chooseButton.visibility = View.VISIBLE
+                syncNowButton.visibility = View.VISIBLE
+                restoreRow.visibility = View.VISIBLE
+                restoreDivider.visibility = View.VISIBLE
+                stopRow.visibility = View.GONE
+                stopDivider.visibility = View.GONE
+                chooseButton.text = "Choose folder"
+            }
+            !SyncFolderManager.isReachable(this) -> {
+                summary.text = "Folder unavailable (it may have been deleted or moved). Choose it again or turn it off."
+                findViewById<View>(R.id.syncActionsRow).visibility = View.VISIBLE
+                chooseButton.visibility = View.VISIBLE
+                syncNowButton.visibility = View.VISIBLE
+                restoreRow.visibility = View.VISIBLE
+                restoreDivider.visibility = View.VISIBLE
+                stopRow.visibility = View.VISIBLE
+                stopDivider.visibility = View.VISIBLE
+                chooseButton.text = "Choose folder"
+            }
+            else -> {
+                val name = SyncFolderManager.folderDisplayName(this) ?: "your folder"
+                summary.text = "Syncing to \"$name\". Your notes, PDFs and images are mirrored here automatically after every edit."
+                findViewById<View>(R.id.syncActionsRow).visibility = View.VISIBLE
+                chooseButton.visibility = View.VISIBLE
+                syncNowButton.visibility = View.VISIBLE
+                restoreRow.visibility = View.VISIBLE
+                restoreDivider.visibility = View.VISIBLE
+                stopRow.visibility = View.VISIBLE
+                stopDivider.visibility = View.VISIBLE
+                chooseButton.text = "Change folder"
+            }
+        }
+    }
+
     private fun setupPreferences() {
         val prefs = getSharedPreferences("OctopusNotesPrefs", Context.MODE_PRIVATE)
 
-        // Editing: auto-append a page when writing on the last page
         val continuousSwitch =
             findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.continuousPagesSwitch)
-        continuousSwitch.isChecked = prefs.getBoolean("continuous_pages", false)
+        val continuousSummary = findViewById<TextView>(R.id.continuousPagesSummary)
+        fun updateContinuousSummary(on: Boolean) {
+            continuousSummary.text = if (on)
+                "Automatically add a new page when you write on the last one"
+            else
+                "Add new pages manually with the + icon"
+        }
+        val continuousOn = prefs.getBoolean("continuous_pages", false)
+        continuousSwitch.isChecked = continuousOn
+        updateContinuousSummary(continuousOn)
         continuousSwitch.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("continuous_pages", isChecked).apply()
+            updateContinuousSummary(isChecked)
         }
 
-        // View mode: GRID (default) or LIST
-        val viewModeGroup = findViewById<android.widget.RadioGroup>(R.id.viewModeGroup)
+        val canvasColorSwatch = findViewById<View>(R.id.canvasColorSwatch)
+        val canvasColorReset = findViewById<View>(R.id.canvasColorReset)
+        fun refreshCanvasSwatch() {
+            val c = CanvasColor.current(this)
+            val bg = canvasColorSwatch.background as? android.graphics.drawable.LayerDrawable
+            (bg?.findDrawableByLayerId(R.id.color_shape) as? android.graphics.drawable.GradientDrawable)
+                ?.setColor(c)
+
+            canvasColorReset.visibility =
+                if (CanvasColor.isCustom(this)) View.VISIBLE else View.INVISIBLE
+        }
+        refreshCanvasSwatch()
+        canvasColorReset.setOnClickListener {
+            CanvasColor.reset(this)
+            refreshCanvasSwatch()
+        }
+        findViewById<View>(R.id.canvasColorRow).setOnClickListener {
+            ColorPickerDialog.show(
+                this,
+                CanvasColor.current(this),
+                allowEyedropper = false,
+                onPicked = { picked ->
+                    CanvasColor.prefs(this).edit().putInt(CanvasColor.PREFS_KEY, picked).apply()
+                    refreshCanvasSwatch()
+                }
+            )
+        }
+
+        val scribbleEraseGroup =
+            findViewById<com.google.android.material.chip.ChipGroup>(R.id.scribbleEraseGroup)
+        fun applyScribbleErase(mode: String) {
+            prefs.edit().putString("scribble_erase_difficulty", mode).apply()
+        }
+        val isHardScribble = prefs.getString("scribble_erase_difficulty", "EASY") == "HARD"
+        scribbleEraseGroup.check(if (isHardScribble) R.id.scribbleEraseHard else R.id.scribbleEraseEasy)
+        scribbleEraseGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            applyScribbleErase(if (checkedIds.contains(R.id.scribbleEraseHard)) "HARD" else "EASY")
+        }
+
+        val longPressEraseSwitch =
+            findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.longPressEraseSwitch)
+        longPressEraseSwitch.isChecked =
+            prefs.getBoolean(StylusSettings.PREFS_LONG_PRESS_ERASE, false)
+        longPressEraseSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(StylusSettings.PREFS_LONG_PRESS_ERASE, isChecked).apply()
+        }
+
+        val toolOptionsSwitch =
+            findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.toolOptionsSwitch)
+        val toolOptionsSummary = findViewById<TextView>(R.id.toolOptionsSummary)
+        fun updateToolOptionsSummary(on: Boolean) {
+            toolOptionsSummary.text = if (on)
+                "Options appear automatically when you switch tools"
+            else
+                "Options stay closed when you switch tools until you tap the tool button"
+        }
+        val autoShowOptions = prefs.getBoolean("TOOL_OPTIONS_AUTO_SHOW", true)
+        toolOptionsSwitch.isChecked = autoShowOptions
+        updateToolOptionsSummary(autoShowOptions)
+        toolOptionsSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("TOOL_OPTIONS_AUTO_SHOW", isChecked).apply()
+            updateToolOptionsSummary(isChecked)
+        }
+
+        val tabsModeSwitch =
+            findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.tabsModeSwitch)
+        val tabsModeSummary = findViewById<TextView>(R.id.tabsModeSummary)
+        fun updateTabsModeSummary(on: Boolean) {
+            tabsModeSummary.text = if (on)
+                "Switch between open notes from a tab strip above the toolbar"
+            else
+                "Open notes one at a time from the library"
+        }
+        val tabsModeOn = prefs.getBoolean(TabSession.PREFS_ENABLED, false)
+        tabsModeSwitch.isChecked = tabsModeOn
+        updateTabsModeSummary(tabsModeOn)
+        tabsModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(TabSession.PREFS_ENABLED, isChecked).apply()
+            updateTabsModeSummary(isChecked)
+        }
+
+        val viewModeGroup = findViewById<com.google.android.material.chip.ChipGroup>(R.id.viewModeGroup)
         val columnsContainer = findViewById<View>(R.id.columnsContainer)
-        val isListMode = prefs.getString("home_view_mode", "GRID") == "LIST"
-        viewModeGroup.check(if (isListMode) R.id.viewList else R.id.viewGrid)
-        columnsContainer.visibility = if (isListMode) View.GONE else View.VISIBLE
-        viewModeGroup.setOnCheckedChangeListener { _, id ->
-            val mode = if (id == R.id.viewList) "LIST" else "GRID"
+        fun applyViewMode(mode: String) {
             prefs.edit().putString("home_view_mode", mode).apply()
             columnsContainer.visibility = if (mode == "LIST") View.GONE else View.VISIBLE
         }
+        val isListMode = prefs.getString("home_view_mode", "GRID") == "LIST"
+        viewModeGroup.check(if (isListMode) R.id.viewList else R.id.viewGrid)
+        columnsContainer.visibility = if (isListMode) View.GONE else View.VISIBLE
+        viewModeGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            applyViewMode(if (checkedIds.contains(R.id.viewList)) "LIST" else "GRID")
+        }
 
-        // Items per row: 2..5, or 6 == "Auto" (stored as 0).
         val columnsSlider = findViewById<com.google.android.material.slider.Slider>(R.id.columnsSlider)
         val columnsValue = findViewById<TextView>(R.id.columnsValue)
         fun labelFor(cols: Int) = if (cols <= 0) "Auto" else cols.toString()
@@ -101,32 +599,106 @@ class SettingsActivity : AppCompatActivity() {
             columnsValue.text = labelFor(cols)
         }
 
-        // Notebook thumbnail page
-        val nbGroup = findViewById<android.widget.RadioGroup>(R.id.notebookThumbGroup)
-        when (prefs.getString("thumb_notebook", "LAST")) {
-            "FIRST" -> nbGroup.check(R.id.nbFirst)
-            "LAST_USED" -> nbGroup.check(R.id.nbLastUsed)
-            else -> nbGroup.check(R.id.nbLast)
+        val notebookThumbValue = findViewById<TextView>(R.id.notebookThumbValue)
+        fun notebookThumbLabel(value: String?) = when (value) {
+            "FIRST" -> "First page"
+            "LAST_USED" -> "Last used page"
+            else -> "Last page"
         }
-        nbGroup.setOnCheckedChangeListener { _, id ->
-            val value = when (id) {
-                R.id.nbFirst -> "FIRST"
-                R.id.nbLastUsed -> "LAST_USED"
-                else -> "LAST"
+        fun refreshNotebookThumb() {
+            notebookThumbValue.text = notebookThumbLabel(prefs.getString("thumb_notebook", "LAST"))
+        }
+        refreshNotebookThumb()
+        findViewById<View>(R.id.notebookThumbRow).setOnClickListener {
+            val current = prefs.getString("thumb_notebook", "LAST")
+            val options = arrayOf("First page", "Last page", "Last used page")
+            showChoiceDialog(
+                "Notebook thumbnail",
+                options,
+                when (current) { "FIRST" -> 0; "LAST_USED" -> 2; else -> 1 }
+            ) { index ->
+                val value = when (index) { 0 -> "FIRST"; 2 -> "LAST_USED"; else -> "LAST" }
+                prefs.edit().putString("thumb_notebook", value).apply()
+                refreshNotebookThumb()
             }
-            prefs.edit().putString("thumb_notebook", value).apply()
         }
 
-        // Imported PDF thumbnail page
-        val pdfGroup = findViewById<android.widget.RadioGroup>(R.id.pdfThumbGroup)
-        when (prefs.getString("thumb_pdf", "FIRST")) {
-            "LAST" -> pdfGroup.check(R.id.pdfLast)
-            else -> pdfGroup.check(R.id.pdfFirst)
+        val pdfThumbValue = findViewById<TextView>(R.id.pdfThumbValue)
+        fun refreshPdfThumb() {
+            pdfThumbValue.text = if (prefs.getString("thumb_pdf", "FIRST") == "LAST") "Last page" else "First page"
         }
-        pdfGroup.setOnCheckedChangeListener { _, id ->
-            val value = if (id == R.id.pdfLast) "LAST" else "FIRST"
-            prefs.edit().putString("thumb_pdf", value).apply()
+        refreshPdfThumb()
+        findViewById<View>(R.id.pdfThumbRow).setOnClickListener {
+            val options = arrayOf("First page", "Last page")
+            val selected = if (prefs.getString("thumb_pdf", "FIRST") == "LAST") 1 else 0
+            showChoiceDialog("Imported PDF thumbnail", options, selected) { index ->
+                val value = if (index == 1) "LAST" else "FIRST"
+                prefs.edit().putString("thumb_pdf", value).apply()
+                refreshPdfThumb()
+            }
         }
+
+        val marqueeSwitch =
+            findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.marqueeTextSwitch)
+        marqueeSwitch.isChecked = prefs.getBoolean("marquee_text", false)
+        marqueeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("marquee_text", isChecked).apply()
+        }
+    }
+
+    private fun setupFonts() {
+        findViewById<Button>(R.id.fontImportButton).setOnClickListener {
+            fontImportLauncher.launch(
+                arrayOf(
+                    "font/ttf", "font/otf",
+                    "application/x-font-ttf", "application/vnd.ms-opentype",
+                    "application/octet-stream"
+                )
+            )
+        }
+        refreshFontsUi()
+    }
+
+    private fun onFontPicked(uri: Uri) {
+        val imported = FontManager.import(this, uri)
+        if (imported != null) {
+            Toast.makeText(
+                this,
+                getString(R.string.font_imported) + " · " + FontManager.label(imported.name),
+                Toast.LENGTH_SHORT
+            ).show()
+        } else {
+            Toast.makeText(this, R.string.font_import_failed, Toast.LENGTH_LONG).show()
+        }
+        refreshFontsUi()
+    }
+
+    private fun refreshFontsUi() {
+        val container = findViewById<LinearLayout>(R.id.fontsListContainer)
+        val emptyHint = findViewById<TextView>(R.id.fontsEmptyHint)
+        val fonts = FontManager.list(this)
+        container.removeAllViews()
+        emptyHint.visibility = if (fonts.isEmpty()) View.VISIBLE else View.GONE
+        for (font in fonts) {
+            val row = layoutInflater.inflate(R.layout.item_font_row, container, false)
+            row.findViewById<TextView>(R.id.fontName).text = FontManager.label(font.name)
+            row.findViewById<ImageButton>(R.id.fontDeleteButton).setOnClickListener {
+                FontManager.delete(font)
+                refreshFontsUi()
+            }
+            container.addView(row)
+        }
+    }
+
+    private fun showChoiceDialog(title: String, options: Array<String>, selectedIndex: Int, onSelect: (Int) -> Unit) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(title)
+            .setSingleChoiceItems(options, selectedIndex) { dialog, which ->
+                onSelect(which)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun setupEdgeToEdge() {
@@ -172,8 +744,6 @@ class SettingsActivity : AppCompatActivity() {
         return String.format(Locale.US, "%.1f %s", value, units[unit])
     }
 
-    // --- Export / Import ---
-
     private fun startExport() {
         val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(java.util.Date())
         exportLauncher.launch("OctopusNotes_$ts.ocd")
@@ -185,11 +755,7 @@ class SettingsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    // Checkpoint the WAL into the main database file so the copied trio
-                    // (db + -wal + -shm) is as consistent as possible WITHOUT closing the
-                    // app's Room singleton. Closing it and then getting the (still-cached)
-                    // instance back used to leave every later query dead — the app crashed
-                    // the moment you returned home.
+
                     val db = AppDatabase.getDatabase(this@SettingsActivity)
                     try {
                         db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").close()
@@ -253,9 +819,7 @@ class SettingsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    // Close the database AND clear the cached singleton so the on-disk files
-                    // can be replaced, then the next getDatabase() builds a fresh instance
-                    // from the restored files instead of handing back the closed one.
+
                     AppDatabase.closeAndReset()
 
                     contentResolver.openInputStream(uri)?.use { inp ->
@@ -278,16 +842,12 @@ class SettingsActivity : AppCompatActivity() {
                             }
                         }
                     }
-                    // Prime a fresh instance for the relaunched app. Note: Room builds
-                    // lazily, so this constructs the object without touching the file yet;
-                    // a corrupt restored DB would surface on the first query after relaunch.
+
                     AppDatabase.getDatabase(this@SettingsActivity)
                 }
                 progress.dismiss()
-                // The restored data lives in a fresh database, but MainActivity/DrawingActivity
-                // still hold DAOs from the old (closed) instance and their lists are stale.
-                // Relaunch the app fresh instead of leaving a broken back stack behind.
-                Toast.makeText(this@SettingsActivity, "Import complete — restarting…", Toast.LENGTH_LONG).show()
+
+                Toast.makeText(this@SettingsActivity, "Import complete. Restarting…", Toast.LENGTH_LONG).show()
                 restartAfterImport()
             } catch (e: Exception) {
                 progress.dismiss()
@@ -296,7 +856,6 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    /** Relaunches the app in a clean task so the restored data is picked up. */
     private fun restartAfterImport() {
         val launch = packageManager.getLaunchIntentForPackage(packageName)
             ?: Intent(this, MainActivity::class.java)
@@ -323,25 +882,31 @@ class SettingsActivity : AppCompatActivity() {
     private fun showLicenses() {
         val licenses = """
 <h3>OctopusNotes</h3>
-<p>OctopusNotes is open source and licensed under the MIT License.</p>
+<p>OctopusNotes is free software and licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).</p>
+<p>The full text of the GNU AGPL v3 is available at
+<a href="https://www.gnu.org/licenses/agpl-3.0.html">https://www.gnu.org/licenses/agpl-3.0.html</a>.</p>
 
 <h3>Third-party libraries</h3>
 <p>This app uses the following open source software:</p>
 <ul>
-<li><b>AndroidX Core (core-ktx)</b> — Apache License 2.0</li>
-<li><b>AndroidX AppCompat</b> — Apache License 2.0</li>
-<li><b>Material Components for Android</b> — Apache License 2.0</li>
-<li><b>AndroidX ConstraintLayout</b> — Apache License 2.0</li>
-<li><b>AndroidX Lifecycle</b> — Apache License 2.0</li>
-<li><b>AndroidX Room</b> — Apache License 2.0</li>
-<li><b>AndroidX Compose</b> — Apache License 2.0</li>
-<li><b>PDFBox-Android</b> (com.tom-roush:pdfbox-android) — Apache License 2.0</li>
-<li><b>Kotlin Standard Library</b> — Apache License 2.0</li>
-<li><b>Kotlin Coroutines</b> — Apache License 2.0</li>
+<li><b>AndroidX Core (core-ktx)</b>: Apache License 2.0</li>
+<li><b>AndroidX AppCompat</b>: Apache License 2.0</li>
+<li><b>Material Components for Android</b>: Apache License 2.0</li>
+<li><b>AndroidX ConstraintLayout</b>: Apache License 2.0</li>
+<li><b>AndroidX Lifecycle</b>: Apache License 2.0</li>
+<li><b>AndroidX Room</b>: Apache License 2.0</li>
+<li><b>AndroidX Compose</b>: Apache License 2.0</li>
+<li><b>AndroidX RecyclerView</b>: Apache License 2.0</li>
+<li><b>Google Material Design Icons</b>: Apache License 2.0</li>
+<li><b>Kotlin Standard Library</b>: Apache License 2.0</li>
+<li><b>Kotlin Coroutines</b>: Apache License 2.0</li>
+<li><b>JUnit</b>: Eclipse Public License 2.0 (used in unit tests)</li>
 </ul>
 <p>The full text of the Apache License 2.0 is available at
 <a href="https://www.apache.org/licenses/LICENSE-2.0">https://www.apache.org/licenses/LICENSE-2.0</a>.</p>
-        """.trimIndent()
+<p>The full text of the Eclipse Public License 2.0 is available at
+<a href="https://www.eclipse.org/legal/epl-2.0/">https://www.eclipse.org/legal/epl-2.0/</a>.</p>
+        """".trimIndent()
 
         val density = resources.displayMetrics.density
         val pad = (20 * density).toInt()
@@ -365,150 +930,8 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showChangelog() {
-        val html = """
-<h3>v2026.8.4</h3>
-<ul>
-<li>Fixed a bug where Exporting or Importing a backup closed the app's database forever — after Export, going back to the home screen crashed the app; after Import, the database stayed broken until a manual restart. Export now flushes the database through SQLite's WAL checkpoint without closing it, and Import properly reopens the restored database and relaunches the app automatically so everything is rebuilt from the restored data.</li>
-<li>Fixed a bug where exporting a large page (PDF/PNG/ZIP) could fail cryptically: if rendering the page threw (e.g. an out-of-memory moment on a very large raster), the PDF page was left open, which made PdfRenderer.close() throw "Current page not closed" and masked the real error. Pages are now always released even when rendering fails, so the export either completes or reports the true error.</li>
-<li>Fixed a small renderer resource leak: if a page render failed partway through (a bad PDF page, an out-of-memory moment, or an ink-drawing error), the bitmap borrowed from the reuse pool was never handed back, silently shrinking the pool until the next render reallocated a fresh one. A failed render now returns its bitmap to the pool before rethrowing, so the reuse pool stays intact across transient render errors.</li>
-<li>Redesigned the Create New dialog with a Material 3 Expressive look. New Folder, New Notebook, and Import PDF each appear as a tinted, color-coded card (blue folder, purple notebook, red PDF) with icon, title, and description, a springy scale-in animation when the dialog opens, and a tactile press effect — the plain text-only list is gone.</li>
-<li>The notebook title you type in the basic create dialog is now carried over to the Advanced Template dialog when you tap "Choose / Edit Template", so you don't have to retype it.</li>
-<li>Shrunk the template preview in the basic create dialog so the dialog feels lighter and the title field gets more visual priority.</li>
-<li>Fixed a crash in the Pages view: fast-scrolling the page grid and closing it could crash with "Document already closed" because thumbnail renders were still queued on the app-wide scope and ran against a closed PDF renderer. The grid now runs on its own dialog-scoped coroutine that is cancelled the moment the dialog closes, and the thumbnail renderer is closed-safe — an in-flight render simply gives up instead of touching the closed document.</li>
-<li>Made the Pages view much faster on large PDFs. Thumbnails used to render one-at-a-time behind a single native renderer lock (a fast fling could queue dozens of renders waiting their turn). The renderer now keeps a small pool of independent renderers so several thumbnails draw in parallel, duplicate renders of the same page are skipped, and thumbnails for holders that scrolled off-screen are never wasted.</li>
-<li>Thumbnail loading in the Pages view now follows the same engine design that makes the main PDF view fast: renders run on their own dedicated worker threads (instead of the app-wide IO pool fighting over one lock), a page that scrolls off-screen cancels its queued render so a fast fling only draws what you're looking at, and rendered bitmaps are reused from a small pool instead of allocating fresh memory for every thumbnail — so the grid fills in noticeably faster and scrolling through huge PDFs stays smooth.</li>
-<li>Added a draggable scroll pill to the Pages view. Just like the one in the PDF view, it appears on the right edge of the page grid: drag it to glide through hundreds or thousands of pages, release to land exactly on the page you pointed at, and it fades away when you stop scrolling.</li>
-<li>Fixed a memory leak in the zoomed-in view: quickly pinching, panning, or starting a scroll-pill drag could cancel a hi-res tile render partway through, and the page bitmaps it had already produced were never recycled — rapid zooming silently churned native memory. A cancelled render now recycles its finished tiles before the job stops.</li>
-<li>Fixed a crash when working with several large inserted images at once: the image cache could evict (and recycle) a selected picture's bitmap while the selection was still drawing it, and the next redraw threw "trying to use a recycled bitmap". Selected pictures now survive cache evictions — a recycled bitmap is re-decoded on the spot instead of drawn.</li>
-<li>Fixed opening PDFs from other apps (Open with… → Octopus Notes): the import could crash or leave an empty notebook when the file couldn't be read (e.g. a permission grant that expired between tapping and reading). Failed imports now show an error and roll back the half-created notebook.</li>
-<li>Fixed heavy stutter when a page holds several large photos — inserting or lasso-selecting them used to decode each photo on the main thread, freezing frames for up to a second (and the frozen frames made the system skip touch events, spamming "Error processing scroll; pointer index for id 1 not found"). Photos are now decoded on a background thread, the selection appears instantly with frame outlines that fill in as pictures load, and two-finger events are no longer leaked to the list while a selection is being moved.</li>
-</ul>
 
-<h3>v2026.8.2</h3>
-<ul>
-<li>Fixed a bug where fast-dragging the side scroll pill in a long PDF froze the app and triggered repeated "Application Not Responding" dialogs. Each touch-move event used to issue its own giant <code>scrollBy</code> plus dozens of page binds on the main thread, fast enough to overrun Android's 5-second input-dispatch window. The move handler now coalesces into a single <code>scrollBy</code> per Choreographer frame, the engine's size-prefetch sweep and the zoomed-in hi-res tile renderer stand down for the duration of the drag so the single render thread is dedicated to whichever page you land on, and the per-page "last viewed page" persistence is deferred until scrolling actually stops instead of firing on every page crossing.</li>
-<li>Fixed the remaining main-thread work that still caused scrolling jank and ANRs on long PDFs even after the drag fix above: every page bind used to open PDF pages natively on the UI thread, copy the whole bitmap cache on each bind/recycle, and force a layout pass — which all adds up fast when a drag flies past dozens of pages. Page sizes are now only read on the render thread, evicted-bitmap reuse uses a constant-time lookup instead of scanning the cache, item heights only re-request layout when they actually change, next-page prefetching stands down during a drag so the single render thread stays on the pages you're looking at, and the scroll-pill fade is no longer restarted on every scroll event.</li>
-<li>Fixed a bug where a single failed page render (e.g. an out-of-memory moment while scrolling fast, or a render error on one page) could permanently freeze PDF rendering for the rest of the session. The renderer only allows one page open at a time, and the engine now always releases the page it opened — even when rendering throws — so a temporary glitch can no longer wedge it and make every later page fail to load.</li>
-<li>Fixed a bug where pixel-erasing part of a closed loop (e.g. a circle or an infinity drawn as one stroke) filled the remaining loops solid with the pen color. The pixel eraser used to carve the stroke's outline and then fill the leftover pieces, which flooded the loop's interior with ink. It now cuts the stroke along its centerline where the eraser passes, so a loop that loses a small arc stays a clean open arc with a gap — nothing gets filled.</li>
-<li>Fixed a bug where a failed save during page operations (add, delete, duplicate, move, rotate, or template change) could delete the notebook's PDF and leave nothing behind — data loss. PDF edits now write to a temp file, keep a backup, verify the rename, and restore the backup if anything fails.</li>
-<li>Fixed the pixel eraser crashing or corrupting ink when used alongside other tools. The pixel eraser ran its path-splitting math on a background thread while reading the live stroke list and shared Path/Paint objects, racing the main thread's drawing, stroke eraser, and pen strokes — which could throw ConcurrentModificationException or crash Skia. Ink is now deep-copied on the main thread and the math runs only on those private copies.</li>
-<li>Fixed a bug where Export crashed on the tst (test) flavor with Couldn't find meta-data for provider with authority ${'$'}{applicationId}.fileprovider.</li>
-<li>Fixed a bug where Images donot appear in thumbnails.</li>
-<li>Fixed a bug where undo/redo worked for moving images but failed when undoing the addition of a new image.</li>
-<li>Fixed a bug where duplicating a notebook doesnt copy the strokes.</li>
-<li>Fixed `imageBitmapCache` in `StrokeManager` by replacing the unbounded `MutableMap` with an `LruCache` to auto-evict bitmaps under memory pressure.</li>
-<li>Fixed a bug where duplicating a notebook caused it to display first-page thumbnails like imported PDFs instead of retaining the original's page preferences.</li>
-<li>Fixed auto-appending in continuous scroll mode for imported PDFs by persisting the fallback template on the first auto-append.</li>
-<li>Fixed a bug where applying a template to a single page incorrectly saved it as the default template for all pages.</li>
-<li>thumb_<notebookId>.png is now copied alongside the PDF and ink files during duplication. The duplicate notebook will show the original's cover preview instantly instead of showing a blank placeholder until the next render cycle.</li>
-<li>Fixed a bug where grabbing the selection's corner resize handle slightly off-centre made the box jump to a different size on the first drag. The scale is now baselined from where the pen lands on the handle, so the box starts exactly at your grab point and resizes smoothly instead of snapping.</li>
-</ul>
-
-<h3>v2026.8.1</h3>
-<ul>
-<li>Important Bug fixes - Rare: Unerasable strokes | Template change failure.</li>
-</ul>
-
-<h3>v2026.21.7</h3>
-<ul>
-<li>Many fixes and improvements.</li>
-</ul>
-
-<h3>v1.9</h3>
-<ul>
-<li>fixed a bug where going back continuosly deforms curves.</li>
-</ul>
-
-<h3>v1.8</h3>
-<ul>
-<li>scribble to erase.</li>
-<li>fixed stoke shifts onPause().</li>
-<li>persistent tool settings and highlights.</li>
-</ul>
-
-<h3>v1.7</h3>
-<ul>
-<li>Fixed bugs of features introduced in 1.6 on non AOSP devices.</li>
-<li>Changed all icons to rounded, Material 3 ones.</li>
-</ul>
-<h3>v1.6</h3>
-<ul>
-<li>Hold the stylus button to temporarily switch to the eraser. Release it to instantly return to your previously selected tool.</li>
-<li>Tool settings are now remembered. Each tool saves its own preferences, including size, style, and other settings.</li>
-<li>Improved the toolbar layout on small devices. Tools are now on the left, while tool options appear on the right for a more natural workflow.</li>
-<li>Added <b>Backup &amp; Restore</b>.
-  <ul>
-  <li>Export all app data as a <code>.ocd</code> backup file.</li>
-  <li>Import a backup with <b>Overwrite</b>, which replaces all existing app data.</li>
-  </ul>
-</li>
-<li>Fixed scrolling between pages while zoomed in.</li>
-<li>Fixed delayed loading of the next page when zoomed out.</li>
-<li>Fixed the text highlighter fallback. When selectable text isn't detected, it now correctly switches to freehand highlighting.</li>
-<li>Added a changelog viewer in Settings.</li>
-<li>Delete confirmation now shows how much data is being deleted.</li>
-<li>Various bug fixes, stability improvements, and performance enhancements.</li>
-</ul>
-<h3>v1.5</h3>
-<ul>
-<li>Completely reworked the PDF engine for significantly better performance and efficiency.</li>
-<li>Built a custom PDF search engine for faster searches, while keeping the previous search engine as a fallback for older devices.</li>
-<li>Fixed several small bugs introduced during the PDF engine rewrite.</li>
-<li>The Highlighter tool now properly highlights text instead of drawing over it.</li>
-<li>Fixed an issue where custom templates could appear as black pages.</li>
-<li>Added new loading animations throughout the app for a smoother user experience.</li>
-<li>Introduced page outlines along with new optimization algorithms to improve speed and responsiveness.</li>
-<li>Added <b>Hold to Draw</b>, allowing you to easily create straight lines, arrows, circles, and squares.</li>
-<li>Fixed screen flashing on older and slower devices when pages are automatically added with <b>Continuous Write</b> enabled.</li>
-<li>Resolved the conflict between the scroll pill and the back gesture.</li>
-<li>Redesigned the tool and tool options panels with scrolling support, making them work much better on smaller screens.</li>
-</ul>
-<h3>v1.4</h3>
-<ul>
-<li>Built a brand-new custom PDF engine from scratch for better performance and stability.</li>
-<li>Added subtle new animations across the app.</li>
-<li>Switched to a native PDF renderer with smoother scrolling, zooming, and faster page rendering.</li>
-<li>Fixed freezes when closing large PDFs.</li>
-<li>New notebooks now start with 2 pages by default.</li>
-<li>Added an option to automatically add a new page when you reach the end of your notebook.</li>
-<li>Auto-added pages now appear silently in the background without interrupting your workflow or changing your scroll position.</li>
-<li>Imported PDFs now show the full template picker when adding pages if no default template has been selected.</li>
-<li>Added solid, dotted, and dashed pen styles that are saved with your notes.</li>
-<li>Completely redesigned the toolbar with a cleaner top-center layout.</li>
-<li>Pen settings now include quick access to line styles, colors, thickness, and stroke stabilization.</li>
-<li>Highlighter settings now support freehand and straight modes, text highlighting, custom colors, and adjustable sizes.</li>
-<li>Eraser now includes Pixel and Stroke modes with customizable size presets.</li>
-<li>Lasso tool now supports freehand, rectangular, and circular selections.</li>
-<li>Re-tapping the active tool now quickly shows or hides its options.</li>
-<li>Notebook thumbnails are now generated immediately after creating or importing a notebook.</li>
-<li>Added animated loading placeholders while thumbnails are being generated.</li>
-<li>Thumbnails now refresh automatically after editing.</li>
-<li>Improved selected tool highlighting with a cleaner rounded design.</li>
-<li>Adjusted the zoom indicator layout for a cleaner interface.</li>
-<li>Removed unused resources and performed general code cleanup to improve performance.</li>
-<li>Fixed numerous bugs and improved overall stability.</li>
-</ul>
-<h3>v1.3</h3>
-<ul>
-<li><b>Folder Design Overhaul</b>: Completely revamped folder appearance for better visual hierarchy.</li>
-<li><b>Removed Sidebar</b>: Cleaner, more focused interface without the navigation sidebar.</li>
-<li><b>Breadcrumbs Navigation</b>: Added breadcrumb trail for easier folder navigation.</li>
-<li><b>Reduced Page Gap</b>: Decreased spacing between pages with darker grey separator for better visual distinction.</li>
-<li>Choice of showing first page, last page, and last used page previews.</li>
-<li>Added search functionality in homescreen.</li>
-<li><b>Zoom Control</b>: New zoom slider for pages and homescreen views.</li>
-<li><b>Fixed Subfolder Creation</b>: Resolved issue where subfolders weren't being created properly.</li>
-<li><b>New Color Selection</b>: 5 curated standard color options plus custom color picker. Colors synchronized with folder long-press color options.</li>
-<li><b>Dropdown Menu</b>: New dropdown arrow near the name on the right side for quick access.</li>
-<li><b>New Selection Mode</b>: Long press now triggers selection with checkmark indicator and highlighted background.</li>
-<li><b>Floating Dock</b>: Replaces FAB during selection mode with Delete, Move, and Lock options.</li>
-<li><b>Export Functionality</b>: Fixed export issues across all formats.</li>
-<li><b>FAB Alignment</b>: Corrected bottom FAB positioning issue.</li>
-<li><b>Smoothened Animations</b>: Many UI transitions now follow Material 3 motion guidelines.</li>
-<li>Zoom out PDF.</li>
-<li>Added sorting options.</li>
-</ul>
-        """.trimIndent()
+        val html = assets.open("changelog.html").bufferedReader().use { it.readText() }
 
         val density = resources.displayMetrics.density
         val pad = (20 * density).toInt()

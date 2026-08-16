@@ -11,11 +11,11 @@
     android:clickable="true"
     android:focusable="true"
     android:background="?attr/selectableItemBackground">
-
     <ImageButton
         android:id="@+id/outlineChevron"
         android:layout_width="32dp"
         android:layout_height="32dp"
+        android:elevation="4dp"
         android:padding="9dp"
         android:scaleType="fitCenter"
         android:src="@drawable/arrow_forward_ios_24px"
@@ -38,7 +38,6 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="vertical">
-
         <TextView
             android:id="@+id/outlineTitle"
             android:layout_width="wrap_content"
@@ -69,6 +68,7 @@
         android:id="@+id/outlineMenu"
         android:layout_width="38dp"
         android:layout_height="38dp"
+        android:elevation="4dp"
         android:layout_marginStart="4dp"
         android:padding="8dp"
         android:scaleType="centerInside"

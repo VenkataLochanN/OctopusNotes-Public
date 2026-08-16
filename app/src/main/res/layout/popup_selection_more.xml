@@ -3,11 +3,10 @@
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:background="@drawable/popup_background"
     android:orientation="vertical" android:padding="8dp">
-
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:paddingBottom="8dp">
-
         <ImageButton android:id="@+id/btnFlipH"
             android:layout_width="48dp" android:layout_height="48dp"
+            android:elevation="4dp"
             android:padding="12dp" android:scaleType="fitCenter"
             android:src="@drawable/ic_flip_horizontal"
             android:tint="?attr/colorOnSurface"
@@ -16,6 +15,7 @@
 
         <ImageButton android:id="@+id/btnFlipV"
             android:layout_width="48dp" android:layout_height="48dp"
+            android:elevation="4dp"
             android:padding="12dp" android:scaleType="fitCenter"
             android:src="@drawable/ic_flip_vertical"
             android:tint="?attr/colorOnSurface"

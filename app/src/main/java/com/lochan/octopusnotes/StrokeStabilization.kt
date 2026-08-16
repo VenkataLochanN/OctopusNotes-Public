@@ -16,13 +16,12 @@ class StrokeStabilization {
     private var previousPoint: StrokePoint? = null
 
     init {
-        setLevel(5) // Default to balanced smoothing
+        setLevel(5)
     }
 
     fun setLevel(newLevel: Int) {
         level = newLevel.coerceIn(1, 10)
 
-        // Strength mapping inverted so Level 10 (0.10f) is smooth, Level 1 (0.85f) is raw
         val config = when (level) {
             1 -> Pair(2, 0.85f)
             2 -> Pair(3, 0.80f)

@@ -14,29 +14,14 @@ import java.io.StringReader
 object DrawingCodec {
 
     const val FORMAT_VERSION = 1
-    private const val SAMPLE_STEP = 2f // page-space px between sampled points
 
-    /**
-     * Page space is "px at the laid-out page width" — and since a page spans the full
-     * window, that width is the screen width, which CHANGES WHEN THE DEVICE ROTATES.
-     * Every document therefore records the width it was written at, so a load into a
-     * differently-sized viewport can scale the ink back onto the page instead of leaving
-     * it bunched in the middle (portrait -> landscape) or hanging off the right edge
-     * (landscape -> portrait).
-     *
-     * Written before "pages" so the streaming decoder knows the scale before it reads
-     * the first stroke (org.json preserves insertion order).
-     */
+    const val DOC_TYPE_INFINITE = "INFINITE"
+    private const val SAMPLE_STEP = 2f
+
     private const val KEY_BASE_WIDTH = "baseWidth"
 
-    /**
-     * IMAGE strokes: degrees the picture is turned clockwise inside its rect. An angle, not
-     * a length, so unlike every other geometry field it must NOT be touched by the page-space
-     * rescale. Builds that predate it simply draw the picture unturned.
-     */
     private const val KEY_IMAGE_ROTATION = "imgRot"
 
-    /** A page after decoding: strokes we can render + raw strokes we must preserve. */
     data class DecodedPage(
         val known: MutableList<StrokeData>,
         val unknown: MutableList<JSONObject>
@@ -44,13 +29,12 @@ object DrawingCodec {
 
     data class DecodeResult(
         val pages: MutableMap<Int, DecodedPage>,
-        /** type -> count, for tools this build can't render. */
-        val unsupportedTypeCounts: Map<String, Int>
+
+        val unsupportedTypeCounts: Map<String, Int>,
+
+        val baseWidth: Float = 0f
     )
 
-    // ---------------- ENCODE ----------------
-
-    /** [baseWidth] is the page width (px) the strokes being written are expressed in. */
     fun encodeDocument(
         pageIndices: Collection<Int>,
         knownProvider: (Int) -> List<StrokeData>,
@@ -65,7 +49,7 @@ object DrawingCodec {
         for (p in pageIndices) {
             val strokes = JSONArray()
             for (sd in knownProvider(p)) strokes.put(encodeStroke(sd))
-            // Preserve unknown-tool strokes verbatim (round-trip safe).
+
             for (u in unknownProvider(p)) strokes.put(u)
 
             if (strokes.length() > 0) {
@@ -82,7 +66,6 @@ object DrawingCodec {
         o.put("type", stroke.type)
         o.put("v", 1)
 
-        // Images: destination rect + file reference, no contours.
         if (stroke.type == StrokeType.IMAGE) {
             val b = android.graphics.RectF()
             stroke.path.computeBounds(b, true)
@@ -90,7 +73,83 @@ object DrawingCodec {
             o.put("rect", JSONArray()
                 .put(b.left.toDouble()).put(b.top.toDouble())
                 .put(b.right.toDouble()).put(b.bottom.toDouble()))
-            // Omitted when unturned, so files from before image rotation existed stay byte-alike.
+
+            if (stroke.imageRotation != 0f) o.put(KEY_IMAGE_ROTATION, stroke.imageRotation.toDouble())
+            return o
+        }
+
+        if (stroke.type == StrokeType.TABLE) {
+            val b = android.graphics.RectF()
+            stroke.path.computeBounds(b, true)
+            o.put("rect", JSONArray()
+                .put(b.left.toDouble()).put(b.top.toDouble())
+                .put(b.right.toDouble()).put(b.bottom.toDouble()))
+            o.put("style", "STROKE")
+            o.put("color", stroke.paint.color)
+            o.put("width", stroke.paint.strokeWidth.toDouble())
+            if (stroke.lineStyle != PenLineStyle.SOLID) o.put("lineStyle", stroke.lineStyle)
+            val td = stroke.tableData ?: TableData(1, 1)
+            val t = JSONObject()
+            t.put("rows", td.rows)
+            t.put("cols", td.cols)
+            t.put("hdr", td.headerRow)
+            if (td.headerCol) t.put("hdrC", true)
+            if (td.headerColor != null) t.put("hdrCol", td.headerColor)
+            if (td.headerColColor != null) t.put("hcCol", td.headerColColor)
+            if (td.borderRadius > 0f) t.put("radius", td.borderRadius.toDouble())
+
+            if (td.rowWeights != null) {
+                t.put("rw", JSONArray().apply { for (v in td.rowWeights) put(v.toDouble()) })
+            }
+            if (td.colWeights != null) {
+                t.put("cw", JSONArray().apply { for (v in td.colWeights) put(v.toDouble()) })
+            }
+            if (td.merges.isNotEmpty()) {
+                val m = JSONObject()
+                for ((k, span) in td.merges) {
+                    m.put(k, JSONArray().put(span.getOrNull(0) ?: 1).put(span.getOrNull(1) ?: 1))
+                }
+                t.put("merges", m)
+            }
+            if (td.cells.isNotEmpty()) {
+                t.put("cells", JSONObject().apply { for ((k, v) in td.cells) put(k, v) })
+            }
+            o.put("table", t)
+            return o
+        }
+
+        if (stroke.type == StrokeType.TEXT) {
+            val b = android.graphics.RectF()
+            stroke.path.computeBounds(b, true)
+            o.put("rect", JSONArray()
+                .put(b.left.toDouble()).put(b.top.toDouble())
+                .put(b.right.toDouble()).put(b.bottom.toDouble()))
+            o.put("color", stroke.paint.color)
+            o.put("width", stroke.paint.strokeWidth.toDouble())
+            o.put("text", stroke.textData?.text ?: "")
+
+            o.put("textSize", (stroke.textData?.size ?: 26f).toDouble())
+
+            stroke.textData?.font?.let { o.put("font", it) }
+            return o
+        }
+
+        if (stroke.type == StrokeType.TAPE) {
+            val b = android.graphics.RectF()
+            stroke.path.computeBounds(b, true)
+            o.put("rect", JSONArray()
+                .put(b.left.toDouble()).put(b.top.toDouble())
+                .put(b.right.toDouble()).put(b.bottom.toDouble()))
+            o.put("color", stroke.paint.color)
+
+            val td = stroke.tapeData
+            if (td != null && (td.pattern != TapePattern.SOLID || td.hollow)) {
+                val t = JSONObject()
+                if (td.pattern != TapePattern.SOLID) t.put("pattern", td.pattern)
+                if (td.hollow) t.put("hollow", true)
+                o.put("tape", t)
+            }
+
             if (stroke.imageRotation != 0f) o.put(KEY_IMAGE_ROTATION, stroke.imageRotation.toDouble())
             return o
         }
@@ -106,9 +165,6 @@ object DrawingCodec {
             else -> "ROUND"
         })
 
-        // Lossless round-trip: reuse the exact points the stroke was decoded from (or
-        // previously encoded to). Only strokes whose geometry actually changed get
-        // re-flattened — re-sampling on every save compounds error across cycles.
         val contourData = stroke.savedContours ?: pathToContours(stroke.path).also {
             stroke.savedContours = it
         }
@@ -122,7 +178,49 @@ object DrawingCodec {
         return o
     }
 
-    // ---------------- DECODE ----------------
+    fun encodeInfiniteDocument(
+        known: List<StrokeData>,
+        unknown: List<JSONObject>
+    ): String {
+        val root = JSONObject()
+        root.put("formatVersion", FORMAT_VERSION)
+        root.put("type", DOC_TYPE_INFINITE)
+        val strokes = JSONArray()
+        for (sd in known) strokes.put(encodeStroke(sd))
+
+        for (u in unknown) strokes.put(u)
+        root.put("strokes", strokes)
+        return root.toString()
+    }
+
+    fun decodeInfiniteDocument(source: Reader): DecodeResult {
+        val unsupported = HashMap<String, Int>()
+        val known = mutableListOf<StrokeData>()
+        val unknown = mutableListOf<JSONObject>()
+        JsonReader(source.buffered()).use { r ->
+            r.beginObject()
+            while (r.hasNext()) {
+                if (r.nextName() != "strokes") { r.skipValue(); continue }
+                r.beginArray()
+                while (r.hasNext()) {
+                    val raw = readStroke(r, 1f)
+                    if (raw == null) continue
+                    if (raw.type !in StrokeType.SUPPORTED) {
+
+                        unknown.add(raw.toJson())
+                        unsupported[raw.type] = (unsupported[raw.type] ?: 0) + 1
+                    } else {
+                        val sd = try { raw.toStrokeData() } catch (e: Exception) { null }
+
+                        if (sd != null) known.add(sd) else unknown.add(raw.toJson())
+                    }
+                }
+                r.endArray()
+            }
+            r.endObject()
+        }
+        return DecodeResult(mutableMapOf(0 to DecodedPage(known, unknown)), unsupported)
+    }
 
     fun decodeDocument(
         json: String,
@@ -130,23 +228,15 @@ object DrawingCodec {
         fallbackBaseWidth: Float = 0f
     ): DecodeResult = decodeDocument(StringReader(json), targetWidth, fallbackBaseWidth)
 
-    /**
-     * Streams the document instead of building a JSON tree first. Coordinates go straight
-     * from the reader into FloatArrays — the tree form boxed every one of them as a Double,
-     * which dominated open time (and GC) on ink-heavy notebooks.
-     *
-     * [onPage] fires as soon as each page finishes decoding, so the UI can show ink
-     * progressively rather than waiting for the whole notebook.
-     *
-     * Geometry is rescaled from the document's [KEY_BASE_WIDTH] to [targetWidth] (the page
-     * width it is about to be drawn at) — see that constant for why. [fallbackBaseWidth] is
-     * used for documents written before the field existed; pass 0 for either to skip scaling.
-     */
     fun decodeDocument(
         source: Reader,
         targetWidth: Float = 0f,
         fallbackBaseWidth: Float = 0f,
-        onPage: ((Int, DecodedPage) -> Unit)? = null
+        onPage: ((Int, DecodedPage) -> Unit)? = null,
+
+        onlyPage: Int = -1,
+
+        skipPage: Int = -1
     ): DecodeResult {
         val pages = mutableMapOf<Int, DecodedPage>()
         val unsupported = HashMap<String, Int>()
@@ -165,6 +255,9 @@ object DrawingCodec {
                         while (r.hasNext()) {
                             val pageIndex = r.nextName().toIntOrNull()
                             if (pageIndex == null) { r.skipValue(); continue }
+
+                            if (onlyPage >= 0 && pageIndex != onlyPage) { r.skipValue(); continue }
+                            if (skipPage >= 0 && pageIndex == skipPage) { r.skipValue(); continue }
                             val page = decodePage(r, unsupported, scale)
                             pages[pageIndex] = page
                             onPage?.invoke(pageIndex, page)
@@ -176,7 +269,7 @@ object DrawingCodec {
             }
             r.endObject()
         }
-        return DecodeResult(pages, unsupported)
+        return DecodeResult(pages, unsupported, baseWidth)
     }
 
     private fun decodePage(
@@ -194,12 +287,12 @@ object DrawingCodec {
                 val raw = readStroke(r, scale)
                 if (raw == null) continue
                 if (raw.type !in StrokeType.SUPPORTED) {
-                    // Unknown tool: preserve verbatim + count for the notification.
+
                     unknown.add(raw.toJson())
                     unsupported[raw.type] = (unsupported[raw.type] ?: 0) + 1
                 } else {
                     val sd = try { raw.toStrokeData() } catch (e: Exception) { null }
-                    // Corrupt known stroke: preserve, don't notify.
+
                     if (sd != null) known.add(sd) else unknown.add(raw.toJson())
                 }
             }
@@ -209,11 +302,6 @@ object DrawingCodec {
         return DecodedPage(known, unknown)
     }
 
-    /**
-     * A stroke's fields as read off the wire. Held in this flat form (rather than a
-     * JSONObject) so the common path allocates nothing beyond the contour arrays; the
-     * verbatim JSON is rebuilt only for the rare unknown/corrupt stroke.
-     */
     private class RawStroke {
         var id: String? = null
         var type: String = "unknown"
@@ -226,8 +314,13 @@ object DrawingCodec {
         var imageFile: String? = null
         var imageRotation: Float? = null
         var rect: FloatArray? = null
+        var table: JSONObject? = null
+        var text: String? = null
+        var textSize: Float? = null
+        var font: String? = null
+        var tape: JSONObject? = null
         var contours: ArrayList<FloatArray>? = null
-        /** Fields this build doesn't know about, kept so unknown strokes round-trip intact. */
+
         var extra: JSONObject? = null
 
         fun toJson(): JSONObject {
@@ -242,6 +335,11 @@ object DrawingCodec {
             cap?.let { o.put("cap", it) }
             imageFile?.let { o.put("imageFile", it) }
             imageRotation?.let { o.put(KEY_IMAGE_ROTATION, it.toDouble()) }
+            table?.let { o.put("table", it) }
+            text?.let { o.put("text", it) }
+            textSize?.let { o.put("textSize", it.toDouble()) }
+            font?.let { o.put("font", it) }
+            tape?.let { o.put("tape", it) }
             rect?.let { rc ->
                 o.put("rect", JSONArray().apply { for (f in rc) put(f.toDouble()) })
             }
@@ -260,6 +358,78 @@ object DrawingCodec {
         fun toStrokeData(): StrokeData {
             val strokeId = id ?: java.util.UUID.randomUUID().toString()
 
+            if (type == StrokeType.TABLE) {
+                val rc = rect ?: throw IllegalArgumentException("table stroke without rect")
+                val path = Path().apply { addRect(rc[0], rc[1], rc[2], rc[3], Path.Direction.CW) }
+                val paint = Paint().apply {
+                    isAntiAlias = true
+                    style = Paint.Style.STROKE
+                    strokeJoin = Paint.Join.ROUND
+                    strokeCap = Paint.Cap.ROUND
+                    color = this@RawStroke.color ?: Color.BLACK
+                    strokeWidth = width ?: TABLE_LINE_WIDTH
+                }
+                val td = table?.let { t ->
+                    val cells = t.optJSONObject("cells")?.let { c ->
+                        HashMap<String, String>().also { m ->
+                            val keys = c.keys()
+                            while (keys.hasNext()) { val k = keys.next(); m[k] = c.optString(k, "") }
+                        }
+                    } ?: mutableMapOf()
+                    TableData(
+                        rows = t.optInt("rows", 1).coerceAtLeast(1),
+                        cols = t.optInt("cols", 1).coerceAtLeast(1),
+                        cells = cells,
+                        headerRow = t.optBoolean("hdr", true),
+                        headerCol = t.optBoolean("hdrC", false),
+                        headerColor = if (t.has("hdrCol")) t.optInt("hdrCol") else null,
+                        headerColColor = if (t.has("hcCol")) t.optInt("hcCol") else null,
+                        borderRadius = t.optDouble("radius", 0.0).toFloat(),
+                        rowWeights = t.optJSONArray("rw")?.let { arr ->
+                            FloatArray(arr.length()) { arr.optDouble(it, 0.0).toFloat() }
+                        },
+                        colWeights = t.optJSONArray("cw")?.let { arr ->
+                            FloatArray(arr.length()) { arr.optDouble(it, 0.0).toFloat() }
+                        },
+                        merges = t.optJSONObject("merges")?.let { o ->
+                            HashMap<String, IntArray>().also { m ->
+                                val keys = o.keys()
+                                while (keys.hasNext()) {
+                                    val k = keys.next()
+                                    val span = o.optJSONArray(k)
+                                    m[k] = intArrayOf(span?.optInt(0, 1) ?: 1, span?.optInt(1, 1) ?: 1)
+                                }
+                            }
+                        } ?: mutableMapOf()
+                    )
+                } ?: TableData(1, 1)
+                return StrokeData(
+                    strokeId, path, paint, false, type,
+                    lineStyle = lineStyle ?: PenLineStyle.SOLID,
+                    tableData = td
+                )
+            }
+
+            if (type == StrokeType.TEXT) {
+                val rc = rect ?: throw IllegalArgumentException("text stroke without rect")
+                val path = Path().apply { addRect(rc[0], rc[1], rc[2], rc[3], Path.Direction.CW) }
+
+                val paint = Paint().apply {
+                    isAntiAlias = true
+                    style = Paint.Style.STROKE
+                    strokeJoin = Paint.Join.ROUND
+                    strokeCap = Paint.Cap.ROUND
+                    strokeWidth = 1.5f
+                    color = this@RawStroke.color ?: Color.BLACK
+                }
+                val td = TextData(
+                    text = text ?: "",
+                    size = (textSize ?: 26f).coerceAtLeast(6f),
+                    font = font
+                )
+                return StrokeData(strokeId, path, paint, false, type, textData = td)
+            }
+
             if (type == StrokeType.IMAGE) {
                 val rc = rect ?: throw IllegalArgumentException("image stroke without rect")
                 val path = Path().apply { addRect(rc[0], rc[1], rc[2], rc[3], Path.Direction.CW) }
@@ -271,7 +441,24 @@ object DrawingCodec {
                 )
             }
 
-            // All ink tools share the generic contour representation.
+            if (type == StrokeType.TAPE) {
+                val rc = rect ?: throw IllegalArgumentException("tape stroke without rect")
+                val path = Path().apply { addRect(rc[0], rc[1], rc[2], rc[3], Path.Direction.CW) }
+
+                val paint = Paint().apply {
+                    isAntiAlias = true; style = Paint.Style.FILL
+                    color = this@RawStroke.color ?: Color.BLACK
+                }
+                return StrokeData(
+                    strokeId, path, paint, false, type,
+                    imageRotation = imageRotation ?: 0f,
+                    tapeData = TapeData(
+                        pattern = tape?.optString("pattern", TapePattern.SOLID) ?: TapePattern.SOLID,
+                        hollow = tape?.optBoolean("hollow", false) ?: false
+                    )
+                )
+            }
+
             val closed = style == "FILL"
             val strokeWidth = width ?: 10f
             val line = lineStyle ?: PenLineStyle.SOLID
@@ -290,21 +477,16 @@ object DrawingCodec {
                 this.color = this@RawStroke.color ?: Color.BLACK
                 this.strokeWidth = strokeWidth
             }
-            // Restore the pen line style's dash/dot path effect (no-op for SOLID/non-pen).
+
             if (line != PenLineStyle.SOLID && !closed) {
                 paint.pathEffect = PenLineStyle.pathEffect(line, strokeWidth)
             }
             return StrokeData(strokeId, contoursToPath(cs, closed), paint, false, type, line).also {
-                it.savedContours = cs // exact round-trip on the next save
+                it.savedContours = cs
             }
         }
     }
 
-    /**
-     * [scale] converts the document's page space to the one we're rendering into. Applied
-     * here — to the raw floats — so unknown-tool strokes are rescaled too and round-trip
-     * consistently with everything else.
-     */
     private fun readStroke(r: JsonReader, scale: Float): RawStroke? {
         if (r.peek() != JsonToken.BEGIN_OBJECT) { r.skipValue(); return null }
         val s = RawStroke()
@@ -316,13 +498,24 @@ object DrawingCodec {
                 "v" -> s.version = r.nextInt()
                 "style" -> s.style = r.nextString()
                 "color" -> s.color = r.nextInt()
+
                 "width" -> s.width = r.nextDouble().toFloat() * scale
                 "lineStyle" -> s.lineStyle = r.nextString()
                 "cap" -> s.cap = r.nextString()
                 "imageFile" -> s.imageFile = r.nextString()
-                // An angle: deliberately not multiplied by [scale] like the geometry fields.
+
                 KEY_IMAGE_ROTATION -> s.imageRotation = r.nextDouble().toFloat()
                 "rect" -> s.rect = readFloatArray(r, scale)
+                "table" -> (readValue(r) as? JSONObject ?: JSONObject()).also { t ->
+
+                    if (t.has("radius")) t.put("radius", t.optDouble("radius", 0.0) * scale)
+                    s.table = t
+                }
+                "text" -> s.text = r.nextString()
+
+                "textSize" -> s.textSize = r.nextDouble().toFloat() * scale
+                "font" -> s.font = r.nextString()
+                "tape" -> s.tape = readValue(r) as? JSONObject ?: JSONObject()
                 "contours" -> {
                     val list = ArrayList<FloatArray>()
                     r.beginArray()
@@ -342,7 +535,7 @@ object DrawingCodec {
 
     private fun readFloatArray(r: JsonReader, scale: Float = 1f): FloatArray {
         if (r.peek() != JsonToken.BEGIN_ARRAY) { r.skipValue(); return FloatArray(0) }
-        // Grow-by-doubling into a primitive array: no boxing, one copy at the end.
+
         var buf = FloatArray(64)
         var n = 0
         r.beginArray()
@@ -354,7 +547,6 @@ object DrawingCodec {
         return if (n == buf.size) buf else buf.copyOf(n)
     }
 
-    /** Generic read for fields this build doesn't recognize, preserved as org.json values. */
     private fun readValue(r: JsonReader): Any = when (r.peek()) {
         JsonToken.BEGIN_OBJECT -> JSONObject().also { o ->
             r.beginObject()
@@ -369,14 +561,12 @@ object DrawingCodec {
         JsonToken.STRING -> r.nextString()
         JsonToken.BOOLEAN -> r.nextBoolean()
         JsonToken.NULL -> { r.nextNull(); JSONObject.NULL }
-        // Read as text and keep integers integral, so unknown strokes round-trip byte-alike.
+
         JsonToken.NUMBER -> r.nextString().let { t ->
             t.toLongOrNull() ?: t.toDoubleOrNull() ?: t
         }
         else -> { r.skipValue(); JSONObject.NULL }
     }
-
-    // ---------------- GEOMETRY ----------------
 
     private fun pathToContours(path: Path): List<FloatArray> {
         val contours = mutableListOf<FloatArray>()
@@ -409,10 +599,7 @@ object DrawingCodec {
                 val y = c[i + 1]
                 val dx = x - px
                 val dy = y - py
-                // Skip points that are extremely close to the previous drawn point.
-                // Consecutive near-zero-length segments can cause Paint.getFillPath()
-                // to silently fail, making the stroke permanently invisible to erasers
-                // and the lasso tool.
+
                 if (dx * dx + dy * dy > 0.01f) {
                     path.lineTo(x, y)
                     px = x
@@ -420,7 +607,7 @@ object DrawingCodec {
                 }
                 i += 2
             }
-            // Force a dot for single-point taps (zero-length segment + round cap renders a dot).
+
             if (c.size == 2 && !closed) path.lineTo(c[0], c[1])
             if (closed) path.close()
         }

@@ -1,10 +1,8 @@
 package com.lochan.octopusnotes
 
 import android.graphics.RectF
-import com.tom_roush.pdfbox.io.MemoryUsageSetting
-import com.tom_roush.pdfbox.pdmodel.PDDocument
-import com.tom_roush.pdfbox.text.PDFTextStripper
-import com.tom_roush.pdfbox.text.TextPosition
+import com.lochan.octopusnotes.pdfedit.PdfDoc
+import com.lochan.octopusnotes.pdfedit.PdfTextExtractor
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.DataInputStream
@@ -18,29 +16,10 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicIntegerArray
 
-/**
- * Extracts text and per-glyph bounding boxes from the embedded text layer of a PDF.
- * Works for digital (non-scanned) PDFs. No OCR.
- *
- * **Efficiency** (pdfbox extraction is slow on large PDFs, so we make sure it happens rarely
- * and fast):
- *  - The extracted layer is persisted to a compact binary cache (`<pdf>.idx`, keyed by the
- *    file's length+mtime). Indexing happens **once per document version** — every later search,
- *    even after an app restart, loads the cache in milliseconds instead of re-parsing.
- *  - First-time extraction runs on 2–3 worker threads (each with its own [PDDocument]) over
- *    disjoint page ranges, while results are still emitted **in page order** so streamed search
- *    results appear progressively.
- *  - Glyph data lives in primitive arrays (one `IntArray` + `FloatArray` per line) instead of
- *    per-glyph objects — several times less memory on dense documents.
- */
 class PdfTextIndex(private val file: File) {
 
     data class Match(val pageIndex: Int, val rect: RectF, val text: String, val snippet: String = "")
 
-    /**
-     * One visual text line. Glyph i spans text [glyphStarts[i], glyphEnd(i)) with its
-     * normalized [0,1] box at rects[4i..4i+3] (left, top, right, bottom).
-     */
     private class Line(val text: String, val glyphStarts: IntArray, val rects: FloatArray) {
         val glyphCount: Int get() = glyphStarts.size
         fun glyphEnd(i: Int): Int =
@@ -54,14 +33,6 @@ class PdfTextIndex(private val file: File) {
 
     private val cacheFile: File get() = File(file.parentFile, file.name + ".idx")
 
-    // -------------------------------------------------------------------------
-    //  Public API
-    // -------------------------------------------------------------------------
-
-    /**
-     * Makes the text layer available: from memory, else the disk cache, else a full (parallel)
-     * extraction that is then cached. Call off the UI thread. Idempotent.
-     */
     fun ensureTextLayer(onPageIndexed: ((Int, Int) -> Unit)? = null) {
         if (pages != null) return
         loadCache()?.let { pages = it; return }
@@ -72,14 +43,12 @@ class PdfTextIndex(private val file: File) {
         saveCache(extracted)
     }
 
-    /** Returns normalized [0,1] rects for each line of text on a given page. */
     fun textBoxesForPage(pageIndex: Int): List<RectF> {
         val pgs = pages ?: return emptyList()
         if (pageIndex !in pgs.indices) return emptyList()
         return pgs[pageIndex].mapNotNull { line -> unionGlyphRects(line, 0, line.text.length) }
     }
 
-    /** Finds all occurrences of the query, returning a box for each match. */
     fun search(query: String): List<Match> {
         val pgs = pages ?: return emptyList()
         if (query.isBlank()) return emptyList()
@@ -89,14 +58,6 @@ class PdfTextIndex(private val file: File) {
         return matches
     }
 
-    /**
-     * Searches page-by-page, invoking [onPage] after each page so results can be shown
-     * instantly instead of waiting for the whole document.
-     *
-     * Fast paths: in-memory layer, then the disk cache (milliseconds). Only a never-indexed
-     * document pays for extraction — parallel across pages, streamed in order, then cached
-     * so it never happens again for this file version. [shouldStop] is polled between pages.
-     */
     fun streamSearch(
         query: String,
         shouldStop: () -> Boolean = { false },
@@ -117,14 +78,10 @@ class PdfTextIndex(private val file: File) {
 
         val extracted = extractParallel(shouldStop) { i, n, lines ->
             onPage(i, n, matchesInLines(lines, i, query, q))
-        } ?: return // stopped mid-extraction: don't cache a partial layer
+        } ?: return
         pages = extracted
         saveCache(extracted)
     }
-
-    // -------------------------------------------------------------------------
-    //  Matching
-    // -------------------------------------------------------------------------
 
     private fun matchesInLines(
         lines: List<Line>,
@@ -148,7 +105,6 @@ class PdfTextIndex(private val file: File) {
         return out
     }
 
-    /** Builds a "…3 words before MATCH 3 words after…" preview around a match. */
     private fun buildSnippet(text: String, start: Int, end: Int): String {
         val ws = Regex("\\s+")
         val beforeWords = text.substring(0, start).trim().split(ws).filter { it.isNotEmpty() }
@@ -181,31 +137,21 @@ class PdfTextIndex(private val file: File) {
         return out
     }
 
-    // -------------------------------------------------------------------------
-    //  Extraction (parallel, ordered emission)
-    // -------------------------------------------------------------------------
-
-    private fun memSetting(): MemoryUsageSetting =
-        MemoryUsageSetting.setupTempFileOnly().setTempDir(file.parentFile)
-
-    /**
-     * Extracts every page's lines. Splits pages across worker threads (own [PDDocument] each);
-     * [onPageReady] fires **in page order** as pages complete. Returns null if [shouldStop].
-     */
     private fun extractParallel(
         shouldStop: () -> Boolean,
         onPageReady: ((pageIndex: Int, total: Int, lines: List<Line>) -> Unit)?
     ): List<List<Line>>? {
-        val firstDoc = try {
-            PDDocument.load(file, memSetting())
+        val bytes = try {
+            file.readBytes()
         } catch (e: Exception) {
             return null
         }
-        val n = firstDoc.numberOfPages
-        if (n == 0) {
-            firstDoc.close()
-            return emptyList()
+        val n = try {
+            PdfDoc.open(bytes).pageCount
+        } catch (e: Exception) {
+            return null
         }
+        if (n == 0) return emptyList()
 
         val workers = if (n < 6) 1
         else minOf(3, (Runtime.getRuntime().availableProcessors() - 1).coerceAtLeast(1))
@@ -214,37 +160,35 @@ class PdfTextIndex(private val file: File) {
         val done = AtomicIntegerArray(n)
         val aborted = AtomicBoolean(false)
 
-        // Contiguous chunks: worker 0 owns the first pages, so ordered emission starts instantly.
         val chunk = (n + workers - 1) / workers
         val exec = Executors.newFixedThreadPool(workers)
         for (w in 0 until workers) {
             val from = w * chunk
             val to = minOf(n, from + chunk)
             if (from >= to) break
-            val docForWorker = if (w == 0) firstDoc else null
             exec.execute {
-                var doc: PDDocument? = docForWorker
                 try {
-                    if (doc == null) doc = PDDocument.load(file, memSetting())
-                    val stripper = LineStripper()
+                    val doc = PdfDoc.open(bytes)
+                    val extractor = PdfTextExtractor()
                     for (p in from until to) {
                         if (aborted.get()) return@execute
-                        out[p] = try { stripper.extractPage(doc, p) } catch (e: Exception) { emptyList() }
+                        out[p] = try {
+                            extractor.extractPage(doc, p).map { Line(it.text, it.glyphStarts, it.rects) }
+                        } catch (e: Exception) {
+                            emptyList()
+                        }
                         done.set(p, 1)
                     }
                 } catch (e: Exception) {
-                    // Document failed for this worker — unblock the emitter with empty pages.
+
                     for (p in from until to) {
                         if (done.get(p) == 0) { out[p] = emptyList(); done.set(p, 1) }
                     }
-                } finally {
-                    try { doc?.close() } catch (_: Exception) {}
                 }
             }
         }
         exec.shutdown()
 
-        // Emit pages strictly in order as they finish.
         for (i in 0 until n) {
             while (done.get(i) == 0) {
                 if (shouldStop()) {
@@ -259,59 +203,6 @@ class PdfTextIndex(private val file: File) {
         try { exec.awaitTermination(5, TimeUnit.SECONDS) } catch (_: InterruptedException) {}
         return out.map { it ?: emptyList() }
     }
-
-    private class LineStripper : PDFTextStripper() {
-        private val lines = ArrayList<Line>()
-        private var pageW = 1f
-        private var pageH = 1f
-
-        init {
-            sortByPosition = true
-        }
-
-        fun extractPage(doc: PDDocument, pageIdx: Int): List<Line> {
-            lines.clear()
-            val box = doc.getPage(pageIdx).cropBox
-            pageW = box.width
-            pageH = box.height
-            startPage = pageIdx + 1
-            endPage = pageIdx + 1
-            getText(doc) // lines captured via writeString
-            val result = ArrayList(lines)
-            lines.clear()
-            return result
-        }
-
-        override fun writeString(text: String, textPositions: MutableList<TextPosition>) {
-            if (textPositions.isEmpty() || pageW <= 0f || pageH <= 0f) return
-            val sb = StringBuilder()
-            val starts = IntArray(textPositions.size)
-            val rects = FloatArray(textPositions.size * 4)
-            var g = 0
-            for (tp in textPositions) {
-                val uni = tp.unicode ?: continue
-                if (uni.isEmpty()) continue
-                starts[g] = sb.length
-                sb.append(uni)
-                val left = tp.xDirAdj
-                val top = tp.yDirAdj - tp.heightDir
-                val b = g * 4
-                rects[b] = left / pageW
-                rects[b + 1] = top / pageH
-                rects[b + 2] = (left + tp.widthDirAdj) / pageW
-                rects[b + 3] = tp.yDirAdj / pageH
-                g++
-            }
-            if (g == 0) return
-            val lineText = sb.toString()
-            if (lineText.isBlank()) return
-            lines.add(Line(lineText, starts.copyOf(g), rects.copyOf(g * 4)))
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    //  Disk cache: <pdf>.idx — binary, keyed by source length+mtime
-    // -------------------------------------------------------------------------
 
     private fun loadCache(): List<List<Line>>? {
         val f = cacheFile
@@ -333,7 +224,7 @@ class PdfTextIndex(private val file: File) {
                         val g = ins.readInt()
                         val starts = IntArray(g)
                         val rects = FloatArray(g * 4)
-                        // Bulk-read the primitive arrays (much faster than element-wise).
+
                         val bytes = ByteArray(g * 4 + g * 16)
                         ins.readFully(bytes)
                         val bb = ByteBuffer.wrap(bytes)
@@ -347,7 +238,7 @@ class PdfTextIndex(private val file: File) {
                 return pgs
             }
         } catch (e: Exception) {
-            f.delete() // corrupt / stale-format cache
+            f.delete()
             return null
         }
     }
@@ -379,12 +270,12 @@ class PdfTextIndex(private val file: File) {
             if (cacheFile.exists()) cacheFile.delete()
             tmp.renameTo(cacheFile)
         } catch (e: Exception) {
-            tmp.delete() // caching is best-effort; search still works from memory
+            tmp.delete()
         }
     }
 
     companion object {
-        private const val CACHE_MAGIC = 0x50494458 // "PIDX"
+        private const val CACHE_MAGIC = 0x50494458
         private const val CACHE_VERSION = 1
     }
 }

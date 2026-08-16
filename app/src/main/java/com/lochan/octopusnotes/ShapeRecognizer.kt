@@ -7,15 +7,6 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
 
-/**
- * Recognises a freehand stroke as a clean geometric shape — used by "draw & hold":
- * the user draws, keeps the pen still, and the in-progress stroke snaps to a
- * perfect **line, arrow, rectangle/square, or circle/ellipse**.
- *
- * Input/output are in the same coordinate space. The result is a polyline
- * (dense enough to render with `lineTo`) that [DrawingView] substitutes for the
- * raw points, so the normal stroke pipeline (undo, erase, serialize) is untouched.
- */
 object ShapeRecognizer {
 
     fun recognize(raw: List<PointF>): List<PointF>? {
@@ -32,15 +23,12 @@ object ShapeRecognizer {
             return null
         }
 
-        // Rectangle vs circle: score how well the points hug the bounding-box outline
-        // vs the fitted ellipse (mean pixel error), and take ONLY the better fit. Corner
-        // counting is too fragile here — wobbly circles produce phantom corners — and
-        // falling back to the other shape would turn a sloppy circle into a square.
+        detectTriangle(pts, len)?.let { return it }
+
         return if (ellipseResidualPx(pts) <= rectResidualPx(pts)) detectEllipse(pts)
         else detectRectangle(pts)
     }
 
-    /** Mean pixel distance from the points to their bounding-box outline. */
     private fun rectResidualPx(pts: List<PointF>): Float {
         var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE
         var maxX = -Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
@@ -55,7 +43,6 @@ object ShapeRecognizer {
         return sum / pts.size
     }
 
-    /** Mean pixel distance from the points to the ellipse fitted on their bounding box. */
     private fun ellipseResidualPx(pts: List<PointF>): Float {
         var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE
         var maxX = -Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
@@ -76,25 +63,17 @@ object ShapeRecognizer {
         return sum / pts.size
     }
 
-    // ---------------------------------------------------------------- line
-
     private fun detectLine(pts: List<PointF>, len: Float): List<PointF>? {
         val a = pts.first()
         val b = pts.last()
         val chord = dist(a, b)
-        if (chord < 0.85f * len) return null // too curved
-        val tol = maxOf(0.045f * len, 6f)
+        if (chord < 0.85f * len) return null
+
+        val tol = maxOf(0.03f * len, 4f)
         for (p in pts) if (pointToSegment(p, a, b) > tol) return null
         return listOf(PointF(a.x, a.y), PointF(b.x, b.y))
     }
 
-    // ---------------------------------------------------------------- arrow
-
-    /**
-     * Shaft + head flick(s) drawn in one stroke: a long first segment, then 1–2 short
-     * segments that double back near the tip. Output retraces the tip so the arrow is
-     * a single polyline: A → tip → wing1 → tip → wing2.
-     */
     private fun detectArrow(pts: List<PointF>, len: Float): List<PointF>? {
         val verts = simplify(pts, maxOf(0.035f * len, 5f))
         if (verts.size < 3 || verts.size > 5) return null
@@ -104,20 +83,18 @@ object ShapeRecognizer {
         val shaftLen = dist(a, tip)
         if (shaftLen < 0.5f * len) return null
 
-        // Everything after the tip must be short strokes staying near the tip.
         for (i in 2 until verts.size) {
             if (dist(verts[i - 1], verts[i]) > 0.4f * shaftLen) return null
             if (dist(verts[i], tip) > 0.5f * shaftLen) return null
         }
-        // The first head segment must turn sharply back relative to the shaft.
+
         val shaftAng = atan2(tip.y - a.y, tip.x - a.x)
         val headAng = atan2(verts[2].y - tip.y, verts[2].x - tip.x)
         val turn = abs(normalizeAngle(headAng - (shaftAng + Math.PI.toFloat())))
-        if (turn > 1.2f) return null // head should be within ~70° of the reversed shaft
+        if (turn > 1.2f) return null
 
-        // Canonical symmetric head.
         val headLen = (dist(tip, verts[2])).coerceIn(0.12f * shaftLen, 0.35f * shaftLen)
-        val spread = 0.46f // ~26° each side
+        val spread = 0.46f
         val w1 = PointF(
             tip.x + headLen * cos(shaftAng + Math.PI.toFloat() - spread),
             tip.y + headLen * sin(shaftAng + Math.PI.toFloat() - spread)
@@ -129,7 +106,62 @@ object ShapeRecognizer {
         return listOf(PointF(a.x, a.y), PointF(tip.x, tip.y), w1, PointF(tip.x, tip.y), w2)
     }
 
-    // ---------------------------------------------------------------- rectangle
+    private fun detectTriangle(pts: List<PointF>, len: Float): List<PointF>? {
+        val n = pts.size
+
+        val window = (n / 20).coerceAtLeast(3)
+        val turn = FloatArray(n)
+        val sharp = BooleanArray(n)
+        for (i in 0 until n) {
+            val p0 = pts[(i - window + n) % n]
+            val p1 = pts[i]
+            val p2 = pts[(i + window) % n]
+            val a1 = atan2(p1.y - p0.y, p1.x - p0.x)
+            val a2 = atan2(p2.y - p1.y, p2.x - p1.x)
+            turn[i] = abs(normalizeAngle(a2 - a1))
+            sharp[i] = turn[i] >= 0.9f
+        }
+
+        var start = -1
+        for (i in 0 until n) if (!sharp[i]) { start = i; break }
+        if (start == -1) return null
+
+        val cornerIdx = ArrayList<Int>(4)
+        var runStart = -1
+        for (step in 1..n) {
+            val k = (start + step) % n
+            if (sharp[k]) {
+                if (runStart == -1) runStart = k
+            } else if (runStart != -1) {
+
+                var peak = runStart
+                var j = runStart
+                while (j != k) {
+                    if (turn[j] > turn[peak]) peak = j
+                    j = (j + 1) % n
+                }
+                cornerIdx.add(peak)
+                if (cornerIdx.size > 3) return null
+                runStart = -1
+            }
+        }
+        if (cornerIdx.size != 3) return null
+
+        cornerIdx.sort()
+        val a = pts[cornerIdx[0]]
+        val b = pts[cornerIdx[1]]
+        val c = pts[cornerIdx[2]]
+        val ab = dist(a, b); val bc = dist(b, c); val ca = dist(c, a)
+        val per = ab + bc + ca
+        if (per < 1f) return null
+
+        if (minOf(ab, bc, ca) < 0.15f * per || maxOf(ab, bc, ca) > 0.6f * per) return null
+
+        val drawnPer = len + dist(pts.last(), pts.first())
+        if (drawnPer < 0.72f * per || drawnPer > 1.4f * per) return null
+
+        return listOf(PointF(a.x, a.y), PointF(b.x, b.y), PointF(c.x, c.y), PointF(a.x, a.y))
+    }
 
     private fun detectRectangle(pts: List<PointF>): List<PointF>? {
         var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE
@@ -142,12 +174,10 @@ object ShapeRecognizer {
         var h = maxY - minY
         if (w < 24f || h < 24f) return null
 
-        // The drawn perimeter should roughly match the box perimeter.
         val per = pathLength(pts) + dist(pts.last(), pts.first())
         val boxPer = 2 * (w + h)
         if (per < 0.72f * boxPer || per > 1.35f * boxPer) return null
 
-        // Near-square → snap to a perfect square around the same centre.
         val cx = (minX + maxX) / 2f
         val cy = (minY + maxY) / 2f
         if (abs(w - h) / maxOf(w, h) < 0.16f) {
@@ -158,8 +188,6 @@ object ShapeRecognizer {
         val r = cx + w / 2f; val b = cy + h / 2f
         return listOf(PointF(l, t), PointF(r, t), PointF(r, b), PointF(l, b), PointF(l, t))
     }
-
-    // ---------------------------------------------------------------- ellipse / circle
 
     private fun detectEllipse(pts: List<PointF>): List<PointF>? {
         var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE
@@ -174,7 +202,6 @@ object ShapeRecognizer {
         val cx = (minX + maxX) / 2f
         val cy = (minY + maxY) / 2f
 
-        // Points should sit near the ellipse: ((x-cx)/rx)² + ((y-cy)/ry)² ≈ 1.
         var residual = 0f
         for (p in pts) {
             val nx = (p.x - cx) / rx
@@ -183,7 +210,6 @@ object ShapeRecognizer {
         }
         if (residual / pts.size > 0.28f) return null
 
-        // Near-round → perfect circle.
         if (abs(rx - ry) / maxOf(rx, ry) < 0.2f) {
             val r = (rx + ry) / 2f
             rx = r; ry = r
@@ -196,9 +222,6 @@ object ShapeRecognizer {
         return out
     }
 
-    // ---------------------------------------------------------------- geometry helpers
-
-    /** Douglas–Peucker polyline simplification. */
     private fun simplify(pts: List<PointF>, epsilon: Float): List<PointF> {
         if (pts.size < 3) return pts
         val keep = BooleanArray(pts.size)
@@ -221,7 +244,6 @@ object ShapeRecognizer {
         return pts.filterIndexed { i, _ -> keep[i] }
     }
 
-    /** Resamples the polyline to [n] evenly spaced points. */
     private fun resample(pts: List<PointF>, n: Int): List<PointF> {
         val total = pathLength(pts)
         if (total <= 0f) return pts

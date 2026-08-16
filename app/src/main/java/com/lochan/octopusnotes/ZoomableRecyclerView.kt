@@ -16,21 +16,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-/**
- * A [RecyclerView] that adds pinch-to-zoom and 2-D panning.
- *
- * Zoom is applied as a canvas transform in [dispatchDraw] (translate + scale) — items are
- * never resized, so there's no relayout jump or overlap. At 1× the list scrolls normally
- * (and recycles); when zoomed in, single-finger drag pans in both axes within bounds.
- *
- * **Sharp zoom**: base page bitmaps are rendered at zoom-1 width, so scaling them up blurs.
- * When the transform settles while zoomed in, the visible region of each visible page is
- * re-rendered at *screen* resolution ([hiResRenderer]) and drawn on top as a tile, with the
- * page's ink re-drawn above it ([drawPageInk]) so strokes stay visible and crisp.
- *
- * [transX]/[transY]/[zoom] are exposed so [DrawingView] can map screen touches to page space:
- *   contentPoint = (screenPoint - trans) / zoom
- */
 class ZoomableRecyclerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -44,37 +29,34 @@ class ZoomableRecyclerView @JvmOverloads constructor(
     var transY: Float = 0f
         private set
 
+    fun resetZoom() {
+        zoomAnimator?.cancel()
+        zoom = 1f
+        transX = 0f
+        transY = 0f
+    }
+
     var minZoom: Float = 0.5f
-    var maxZoom: Float = 10.0f // 1000%
+    var maxZoom: Float = 10.0f
 
     var onPageChanged: ((page: Int, pageCount: Int) -> Unit)? = null
     var onSingleTap: ((MotionEvent) -> Boolean)? = null
     var onZoomChanged: ((Float) -> Unit)? = null
 
-    /**
-     * Fired when the RecyclerView transitions between scroll states. Receives the new
-     * [RecyclerView.ScrollState] (IDLE, DRAGGING, SETTLING). Used by the host activity to
-     * flush the persisted last-page write only once scrolling stops (instead of writing on
-     * every page boundary during a fast fling).
-     */
+    var onViewportWidthChanged: ((newWidth: Int, oldWidth: Int) -> Unit)? = null
+
+    var onPanned: ((Float, Float) -> Unit)? = null
+
+    var onZoomed: ((Float) -> Unit)? = null
+
     var onScrollStateChanged: ((Int) -> Unit)? = null
 
-    /**
-     * Set true by the host while the scroll-pill thumb is being dragged. While true, the
-     * hi-res tile renderer holds off (`scheduleHiRes` becomes a no-op and any pending run
-     * is dropped) so the PdfEngine's single render worker is dedicated to visible-page base
-     * renders the drag is issuing — fast dragging through a long PDF no longer freezes.
-     */
     @Volatile
     var dragInProgress: Boolean = false
 
-    // --- Hi-res tile hooks (wired by the activity) ---
-
-    /** Renders (page, pageLocalLeft, pageLocalTop, zoom, childWidth, outW, outH) → bitmap. */
     var hiResRenderer: (suspend (Int, Float, Float, Float, Int, Int, Int) -> Bitmap?)? = null
     var hiResScope: CoroutineScope? = null
 
-    /** Draws a page's ink/highlights; canvas is already in that page's base coordinate space. */
     var drawPageInk: ((Canvas, page: Int, pageW: Float, pageH: Float) -> Unit)? = null
 
     private var currentVisiblePage = -1
@@ -120,9 +102,7 @@ class ZoomableRecyclerView @JvmOverloads constructor(
 
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 onScrollStateChanged?.invoke(newState)
-                // When scrolling settles after a drag/fling, re-arm the hi-res tile renderer
-                // (it was suppressed while dragInProgress). At other times scheduleHiRes is
-                // a no-op or already debounced.
+
                 if (newState == SCROLL_STATE_IDLE) scheduleHiRes()
             }
         })
@@ -130,13 +110,12 @@ class ZoomableRecyclerView @JvmOverloads constructor(
 
     private var zoomAnimator: android.animation.ValueAnimator? = null
 
-    /** Smoothly animates to [target] zoom, keeping the focal screen point fixed. */
     fun animateZoomTo(target: Float, focusX: Float, focusY: Float) {
         zoomAnimator?.cancel()
         val startZoom = zoom
         val endZoom = target.coerceIn(minZoom, maxZoom)
         if (kotlin.math.abs(endZoom - startZoom) < 0.001f) return
-        // Content point under the focal at the start — kept fixed throughout.
+
         val contentFx = (focusX - transX) / startZoom
         val contentFy = (focusY - transY) / startZoom
         zoomAnimator = android.animation.ValueAnimator.ofFloat(startZoom, endZoom).apply {
@@ -149,6 +128,7 @@ class ZoomableRecyclerView @JvmOverloads constructor(
                 clampTrans()
                 invalidate()
                 onZoomChanged?.invoke(zoom)
+                onZoomed?.invoke(zoom)
             }
             addListener(object : android.animation.AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: android.animation.Animator) = scheduleHiRes()
@@ -157,22 +137,21 @@ class ZoomableRecyclerView @JvmOverloads constructor(
         }
     }
 
-    /** Sets zoom (animated) pivoting around the centre of the viewport. */
     fun setZoomLevel(target: Float) = animateZoomTo(target, width / 2f, height / 2f)
 
-    /** Scales by [factor] keeping the focal screen point fixed. */
     private fun zoomBy(factor: Float, focusX: Float, focusY: Float) {
         zoomAnimator?.cancel()
         val newZoom = (zoom * factor).coerceIn(minZoom, maxZoom)
         val real = newZoom / zoom
         if (real == 1f) return
-        // Keep the focal point fixed: trans' = focus - (focus - trans) * real
+
         transX = focusX - (focusX - transX) * real
         transY = focusY - (focusY - transY) * real
         zoom = newZoom
         clampTrans()
         invalidate()
         onZoomChanged?.invoke(zoom)
+        onZoomed?.invoke(zoom)
         scheduleHiRes()
     }
 
@@ -185,7 +164,7 @@ class ZoomableRecyclerView @JvmOverloads constructor(
             transY = 0f
             return
         }
-        // Clamp vertical pan to the currently laid-out pages.
+
         val first = getChildAt(0)
         val last = getChildAt(childCount - 1)
         if (first != null && last != null) {
@@ -202,17 +181,13 @@ class ZoomableRecyclerView @JvmOverloads constructor(
         }
     }
 
-    // -------------------------------------------------------------------------
-    //  Hi-res tiles: crisp re-render of the visible region while zoomed in
-    // -------------------------------------------------------------------------
-
     private class HiResTile(
         val page: Int,
         val bitmap: Bitmap,
-        /** Region origin within the page, in base (zoom-1) pixels. */
+
         val localLeft: Float,
         val localTop: Float,
-        /** Zoom the tile was rasterised at — drawn scaled by zoom/renderZoom until refreshed. */
+
         val renderZoom: Float
     )
 
@@ -222,13 +197,10 @@ class ZoomableRecyclerView @JvmOverloads constructor(
     private val tilePaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val hiResRunnable = Runnable { renderHiResTiles() }
 
-    /** Debounced: called on every transform change; renders once the gesture settles. */
     private fun scheduleHiRes() {
         removeCallbacks(hiResRunnable)
         if (dragInProgress) {
-            // During a scroll-pill drag the single PdfEngine render worker must serve the
-            // visible-page base renders the drag is issuing — don't compete for it. Tiles
-            // get re-armed once the drag ends (onScrollStateChanged -> IDLE, or ACTION_UP).
+
             return
         }
         if (zoom <= HI_RES_MIN_ZOOM) {
@@ -238,7 +210,6 @@ class ZoomableRecyclerView @JvmOverloads constructor(
         postDelayed(hiResRunnable, 160)
     }
 
-    /** Public re-arm hook used by the host activity once a scroll-pill drag ends. */
     fun scheduleHiResPublic() = scheduleHiRes()
 
     fun clearHiResTiles() {
@@ -248,7 +219,6 @@ class ZoomableRecyclerView @JvmOverloads constructor(
         dropTiles()
     }
 
-    /** Drop any in-flight hi-res work immediately — used when a drag starts so it can't run. */
     fun cancelHiResForDrag() {
         removeCallbacks(hiResRunnable)
         hiResJob?.cancel()
@@ -274,7 +244,7 @@ class ZoomableRecyclerView @JvmOverloads constructor(
         if (zoom <= HI_RES_MIN_ZOOM || width == 0) return
 
         val z = zoom
-        // Viewport in content (base-pixel) coordinates.
+
         val vpL = (0f - transX) / z
         val vpT = (0f - transY) / z
         val vpR = (width - transX) / z
@@ -312,11 +282,7 @@ class ZoomableRecyclerView @JvmOverloads constructor(
                 }
                 completed = true
             } finally {
-                // Any abnormal exit leaks the bitmaps rendered so far: cancellation at the
-                // renderer's suspend point (the next pan/zoom, a drag start, or a tile clear
-                // cancelled this job) or a renderer failure (OOM allocating the bitmap, a
-                // bad page). Recycle them here so none are leaked, then let the exception
-                // keep propagating. On normal completion the swap below takes over.
+
                 if (!completed) newTiles.forEach { it.bitmap.recycle() }
             }
             if (gen == hiResGen) {
@@ -339,7 +305,7 @@ class ZoomableRecyclerView @JvmOverloads constructor(
 
         if (tiles.isEmpty() || zoom <= HI_RES_MIN_ZOOM) return
         for (t in tiles) {
-            // Anchor to the page's *current* layout position so tiles track any relayout.
+
             val child = findViewHolderForAdapterPosition(t.page)?.itemView ?: continue
             if (t.bitmap.isRecycled) continue
             val scale = zoom / t.renderZoom
@@ -352,8 +318,6 @@ class ZoomableRecyclerView @JvmOverloads constructor(
             )
             canvas.drawBitmap(t.bitmap, null, dst, tilePaint)
 
-            // The tile covers the page's ink overlay — re-draw that region's ink on top
-            // (vector paths through the scaled canvas, so ink stays crisp and current).
             val ink = drawPageInk ?: continue
             canvas.save()
             canvas.translate(transX, transY)
@@ -374,7 +338,20 @@ class ZoomableRecyclerView @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
-    /** Average position of the active pointers; the one lifting on ACTION_POINTER_UP is excluded. */
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w == oldw && h == oldh) return
+
+        onViewportWidthChanged?.invoke(w, oldw)
+        clearHiResTiles()
+        invalidate()
+        post {
+            clampTrans()
+            scheduleHiRes()
+            invalidate()
+        }
+    }
+
     private fun focalPoint(e: MotionEvent): Pair<Float, Float> {
         val skip = if (e.actionMasked == MotionEvent.ACTION_POINTER_UP) e.actionIndex else -1
         var sx = 0f; var sy = 0f; var n = 0
@@ -390,15 +367,11 @@ class ZoomableRecyclerView @JvmOverloads constructor(
         scaleDetector.onTouchEvent(e)
         gestureDetector.onTouchEvent(e)
 
-        // Anchor panning on the pointers' focal point. Re-anchoring whenever a finger
-        // joins or leaves prevents the false delta (and visible jump) that happens when
-        // e.x suddenly refers to a different pointer.
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> { lastPanX = e.x; lastPanY = e.y }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 if (e.pointerCount == 2) {
-                    // Two fingers = zoom gesture — cancel the list scroll the first
-                    // finger may have started, so the page doesn't creep while pinching.
+
                     val cancel = MotionEvent.obtain(e)
                     cancel.action = MotionEvent.ACTION_CANCEL
                     super.onTouchEvent(cancel)
@@ -426,10 +399,12 @@ class ZoomableRecyclerView @JvmOverloads constructor(
                 val dy = fy - lastPanY
                 lastPanX = fx; lastPanY = fy
 
-                transX += dx
+                val oldTX = transX
                 val oldTY = transY
+                transX += dx
                 transY += dy
                 clampTrans()
+                onPanned?.invoke(transX - oldTX, transY - oldTY)
 
                 val consumedDy = transY - oldTY
                 val excessDy = dy - consumedDy
@@ -444,7 +419,6 @@ class ZoomableRecyclerView @JvmOverloads constructor(
             return true
         }
 
-        // At 1× the list scrolls (and recycles) normally.
         return super.onTouchEvent(e)
     }
 

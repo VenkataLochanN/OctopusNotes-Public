@@ -15,5 +15,16 @@ data class Notebook(
     var lastModified: Long = 0,
     var lastOpened: Long = 0,
     var inBin: Boolean = false,
-    var deletedAt: Long = 0
+    var deletedAt: Long = 0,
+
+    var tagColorHex: String? = null,
+
+    var documentType: String = DocumentType.PAGED
 )
+
+object DocumentType {
+
+    const val PAGED = "PAGED"
+
+    const val INFINITE = "INFINITE"
+}

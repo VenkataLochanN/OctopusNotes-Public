@@ -6,9 +6,8 @@
     android:orientation="vertical"
     android:padding="8dp"
     android:elevation="8dp">
-
     <LinearLayout android:id="@+id/overflowStylus" style="@style/AddPageRow">
-        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_gesture" />
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_gesture" android:elevation="4dp" />
         <TextView
             style="@style/AddPageRowTitle"
             android:layout_width="0dp"
@@ -17,7 +16,7 @@
     </LinearLayout>
 
     <LinearLayout android:id="@+id/overflowIndex" style="@style/AddPageRow">
-        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_search" />
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_search" android:elevation="4dp" />
         <TextView
             style="@style/AddPageRowTitle"
             android:layout_width="0dp"
@@ -26,7 +25,7 @@
     </LinearLayout>
 
     <LinearLayout android:id="@+id/overflowTemplate" style="@style/AddPageRow">
-        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_grid" />
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_template" android:elevation="4dp" />
         <TextView
             style="@style/AddPageRowTitle"
             android:layout_width="0dp"
@@ -35,12 +34,30 @@
     </LinearLayout>
 
     <LinearLayout android:id="@+id/overflowExport" style="@style/AddPageRow">
-        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_content_copy" />
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_export" android:elevation="4dp" />
         <TextView
             style="@style/AddPageRowTitle"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:text="Export" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/overflowLinks" style="@style/AddPageRow">
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_link" android:elevation="4dp" />
+        <TextView
+            style="@style/AddPageRowTitle"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="Links in PDF" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/overflowProperties" style="@style/AddPageRow">
+        <ImageView style="@style/AddPageRowIcon" android:src="@drawable/ic_info" android:elevation="4dp" />
+        <TextView
+            style="@style/AddPageRowTitle"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="PDF properties" />
     </LinearLayout>
 
 </LinearLayout>

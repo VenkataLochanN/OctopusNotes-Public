@@ -7,7 +7,6 @@
     android:layout_height="match_parent"
     android:background="@color/pdf_surround"
     tools:context=".DrawingActivity">
-
     <com.lochan.octopusnotes.ZoomableRecyclerView
         android:id="@+id/pdfRecyclerView"
         android:layout_width="0dp"
@@ -41,22 +40,34 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <include
+        layout="@layout/view_tab_strip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <LinearLayout
         android:id="@+id/topBarStart"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
         android:animateLayoutChanges="true"
         android:background="@drawable/bg_toolbar_pill"
         android:elevation="6dp"
         android:orientation="horizontal"
         android:padding="4dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
+        app:layout_constraintTop_toBottomOf="@id/tabStripRow">
         <ImageButton
             android:id="@+id/backButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:padding="10dp" android:scaleType="centerInside"
+            android:elevation="4dp"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
             android:src="@drawable/ic_arrow_back"
             android:contentDescription="@string/nav_back"
             android:tint="?attr/colorOnSurface"
@@ -64,8 +75,9 @@
 
         <ImageButton
             android:id="@+id/pagesButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:padding="11dp" android:scaleType="centerInside"
+            android:elevation="4dp"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
             android:src="@drawable/ic_grid"
             android:contentDescription="@string/pages_overview"
             android:tint="?attr/colorOnSurface"
@@ -73,41 +85,42 @@
 
         <ImageButton
             android:id="@+id/undoButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:padding="10dp" android:scaleType="centerInside"
+            android:elevation="4dp"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
             android:src="@drawable/ic_undo"
             android:contentDescription="Undo"
             android:tint="?attr/colorOnSurfaceVariant"
-            android:background="@drawable/selectable_tool_background"
-            android:foreground="?attr/selectableItemBackgroundBorderless" />
+            android:background="@drawable/selectable_tool_background" />
 
         <ImageButton
             android:id="@+id/redoButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:padding="10dp" android:scaleType="centerInside"
+            android:elevation="4dp"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
             android:src="@drawable/ic_redo"
             android:contentDescription="Redo"
             android:tint="?attr/colorOnSurfaceVariant"
-            android:background="@drawable/selectable_tool_background"
-            android:foreground="?attr/selectableItemBackgroundBorderless" />
-    </LinearLayout>
+            android:background="@drawable/selectable_tool_background" />
+                </LinearLayout>
 
     <LinearLayout
         android:id="@+id/topBarEnd"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
         android:animateLayoutChanges="true"
         android:background="@drawable/bg_toolbar_pill"
         android:elevation="6dp"
         android:orientation="horizontal"
         android:padding="4dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
+        app:layout_constraintTop_toBottomOf="@id/tabStripRow">
         <ImageButton
             android:id="@+id/addPageButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:padding="10dp" android:scaleType="centerInside"
+            android:elevation="4dp"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
             android:src="@drawable/ic_add"
             android:contentDescription="@string/add_page"
             android:tint="?attr/colorOnSurfaceVariant"
@@ -115,8 +128,9 @@
 
         <ImageButton
             android:id="@+id/searchButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:padding="10dp" android:scaleType="centerInside"
+            android:elevation="4dp"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
             android:src="@drawable/ic_search"
             android:contentDescription="@string/search_pdf"
             android:tint="?attr/colorOnSurfaceVariant"
@@ -125,39 +139,40 @@
 
         <ImageButton
             android:id="@+id/overflowButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:padding="10dp" android:scaleType="centerInside"
+            android:elevation="4dp"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:padding="8dp" android:scaleType="centerInside"
             android:src="@drawable/ic_more_vert"
             android:contentDescription="@string/overflow_menu"
             android:tint="?attr/colorOnSurfaceVariant"
             android:background="?attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
-    <!-- Top-centre dock: tools row, plus (when Pen active) a second row of tool options -->
     <LinearLayout
         android:id="@+id/toolDock"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_toolbar_pill"
-        android:elevation="6dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
         android:orientation="vertical"
-        android:padding="4dp"
+        android:gravity="center"
         android:animateLayoutChanges="true"
-        app:layout_constrainedWidth="true"
         app:layout_constraintStart_toEndOf="@id/topBarStart"
         app:layout_constraintEnd_toStartOf="@id/topBarEnd"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/tabStripRow">
 
-        <!-- Tools group: collapse (small only) + tool buttons (scrollable in both layouts) -->
         <LinearLayout
             android:id="@+id/toolsGroup"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:orientation="vertical">
-
+            android:background="@drawable/bg_toolbar_pill"
+            android:elevation="6dp"
+            android:orientation="vertical"
+            android:padding="4dp">
             <ImageButton
                 android:id="@+id/dockCollapseButton"
+                android:elevation="4dp"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
                 android:layout_gravity="center_horizontal"
@@ -175,67 +190,113 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:scrollbars="none">
-
                 <LinearLayout
                     android:id="@+id/toolDockItems"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
-
             <ImageButton
                 android:id="@+id/penButton"
-                android:layout_width="48dp" android:layout_height="48dp"
-                android:padding="10dp" android:scaleType="centerInside"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
                 android:src="@drawable/ic_pen"
                 android:contentDescription="@string/tool_pen"
-                android:tint="?attr/colorOnSurfaceVariant"
-                android:background="@drawable/selectable_tool_background"
-                android:foreground="?attr/selectableItemBackgroundBorderless" />
-
+                android:background="@drawable/selectable_tool_background" />
             <ImageButton
                 android:id="@+id/eraserButton"
-                android:layout_width="48dp" android:layout_height="48dp"
-                android:padding="10dp" android:scaleType="centerInside"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
                 android:src="@drawable/ic_eraser"
                 android:contentDescription="@string/tool_eraser"
                 android:tint="?attr/colorOnSurfaceVariant"
-                android:background="@drawable/selectable_tool_background"
-                android:foreground="?attr/selectableItemBackgroundBorderless" />
-
-            <ImageButton
-                android:id="@+id/selectionButton"
-                android:layout_width="48dp" android:layout_height="48dp"
-                android:padding="10dp" android:scaleType="centerInside"
-                android:src="@drawable/ic_lasso"
-                android:contentDescription="@string/tool_lasso"
-                android:tint="?attr/colorOnSurfaceVariant"
-                android:background="@drawable/selectable_tool_background"
-                android:foreground="?attr/selectableItemBackgroundBorderless" />
-
+                android:background="@drawable/selectable_tool_background" />
             <ImageButton
                 android:id="@+id/highlighterButton"
-                android:layout_width="48dp" android:layout_height="48dp"
-                android:padding="10dp" android:scaleType="centerInside"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
                 android:src="@drawable/ic_highlighter"
                 android:contentDescription="Highlighter"
                 android:tint="?attr/colorOnSurfaceVariant"
-                android:background="@drawable/selectable_tool_background"
-                android:foreground="?attr/selectableItemBackgroundBorderless" />
-
+                android:background="@drawable/selectable_tool_background" />
+            <ImageButton
+                android:id="@+id/selectionButton"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_lasso"
+                android:contentDescription="@string/tool_lasso"
+                android:tint="?attr/colorOnSurfaceVariant"
+                android:background="@drawable/selectable_tool_background" />
             <ImageButton
                 android:id="@+id/imageButton"
-                android:layout_width="48dp" android:layout_height="48dp"
-                android:padding="10dp" android:scaleType="centerInside"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
                 android:src="@drawable/ic_image"
                 android:contentDescription="Insert image"
                 android:tint="?attr/colorOnSurfaceVariant"
-                android:background="@drawable/selectable_tool_background"
-                android:foreground="?attr/selectableItemBackgroundBorderless" />
+                android:background="@drawable/selectable_tool_background" />
+            <ImageButton
+                android:id="@+id/shapeButton"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_shape_triangle"
+                android:contentDescription="@string/tool_shape"
+                android:tint="?attr/colorOnSurfaceVariant"
+                android:background="@drawable/selectable_tool_background" />
+            <ImageButton
+                android:id="@+id/tableButton"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_table"
+                android:contentDescription="@string/tool_table"
+                android:tint="?attr/colorOnSurfaceVariant"
+                android:background="@drawable/selectable_tool_background" />
+            <ImageButton
+                android:id="@+id/textButton"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_text"
+                android:contentDescription="@string/tool_text"
+                android:tint="?attr/colorOnSurfaceVariant"
+                android:background="@drawable/selectable_tool_background" />
+            <ImageButton
+                android:id="@+id/laserButton"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_laser"
+                android:contentDescription="@string/tool_laser"
+                android:tint="?attr/colorOnSurfaceVariant"
+                android:background="@drawable/selectable_tool_background" />
+            <ImageButton
+                android:id="@+id/measureButton"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_measure"
+                android:contentDescription="@string/tool_measure"
+                android:tint="?attr/colorOnSurfaceVariant"
+                android:background="@drawable/selectable_tool_background" />
+            <ImageButton
+                android:id="@+id/tapeButton"
+                android:elevation="4dp"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="8dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_tape"
+                android:contentDescription="@string/tool_tape"
+                android:tint="?attr/colorOnSurfaceVariant"
+                android:background="@drawable/selectable_tool_background" />
                 </LinearLayout>
             </HorizontalScrollView>
 
-            <!-- Tools vertical scroll (small screens; toolDockItems re-parented here at runtime) -->
             <ScrollView
                 android:id="@+id/toolsScrollV"
                 android:layout_width="wrap_content"
@@ -245,22 +306,25 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <!-- Options (large: horizontal scroll). On small the row is re-parented into optionsScrollV. -->
         <HorizontalScrollView
             android:id="@+id/optionsScrollH"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="2dp"
-            android:scrollbars="none">
-
+            android:layout_marginTop="8dp"
+            android:animateLayoutChanges="true"
+            android:background="@drawable/bg_toolbar_pill"
+            android:elevation="6dp"
+            android:padding="4dp"
+            android:scrollbars="none"
+            android:visibility="gone">
             <LinearLayout
                 android:id="@+id/optionsRow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:animateLayoutChanges="true"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
-
                 <LinearLayout
                     android:id="@+id/penPropsStrip"
                     android:layout_width="wrap_content"
@@ -268,11 +332,11 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:visibility="gone">
-
                 <ImageButton
                     android:id="@+id/lineStyleButton"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="9dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_line_solid"
                     android:contentDescription="Line style"
                     android:tint="?attr/colorOnSurfaceVariant"
@@ -280,64 +344,64 @@
 
                 <View
                     android:layout_width="1dp"
-                    android:layout_height="28dp"
+                    android:layout_height="24dp"
                     android:layout_marginHorizontal="4dp"
                     android:background="?attr/colorOutlineVariant" />
 
                 <View android:id="@+id/colorSwatch0"
-                    android:layout_width="30dp" android:layout_height="30dp"
+                    android:layout_width="26dp" android:layout_height="26dp"
                     android:layout_marginHorizontal="3dp"
                     android:background="@drawable/bg_color_slot" />
                 <View android:id="@+id/colorSwatch1"
-                    android:layout_width="30dp" android:layout_height="30dp"
+                    android:layout_width="26dp" android:layout_height="26dp"
                     android:layout_marginHorizontal="3dp"
                     android:background="@drawable/bg_color_slot" />
                 <View android:id="@+id/colorSwatch2"
-                    android:layout_width="30dp" android:layout_height="30dp"
+                    android:layout_width="26dp" android:layout_height="26dp"
                     android:layout_marginHorizontal="3dp"
                     android:background="@drawable/bg_color_slot" />
                 <View android:id="@+id/colorSwatch3"
-                    android:layout_width="30dp" android:layout_height="30dp"
+                    android:layout_width="26dp" android:layout_height="26dp"
                     android:layout_marginHorizontal="3dp"
                     android:background="@drawable/bg_color_slot" />
                 <View android:id="@+id/colorSwatch4"
-                    android:layout_width="30dp" android:layout_height="30dp"
+                    android:layout_width="26dp" android:layout_height="26dp"
                     android:layout_marginHorizontal="3dp"
                     android:background="@drawable/bg_color_slot" />
 
                 <View
                     android:layout_width="1dp"
-                    android:layout_height="28dp"
+                    android:layout_height="24dp"
                     android:layout_marginHorizontal="4dp"
                     android:background="?attr/colorOutlineVariant" />
 
                 <ImageButton
                     android:id="@+id/thinButton"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_stroke_thin"
                     android:contentDescription="Thin"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
-                <ImageButton
+                    android:background="@drawable/selectable_tool_background" />
+                    <ImageButton
                     android:id="@+id/mediumButton"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_stroke_medium"
                     android:contentDescription="Medium"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
-                <ImageButton
+                    android:background="@drawable/selectable_tool_background" />
+                    <ImageButton
                     android:id="@+id/thickButton"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_stroke_thick"
                     android:contentDescription="Thick"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
+                    android:background="@drawable/selectable_tool_background" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -347,63 +411,58 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:visibility="gone">
-
                 <TextView
                     android:id="@+id/eraserPixelButton"
-                    android:layout_width="wrap_content" android:layout_height="44dp"
+                    android:layout_width="wrap_content" android:layout_height="38dp"
                     android:gravity="center"
                     android:paddingHorizontal="14dp"
                     android:text="Pixel"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="14sp"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
-
+                    android:background="@drawable/selectable_tool_background" />
                 <TextView
                     android:id="@+id/eraserStrokeButton"
-                    android:layout_width="wrap_content" android:layout_height="44dp"
+                    android:layout_width="wrap_content" android:layout_height="38dp"
                     android:layout_marginStart="2dp"
                     android:gravity="center"
                     android:paddingHorizontal="14dp"
                     android:text="Stroke"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="14sp"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
-
+                    android:background="@drawable/selectable_tool_background" />
                 <View
                     android:layout_width="1dp"
-                    android:layout_height="28dp"
+                    android:layout_height="24dp"
                     android:layout_marginHorizontal="6dp"
                     android:background="?attr/colorOutlineVariant" />
 
                 <ImageButton
                     android:id="@+id/eraserSize0"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_stroke_thin"
                     android:contentDescription="Small eraser"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
-                <ImageButton
+                    android:background="@drawable/selectable_tool_background" />
+                    <ImageButton
                     android:id="@+id/eraserSize1"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_stroke_medium"
                     android:contentDescription="Medium eraser"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
-                <ImageButton
+                    android:background="@drawable/selectable_tool_background" />
+                    <ImageButton
                     android:id="@+id/eraserSize2"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_stroke_thick"
                     android:contentDescription="Large eraser"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
+                    android:background="@drawable/selectable_tool_background" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -413,11 +472,11 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:visibility="gone">
-
                 <ImageButton
                     android:id="@+id/hlShapeButton"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="9dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_line_wavy"
                     android:contentDescription="Highlighter shape and mode"
                     android:tint="?attr/colorOnSurfaceVariant"
@@ -425,64 +484,64 @@
 
                 <View
                     android:layout_width="1dp"
-                    android:layout_height="28dp"
+                    android:layout_height="24dp"
                     android:layout_marginHorizontal="4dp"
                     android:background="?attr/colorOutlineVariant" />
 
                 <View android:id="@+id/hlColor0"
-                    android:layout_width="30dp" android:layout_height="30dp"
+                    android:layout_width="26dp" android:layout_height="26dp"
                     android:layout_marginHorizontal="3dp"
-                    android:background="@drawable/bg_color_slot" />
+                    android:background="@drawable/bg_hl_color_slot" />
                 <View android:id="@+id/hlColor1"
-                    android:layout_width="30dp" android:layout_height="30dp"
+                    android:layout_width="26dp" android:layout_height="26dp"
                     android:layout_marginHorizontal="3dp"
-                    android:background="@drawable/bg_color_slot" />
+                    android:background="@drawable/bg_hl_color_slot" />
                 <View android:id="@+id/hlColor2"
-                    android:layout_width="30dp" android:layout_height="30dp"
+                    android:layout_width="26dp" android:layout_height="26dp"
                     android:layout_marginHorizontal="3dp"
-                    android:background="@drawable/bg_color_slot" />
+                    android:background="@drawable/bg_hl_color_slot" />
                 <View android:id="@+id/hlColor3"
-                    android:layout_width="30dp" android:layout_height="30dp"
+                    android:layout_width="26dp" android:layout_height="26dp"
                     android:layout_marginHorizontal="3dp"
-                    android:background="@drawable/bg_color_slot" />
+                    android:background="@drawable/bg_hl_color_slot" />
                 <View android:id="@+id/hlColor4"
-                    android:layout_width="30dp" android:layout_height="30dp"
+                    android:layout_width="26dp" android:layout_height="26dp"
                     android:layout_marginHorizontal="3dp"
-                    android:background="@drawable/bg_color_slot" />
+                    android:background="@drawable/bg_hl_color_slot" />
 
                 <View
                     android:layout_width="1dp"
-                    android:layout_height="28dp"
+                    android:layout_height="24dp"
                     android:layout_marginHorizontal="4dp"
                     android:background="?attr/colorOutlineVariant" />
 
                 <ImageButton
                     android:id="@+id/hlSize0"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_stroke_thin"
                     android:contentDescription="Thin highlighter"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
-                <ImageButton
+                    android:background="@drawable/selectable_tool_background" />
+                    <ImageButton
                     android:id="@+id/hlSize1"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_stroke_medium"
                     android:contentDescription="Medium highlighter"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
-                <ImageButton
+                    android:background="@drawable/selectable_tool_background" />
+                    <ImageButton
                     android:id="@+id/hlSize2"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_stroke_thick"
                     android:contentDescription="Thick highlighter"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
+                    android:background="@drawable/selectable_tool_background" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -492,35 +551,360 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:visibility="gone">
-
                 <ImageButton
                     android:id="@+id/lassoFreeButton"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="9dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_lasso"
                     android:contentDescription="Free selection"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
-                <ImageButton
+                    android:background="@drawable/selectable_tool_background" />
+                    <ImageButton
                     android:id="@+id/lassoRectButton"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_select_rect"
                     android:contentDescription="Rectangular selection"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
-                <ImageButton
+                    android:background="@drawable/selectable_tool_background" />
+                    <ImageButton
                     android:id="@+id/lassoCircleButton"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_select_circle"
                     android:contentDescription="Circular selection"
                     android:tint="?attr/colorOnSurfaceVariant"
-                    android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless" />
+                    android:background="@drawable/selectable_tool_background" />
                 </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/shapePropsStrip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                <ImageButton
+                    android:id="@+id/shapeRectButton"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
+                    android:src="@drawable/ic_select_rect"
+                    android:contentDescription="@string/shape_rect"
+                    android:tint="?attr/colorOnSurfaceVariant"
+                    android:background="@drawable/selectable_tool_background" />
+                <ImageButton
+                    android:id="@+id/shapeOvalButton"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
+                    android:src="@drawable/ic_select_circle"
+                    android:contentDescription="@string/shape_oval"
+                    android:tint="?attr/colorOnSurfaceVariant"
+                    android:background="@drawable/selectable_tool_background" />
+                <ImageButton
+                    android:id="@+id/shapeTriangleButton"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
+                    android:src="@drawable/ic_shape_triangle"
+                    android:contentDescription="@string/shape_triangle"
+                    android:tint="?attr/colorOnSurfaceVariant"
+                    android:background="@drawable/selectable_tool_background" />
+                <ImageButton
+                    android:id="@+id/shapeLineButton"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
+                    android:src="@drawable/ic_line_straight"
+                    android:contentDescription="@string/shape_line"
+                    android:tint="?attr/colorOnSurfaceVariant"
+                    android:background="@drawable/selectable_tool_background" />
+                <ImageButton
+                    android:id="@+id/shapeArrowButton"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
+                    android:src="@drawable/ic_shape_arrow"
+                    android:contentDescription="@string/shape_arrow"
+                    android:tint="?attr/colorOnSurfaceVariant"
+                    android:background="@drawable/selectable_tool_background" />
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="24dp"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="?attr/colorOutlineVariant" />
+
+                <ImageButton
+                    android:id="@+id/shapeSizeButton"
+                    android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
+                    android:src="@drawable/ic_more_vert"
+                    android:contentDescription="@string/shape_size_button"
+                    android:tint="?attr/colorOnSurfaceVariant"
+                    android:background="@drawable/selectable_tool_background" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/tablePropsStrip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                    <ImageButton
+                        android:id="@+id/tableLineStyleButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_line_solid"
+                        android:contentDescription="Table border style"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="?attr/selectableItemBackgroundBorderless" />
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="24dp"
+                        android:layout_marginHorizontal="4dp"
+                        android:background="?attr/colorOutlineVariant" />
+
+                    <View android:id="@+id/tableColorSwatch0"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/tableColorSwatch1"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/tableColorSwatch2"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/tableColorSwatch3"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/tableColorSwatch4"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="24dp"
+                        android:layout_marginHorizontal="4dp"
+                        android:background="?attr/colorOutlineVariant" />
+
+                    <ImageButton
+                        android:id="@+id/tableThinButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_stroke_thin"
+                        android:contentDescription="Thin table border"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="@drawable/selectable_tool_background" />
+                        <ImageButton
+                        android:id="@+id/tableMediumButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_stroke_medium"
+                        android:contentDescription="Medium table border"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="@drawable/selectable_tool_background" />
+                        <ImageButton
+                        android:id="@+id/tableThickButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_stroke_thick"
+                        android:contentDescription="Thick table border"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="@drawable/selectable_tool_background" />
+                    </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/laserPropsStrip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                    <View android:id="@+id/laserColorSwatch0"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/laserColorSwatch1"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/laserColorSwatch2"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/laserColorSwatch3"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/laserColorSwatch4"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="24dp"
+                        android:layout_marginHorizontal="4dp"
+                        android:background="?attr/colorOutlineVariant" />
+
+                    <ImageButton
+                        android:id="@+id/laserThinButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_stroke_thin"
+                        android:contentDescription="Thin laser trail"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="@drawable/selectable_tool_background" />
+                        <ImageButton
+                        android:id="@+id/laserMediumButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_stroke_medium"
+                        android:contentDescription="Medium laser trail"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="@drawable/selectable_tool_background" />
+                        <ImageButton
+                        android:id="@+id/laserThickButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_stroke_thick"
+                        android:contentDescription="Thick laser trail"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="@drawable/selectable_tool_background" />
+                    </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/textPropsStrip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/textSizeSmall"
+                        android:layout_width="wrap_content" android:layout_height="38dp"
+                        android:gravity="center"
+                        android:paddingHorizontal="14dp"
+                        android:text="@string/text_size_small"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp"
+                        android:background="@drawable/selectable_tool_background" />
+                    <TextView
+                        android:id="@+id/textSizeMedium"
+                        android:layout_width="wrap_content" android:layout_height="38dp"
+                        android:gravity="center"
+                        android:paddingHorizontal="14dp"
+                        android:text="@string/text_size_medium"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp"
+                        android:background="@drawable/selectable_tool_background" />
+                    <TextView
+                        android:id="@+id/textSizeLarge"
+                        android:layout_width="wrap_content" android:layout_height="38dp"
+                        android:gravity="center"
+                        android:paddingHorizontal="14dp"
+                        android:text="@string/text_size_large"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp"
+                        android:background="@drawable/selectable_tool_background" />
+                    </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/tapePropsStrip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                    <ImageButton
+                        android:id="@+id/tapePatternButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_tape_solid"
+                        android:contentDescription="@string/tape_pattern"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="@drawable/selectable_tool_background" />
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="24dp"
+                        android:layout_marginHorizontal="4dp"
+                        android:background="?attr/colorOutlineVariant" />
+
+                    <View android:id="@+id/tapeColorSwatch0"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/tapeColorSwatch1"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/tapeColorSwatch2"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/tapeColorSwatch3"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+                    <View android:id="@+id/tapeColorSwatch4"
+                        android:layout_width="26dp" android:layout_height="26dp"
+                        android:layout_marginHorizontal="3dp"
+                        android:background="@drawable/bg_color_slot" />
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="24dp"
+                        android:layout_marginHorizontal="4dp"
+                        android:background="?attr/colorOutlineVariant" />
+
+                    <ImageButton
+                        android:id="@+id/tapeWidthSmallButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_tape_width_small"
+                        android:contentDescription="@string/tape_width_small"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="@drawable/selectable_tool_background" />
+                    <ImageButton
+                        android:id="@+id/tapeWidthMediumButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_tape_width_medium"
+                        android:contentDescription="@string/tape_width_medium"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="@drawable/selectable_tool_background" />
+                    <ImageButton
+                        android:id="@+id/tapeWidthLargeButton"
+                        android:elevation="4dp"
+                        android:layout_width="38dp" android:layout_height="38dp"
+                        android:padding="8dp" android:scaleType="fitCenter"
+                        android:src="@drawable/ic_tape_width_large"
+                        android:contentDescription="@string/tape_width_large"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:background="@drawable/selectable_tool_background" />
+                    </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/imagePropsStrip"
@@ -530,7 +914,16 @@
                     android:orientation="horizontal"
                     android:visibility="gone">
 
-                <!-- Shown while photo access hasn't been granted -->
+                <ImageButton
+                    android:id="@+id/imageCameraButton"
+                    android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
+                    android:src="@drawable/ic_camera"
+                    android:contentDescription="@string/image_camera"
+                    android:tint="?attr/colorOnSurfaceVariant"
+                    android:background="@drawable/selectable_tool_background" />
+
                 <LinearLayout
                     android:id="@+id/imagePermissionGroup"
                     android:layout_width="wrap_content"
@@ -538,7 +931,6 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:visibility="gone">
-
                     <TextView
                         android:layout_width="wrap_content" android:layout_height="wrap_content"
                         android:paddingStart="8dp"
@@ -556,30 +948,28 @@
                         android:textStyle="bold"
                         android:textColor="?attr/colorPrimary"
                         android:textSize="14sp"
-                        android:background="@drawable/selectable_tool_background"
-                        android:foreground="?attr/selectableItemBackgroundBorderless" />
-                </LinearLayout>
+                        android:background="@drawable/selectable_tool_background" />
+                    </LinearLayout>
 
                 <ImageButton
                     android:id="@+id/imagePickButton"
-                    android:layout_width="44dp" android:layout_height="44dp"
-                    android:padding="10dp" android:scaleType="fitCenter"
+                android:elevation="4dp"
+                    android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:scaleType="fitCenter"
                     android:src="@drawable/ic_add"
                     android:contentDescription="Browse images"
                     android:tint="?attr/colorOnSurfaceVariant"
                     android:background="@drawable/selectable_tool_background"
-                    android:foreground="?attr/selectableItemBackgroundBorderless"
                     android:visibility="gone" />
 
                 <View
                     android:id="@+id/imageStripDivider"
                     android:layout_width="1dp"
-                    android:layout_height="28dp"
+                    android:layout_height="24dp"
                     android:layout_marginHorizontal="4dp"
                     android:background="?attr/colorOutlineVariant"
                     android:visibility="gone" />
 
-                <!-- Recent image previews, filled at runtime -->
                 <LinearLayout
                     android:id="@+id/imageRecentsRow"
                     android:layout_width="wrap_content"
@@ -591,12 +981,16 @@
             </LinearLayout>
         </HorizontalScrollView>
 
-        <!-- Options vertical scroll (small screens; optionsRow re-parented here at runtime) -->
         <ScrollView
             android:id="@+id/optionsScrollV"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
+            android:layout_marginStart="8dp"
+            android:animateLayoutChanges="true"
+            android:background="@drawable/bg_toolbar_pill"
+            android:elevation="6dp"
+            android:padding="4dp"
             android:scrollbars="none"
             android:visibility="gone" />
     </LinearLayout>
@@ -614,7 +1008,6 @@
         app:layout_constraintWidth_max="400dp"
         app:layout_constraintEnd_toEndOf="@id/topBarEnd"
         app:layout_constraintTop_toBottomOf="@id/toolDock">
-
         <EditText
             android:id="@+id/searchInput"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
@@ -624,6 +1017,7 @@
             android:textColor="?attr/colorOnSurface" android:textColorHint="?attr/colorOnSurfaceVariant" />
 
         <ImageButton android:id="@+id/searchDropdown"
+            android:elevation="4dp"
             android:layout_width="36dp" android:layout_height="36dp" android:padding="6dp"
             android:src="@drawable/ic_arrow_drop_down" android:contentDescription="Show results"
             android:tint="?attr/colorOnSurfaceVariant" android:background="?attr/selectableItemBackgroundBorderless" />
@@ -634,17 +1028,20 @@
             android:textColor="?attr/colorOnSurfaceVariant" android:textSize="13sp" />
 
         <ImageButton android:id="@+id/searchPrev"
-            android:layout_width="40dp" android:layout_height="40dp" android:padding="9dp"
+            android:elevation="4dp"
+            android:layout_width="40dp" android:layout_height="40dp" android:padding="8dp"
             android:src="@drawable/arrow_back_ios_24px" android:contentDescription="@string/search_prev"
             android:tint="?attr/colorOnSurfaceVariant" android:background="?attr/selectableItemBackgroundBorderless" />
 
         <ImageButton android:id="@+id/searchNext"
-            android:layout_width="40dp" android:layout_height="40dp" android:padding="9dp"
+            android:elevation="4dp"
+            android:layout_width="40dp" android:layout_height="40dp" android:padding="8dp"
             android:src="@drawable/arrow_forward_ios_24px" android:contentDescription="@string/search_next"
             android:tint="?attr/colorOnSurfaceVariant" android:background="?attr/selectableItemBackgroundBorderless" />
 
         <ImageButton android:id="@+id/searchClose"
-            android:layout_width="40dp" android:layout_height="40dp" android:padding="9dp"
+            android:elevation="4dp"
+            android:layout_width="40dp" android:layout_height="40dp" android:padding="8dp"
             android:src="@drawable/ic_close" android:contentDescription="@string/search_close"
             android:tint="?attr/colorOnSurfaceVariant" android:background="?attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
@@ -664,7 +1061,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Zoom % pill, sits just above the page indicator -->
     <TextView
         android:id="@+id/zoomIndicator"
         android:layout_width="wrap_content"
@@ -700,7 +1096,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Outline loading pill (shown briefly while background scan runs) -->
     <TextView
         android:id="@+id/outlineLoadingPill"
         android:layout_width="wrap_content"
@@ -718,7 +1113,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Scroll pill track (invisible touch/positioning area on the right edge) -->
     <View
         android:id="@+id/scrollPillTrack"
         android:layout_width="24dp"
@@ -729,7 +1123,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Scroll pill thumb (draggable indicator) -->
     <ImageView
         android:id="@+id/scrollPillThumb"
         android:layout_width="32dp"

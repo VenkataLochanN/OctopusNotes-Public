@@ -12,13 +12,13 @@
             android:title="Favorites" />
     </group>
 
-    <!-- We will add folders dynamically to this group below -->
     <group android:id="@+id/group_folders" android:checkableBehavior="single">
+
         <item
             android:id="@+id/nav_folders_submenu_container"
             android:title="Folders">
             <menu>
-                <!-- Folders will be programmatically inserted here -->
+
             </menu>
         </item>
     </group>

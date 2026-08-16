@@ -11,32 +11,15 @@ import android.os.ext.SdkExtensions
 import androidx.annotation.RequiresExtension
 import java.io.File
 
-/**
- * **Native** PDF text search — no pdfbox, no text-layer extraction, no index files.
- *
- * Uses the platform's pdfium-backed search that ships with the PDF mainline module:
- *  - Android 15+ (API 35): [PdfRenderer.Page.searchText]
- *  - Android 12–14 with an updated module (S extension ≥ 13): [PdfRendererPreV]
- *
- * pdfium walks a page in native code in ~a few ms, so even huge documents stream results
- * page-by-page with no warm-up cost. Falls back to the pdfbox [PdfTextIndex] path on
- * devices without the module (see call site).
- *
- * Emits [PdfTextIndex.Match] so the existing search UI needs no changes.
- */
 class NativePdfSearch(private val file: File) {
 
     companion object {
-        /** True when the platform pdfium search APIs are available on this device. */
+
         val isSupported: Boolean
             get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                 SdkExtensions.getExtensionVersion(Build.VERSION_CODES.S) >= 13
     }
 
-    /**
-     * Searches page-by-page, invoking [onPage] after each page (same contract as
-     * [PdfTextIndex.streamSearch]). [shouldStop] is polled between pages.
-     */
     @SuppressLint("NewApi")
     fun streamSearch(
         query: String,
@@ -115,7 +98,6 @@ class NativePdfSearch(private val file: File) {
     private inline fun pageText(block: () -> String): String =
         try { block() } catch (e: Exception) { "" }
 
-    /** Converts a native hit to our Match: normalized union rect + "…words around…" snippet. */
     private fun toMatch(
         pageIndex: Int,
         m: PageMatchBounds,
@@ -136,14 +118,13 @@ class NativePdfSearch(private val file: File) {
         val snippet = if (start in 0..(pageText.length - query.length)) {
             buildSnippet(pageText, start, start + query.length)
         } else {
-            // Index didn't line up with the extracted text — locate the query ourselves.
+
             val idx = pageText.lowercase().indexOf(query.lowercase())
             if (idx >= 0) buildSnippet(pageText, idx, idx + query.length) else query
         }
         return PdfTextIndex.Match(pageIndex, norm, query, snippet)
     }
 
-    /** "…3 words before MATCH 3 words after…" preview, matching the pdfbox path's format. */
     private fun buildSnippet(text: String, start: Int, end: Int): String {
         val ws = Regex("\\s+")
         val beforeWords = text.substring(0, start).trim().split(ws).filter { it.isNotEmpty() }

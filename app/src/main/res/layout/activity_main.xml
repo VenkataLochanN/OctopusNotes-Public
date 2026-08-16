@@ -8,7 +8,6 @@
     android:background="?attr/colorSurface"
     tools:context=".MainActivity">
 
-    <!-- Top bar: search field + settings -->
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="0dp"
@@ -21,7 +20,6 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
-
         <com.google.android.material.card.MaterialCardView
             android:layout_width="0dp"
             android:layout_height="48dp"
@@ -31,18 +29,17 @@
             app:strokeWidth="1dp"
             app:strokeColor="?attr/colorOutlineVariant"
             app:cardBackgroundColor="?attr/colorSurfaceContainerHigh">
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:paddingHorizontal="14dp">
-
                 <ImageView
                     android:layout_width="22dp"
                     android:layout_height="22dp"
                     android:src="@drawable/ic_search"
+                    android:elevation="4dp"
                     android:contentDescription="@null"
                     app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -67,6 +64,7 @@
             android:id="@+id/settingsButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
+            android:elevation="4dp"
             android:layout_marginStart="4dp"
             android:padding="12dp"
             android:src="@drawable/ic_settings"
@@ -74,18 +72,76 @@
             android:background="?attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
-    <!-- Breadcrumbs -->
-    <!-- Filter chips -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/syncFolderBanner"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginTop="2dp"
+        android:visibility="gone"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="?attr/colorErrorContainer"
+        app:layout_constraintTop_toBottomOf="@id/topBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp">
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_warning"
+                android:contentDescription="@null"
+                app:tint="?attr/colorOnErrorContainer" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginHorizontal="10dp"
+                android:text="@string/sync_banner_missing"
+                android:textSize="13sp"
+                android:textColor="?attr/colorOnErrorContainer" />
+
+            <TextView
+                android:id="@+id/syncBannerFix"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:text="@string/sync_banner_fix"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:textColor="?attr/colorOnErrorContainer"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+            <ImageButton
+                android:id="@+id/syncBannerClose"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_close"
+                android:contentDescription="@string/sync_banner_dismiss"
+                android:tint="?attr/colorOnErrorContainer"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <HorizontalScrollView
         android:id="@+id/filterScroll"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:scrollbars="none"
         android:paddingHorizontal="12dp"
-        app:layout_constraintTop_toBottomOf="@id/topBar"
+        app:layout_constraintTop_toBottomOf="@id/syncFolderBanner"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
-
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/filterChips"
             android:layout_width="wrap_content"
@@ -93,7 +149,6 @@
             app:singleLine="true"
             app:singleSelection="true"
             app:selectionRequired="true">
-
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipAll"
                 style="@style/Widget.Material3.Chip.Filter"
@@ -109,7 +164,7 @@
                 android:layout_height="wrap_content"
                 android:text="Favorites"
                 app:chipIcon="@drawable/ic_star" />
-                
+
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipBin"
                 style="@style/Widget.Material3.Chip.Filter"
@@ -128,17 +183,34 @@
         </com.google.android.material.chip.ChipGroup>
     </HorizontalScrollView>
 
-    <!-- Breadcrumb + sort -->
+    <HorizontalScrollView
+        android:id="@+id/tagsScroll"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:overScrollMode="never"
+        android:clipToPadding="false"
+        android:paddingHorizontal="12dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/filterScroll"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/tagChips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleLine="true" />
+    </HorizontalScrollView>
+
     <LinearLayout
         android:id="@+id/breadcrumbRow"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        app:layout_constraintTop_toBottomOf="@id/filterScroll"
+        app:layout_constraintTop_toBottomOf="@id/tagsScroll"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
-
         <HorizontalScrollView
             android:id="@+id/breadcrumbScroll"
             android:layout_width="0dp"
@@ -147,7 +219,6 @@
             android:scrollbars="none"
             android:paddingHorizontal="12dp"
             android:paddingVertical="2dp">
-
             <LinearLayout
                 android:id="@+id/breadcrumbBar"
                 android:layout_width="wrap_content"
@@ -169,6 +240,7 @@
             android:id="@+id/sortButton"
             android:layout_width="44dp"
             android:layout_height="44dp"
+            android:elevation="4dp"
             android:layout_marginEnd="8dp"
             android:padding="10dp"
             android:src="@drawable/ic_sort"
@@ -213,7 +285,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Multi-select action dock -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/selectionDock"
         android:layout_width="wrap_content"
@@ -226,18 +297,17 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
-
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:padding="6dp">
-
             <ImageButton
                 android:id="@+id/dockClose"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
+                android:elevation="4dp"
                 android:padding="10dp"
                 android:src="@drawable/ic_close"
                 android:contentDescription="Clear selection"
@@ -255,24 +325,77 @@
                 tools:text="2" />
 
             <LinearLayout
+                android:id="@+id/dockRestore"
+                style="@style/SelectionDockAction"
+                android:visibility="gone">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_refresh" app:tint="?attr/colorPrimary" android:elevation="4dp" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Restore" android:textColor="?attr/colorPrimary" android:textSize="11sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/dockDeletePerm"
+                style="@style/SelectionDockAction"
+                android:visibility="gone">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_delete" app:tint="#F44336" android:elevation="4dp" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Delete permanently" android:textColor="#F44336" android:textSize="11sp"/>
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/dockMove"
                 style="@style/SelectionDockAction">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_folder" app:tint="?attr/colorOnSurface" android:contentDescription="@null"/>
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_folder" app:tint="?attr/colorOnSurface" android:elevation="4dp" android:contentDescription="@null"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Move" android:textColor="?attr/colorOnSurface" android:textSize="11sp"/>
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/dockLock"
                 style="@style/SelectionDockAction">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_lock" app:tint="?attr/colorOnSurface" android:contentDescription="@null"/>
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_lock" app:tint="?attr/colorOnSurface" android:elevation="4dp" android:contentDescription="@null"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Lock" android:textColor="?attr/colorOnSurface" android:textSize="11sp"/>
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/dockDelete"
                 style="@style/SelectionDockAction">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_eraser" app:tint="#F44336" android:contentDescription="@null"/>
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_eraser" app:tint="#F44336" android:elevation="4dp" android:contentDescription="@null"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Delete" android:textColor="#F44336" android:textSize="11sp"/>
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/binClearDock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:visibility="gone"
+        app:cardCornerRadius="28dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="6dp">
+            <TextView
+                android:id="@+id/binClearCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                tools:text="3" />
+
+            <LinearLayout
+                android:id="@+id/binClearAction"
+                style="@style/SelectionDockAction">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_delete" app:tint="#F44336" android:elevation="4dp" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Clear all" android:textColor="#F44336" android:textSize="11sp"/>
             </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

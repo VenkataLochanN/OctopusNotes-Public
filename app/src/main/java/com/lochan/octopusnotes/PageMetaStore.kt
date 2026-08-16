@@ -4,25 +4,15 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Where the page currently at [index] ends up once the page at [from] is moved to [to].
- * Shared by every store that keys data by page number, so a reorder can't desync them.
- */
 fun pageIndexAfterMove(index: Int, from: Int, to: Int): Int = when {
     index == from -> to
-    // Dragged later: everything it passed over shifts down one.
+
     from < to && index > from && index <= to -> index - 1
-    // Dragged earlier: everything it passed over shifts up one.
+
     from > to && index >= to && index < from -> index + 1
     else -> index
 }
 
-/**
- * Per-notebook page metadata: bookmarked pages and user-added outline entries.
- *
- * Page indices are kept in sync as pages are inserted/removed via [onPageInserted] /
- * [onPageRemoved] (call these alongside the matching PDF + stroke edits).
- */
 class PageMetaStore(context: Context, private val notebookId: Long) {
 
     data class OutlineEntry(val page: Int, val title: String)
@@ -30,8 +20,6 @@ class PageMetaStore(context: Context, private val notebookId: Long) {
     private val prefs = context.getSharedPreferences("OctopusNotesPrefs", Context.MODE_PRIVATE)
     private val bmKey = "page_bookmarks_$notebookId"
     private val outlineKey = "page_outline_$notebookId"
-
-    // --- Bookmarks ---
 
     fun bookmarks(): MutableSet<Int> {
         val raw = prefs.getString(bmKey, "") ?: ""
@@ -49,8 +37,6 @@ class PageMetaStore(context: Context, private val notebookId: Long) {
     private fun saveBookmarks(set: Set<Int>) {
         prefs.edit().putString(bmKey, set.sorted().joinToString(",")).apply()
     }
-
-    // --- User outline entries ---
 
     fun userOutline(): MutableList<OutlineEntry> {
         val raw = prefs.getString(outlineKey, "[]") ?: "[]"
@@ -83,22 +69,17 @@ class PageMetaStore(context: Context, private val notebookId: Long) {
         prefs.edit().putString(outlineKey, arr.toString()).apply()
     }
 
-    // --- Index maintenance ---
-
-    /** A page was inserted at [at]: shift bookmarks/outline at or after it up by one. */
     fun onPageInserted(at: Int) {
         saveBookmarks(bookmarks().map { if (it >= at) it + 1 else it }.toSet())
         saveOutline(userOutline().map { if (it.page >= at) it.copy(page = it.page + 1) else it })
     }
 
-    /** The page at [from] was dragged to [to]: renumber everything it moved past. */
     fun onPageMoved(from: Int, to: Int) {
         if (from == to) return
         saveBookmarks(bookmarks().map { pageIndexAfterMove(it, from, to) }.toSet())
         saveOutline(userOutline().map { it.copy(page = pageIndexAfterMove(it.page, from, to)) })
     }
 
-    /** The page at [at] was removed: drop its entries and shift later ones down by one. */
     fun onPageRemoved(at: Int) {
         saveBookmarks(bookmarks().filter { it != at }.map { if (it > at) it - 1 else it }.toSet())
         saveOutline(userOutline().filter { it.page != at }.map { if (it.page > at) it.copy(page = it.page - 1) else it })

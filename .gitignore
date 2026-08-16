@@ -1,0 +1,17 @@
+*.iml
+.gradle
+.kotlin
+.idea
+.DS_Store
+build/
+captures/
+.externalNativeBuild
+.cxx
+
+local.properties
+
+.freebuff/
+__pycache__/
+*.pyc
+
+app/prod/

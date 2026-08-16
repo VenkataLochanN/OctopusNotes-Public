@@ -1,14 +1,16 @@
 <resources>
-    <string name="app_name">Octopus Notes</string>
+    <string name="app_name" translatable="false">Octopus Notes</string>
     <string name="add_new_notebook">Add new notebook</string>
     <string name="create_dialog_title">Create New</string>
-    <string name="create_dialog_subtitle">Start something new</string>
     <string name="create_folder">New Folder</string>
-    <string name="create_folder_sub">Organize notes into folders</string>
     <string name="create_notebook">New Notebook</string>
-    <string name="create_notebook_sub">Start writing with a template</string>
     <string name="create_pdf">Import PDF</string>
-    <string name="create_pdf_sub">Annotate an existing document</string>
+    <string name="create_whiteboard">New Whiteboard</string>
+    <string name="create_whiteboard_beta">New Whiteboard (BETA)</string>
+    <string name="create_whiteboard_hint">A whiteboard is one unbounded canvas: pan and zoom anywhere, no pages. Strokes are saved automatically.</string>
+    <string name="whiteboard_title">Whiteboard Title</string>
+    <string name="title_cannot_be_empty">Title cannot be empty</string>
+    <string name="create">Create</string>
     <string name="notebook_preview">Notebook preview</string>
     <string name="create_button_text">Create</string>
     <string name="nav_open">Open</string>
@@ -17,7 +19,106 @@
     <string name="tool_pen">Pen</string>
     <string name="tool_eraser">Eraser</string>
     <string name="tool_lasso">Lasso select</string>
+    <string name="tool_shape">Shapes</string>
+    <string name="tool_table">Table</string>
+    <string name="tool_laser">Laser pointer</string>
+    <string name="tool_text">Text</string>
+    <string name="tool_measure">Measure</string>
+    <string name="tool_tape">Tape</string>
     <string name="add_page">Add page</string>
+
+    <string name="tape_pattern">Tape pattern</string>
+    <string name="tape_pattern_solid">Solid tape</string>
+    <string name="tape_pattern_stripes">Striped tape</string>
+    <string name="tape_pattern_dots">Dotted tape</string>
+    <string name="tape_pattern_grid">Grid tape</string>
+    <string name="tape_pattern_checks">Checked tape</string>
+    <string name="tape_width_small">Thin tape</string>
+    <string name="tape_width_medium">Medium tape</string>
+    <string name="tape_width_large">Wide tape</string>
+
+    <string name="image_camera">Take a photo</string>
+    <string name="image_no_camera">No camera app found</string>
+    <string name="crop_cancel">Cancel</string>
+    <string name="crop_rotate">Rotate</string>
+    <string name="crop_done">Done</string>
+
+    <string name="laser_hint">Write with the pen. Slowly, the trail fades away</string>
+
+    <string name="text_title">Text</string>
+    <string name="text_input_hint">Type text…</string>
+    <string name="text_size">Size</string>
+    <string name="text_size_small">S</string>
+    <string name="text_size_medium">M</string>
+    <string name="text_size_large">L</string>
+    <string name="text_size_increase">Bigger text</string>
+    <string name="text_size_decrease">Smaller text</string>
+    <string name="text_insert">Insert</string>
+    <string name="font_title">Font</string>
+    <string name="font_default">Default</string>
+    <string name="font_import">Import font</string>
+    <string name="font_import_summary">Add .ttf or .otf files to use them in the text tool</string>
+    <string name="font_none">No fonts imported yet</string>
+    <string name="font_remove">Remove font</string>
+    <string name="font_imported">Font imported</string>
+    <string name="font_import_failed">That file isn\'t a usable font</string>
+
+    <string name="table_title">Table</string>
+    <string name="table_rows">Rows</string>
+    <string name="table_cols">Columns</string>
+    <string name="table_rows_increase">More rows</string>
+    <string name="table_rows_decrease">Fewer rows</string>
+    <string name="table_cols_increase">More columns</string>
+    <string name="table_cols_decrease">Fewer columns</string>
+    <string name="table_cancel">Cancel</string>
+    <string name="table_hint">Drag on the page to draw the table area</string>
+    <string name="table_rows_short">Rows</string>
+    <string name="table_cols_short">Cols</string>
+    <string name="table_header_on">Header ON</string>
+    <string name="table_header_off">Header OFF</string>
+    <string name="table_col_header_on">1st col ON</string>
+    <string name="table_col_header_off">1st col OFF</string>
+    <string name="table_more_options_hint">More edit options will be available once the table is inserted</string>
+    <string name="table_corner">Corner</string>
+    <string name="table_radius_increase">More rounded corners</string>
+    <string name="table_radius_decrease">Sharper corners</string>
+    <string name="table_header_color">Header row colour</string>
+    <string name="table_col_color">First column colour</string>
+    <string name="table_cell_title">Cell text</string>
+    <string name="table_cell_hint">Type for this cell…</string>
+    <string name="table_more_options">Table options</string>
+    <string name="table_structure_title">Table options</string>
+    <string name="table_structure_hint">New rows and columns grow the table. Rows and columns you resize keep their proportions when the whole table is resized.</string>
+    <string name="table_row_size">Row %1$d of %2$d</string>
+    <string name="table_col_size">Col %1$d of %2$d</string>
+    <string name="table_size_px">%1$d px</string>
+    <string name="table_row_size_increase">Make this row taller</string>
+    <string name="table_row_size_decrease">Make this row shorter</string>
+    <string name="table_col_size_increase">Make this column wider</string>
+    <string name="table_col_size_decrease">Make this column narrower</string>
+    <string name="table_add_row_above">Row above</string>
+    <string name="table_add_row_below">Row below</string>
+    <string name="table_add_col_left">Col left</string>
+    <string name="table_add_col_right">Col right</string>
+    <string name="table_delete_row">Delete row</string>
+    <string name="table_delete_column">Delete column</string>
+    <string name="table_merge_right">Merge right</string>
+    <string name="table_merge_down">Merge down</string>
+    <string name="table_split_cell">Split cell</string>
+    <string name="sync_banner_missing">"Sync folder missing — your notes aren't being backed up"</string>
+    <string name="sync_banner_fix">Fix</string>
+    <string name="sync_banner_dismiss">Dismiss</string>
+    <string name="intro_data_title">Sync &amp; backup</string>
+    <string name="intro_data_subtitle">Optional — nothing leaves your device until you choose a folder.</string>
+    <string name="intro_data_row_sync">Sync folder</string>
+    <string name="intro_data_row_sync_desc">Optional. Mirror your notes, PDFs and images to a folder you choose for manual backup or syncing. Off by default — turn it on only if you want it.</string>
+
+    <string name="shape_rect">Rectangle</string>
+    <string name="shape_oval">Ellipse</string>
+    <string name="shape_triangle">Triangle</string>
+    <string name="shape_line">Line</string>
+    <string name="shape_arrow">Arrow</string>
+    <string name="shape_size_button">Exact size</string>
 
     <string name="color_palette">Color Palette</string>
     <string name="thickness">Thickness</string>
@@ -44,6 +145,39 @@
     <string name="finger_scroll">Scroll</string>
     <string name="gesture_two_finger_note">Two fingers always zoom and pan.</string>
 
+    <string name="stylus_settings">Stylus</string>
+    <string name="stylus_primary">Primary button</string>
+    <string name="stylus_secondary">Secondary button</string>
+    <string name="stylus_long_hold">Long hold primary</string>
+    <string name="stylus_long_hold_note">Hold the primary button while drawing to erase temporarily.</string>
+    <string name="stylus_conflict_note">Tip: with the primary button and long hold both enabled, the S Pen can feel unpredictable. If that happens, disable one of them.</string>
+    <string name="stylus_pen_type">Pen type</string>
+    <string name="stylus_pen_s_pen">S Pen</string>
+    <string name="stylus_pen_other">Other</string>
+    <string name="stylus_action_last_used">Switch to last used</string>
+    <string name="stylus_action_eraser">Switch to eraser</string>
+    <string name="stylus_action_highlighter">Switch to highlighter</string>
+    <string name="stylus_action_pen">Switch to pen</string>
+    <string name="stylus_action_laser">Switch to laser</string>
+    <string name="stylus_action_lasso">Switch to lasso</string>
+    <string name="stylus_action_disabled">Disabled</string>
+    <string name="stylus_long_hold_eraser">Eraser</string>
+    <string name="stylus_long_hold_disabled">Disabled</string>
+
+    <string-array name="stylus_action_entries">
+        <item>@string/stylus_action_last_used</item>
+        <item>@string/stylus_action_eraser</item>
+        <item>@string/stylus_action_highlighter</item>
+        <item>@string/stylus_action_pen</item>
+        <item>@string/stylus_action_laser</item>
+        <item>@string/stylus_action_lasso</item>
+        <item>@string/stylus_action_disabled</item>
+    </string-array>
+    <string-array name="stylus_long_hold_entries">
+        <item>@string/stylus_long_hold_eraser</item>
+        <item>@string/stylus_long_hold_disabled</item>
+    </string-array>
+
     <string name="search_pdf">Search PDF</string>
     <string name="search_hint">Search text…</string>
     <string name="search_prev">Previous match</string>
@@ -68,4 +202,95 @@
     <string name="pages_overview">All pages</string>
     <string name="pages_title">Pages</string>
 
+    <string name="intro_skip">Skip</string>
+    <string name="intro_next">Next</string>
+    <string name="intro_get_started">Get started</string>
+
+    <string name="intro_welcome_title">Welcome to %1$s</string>
+    <string name="intro_welcome_subtitle">This quick intro shows what %1$s can do.</string>
+    <string name="intro_welcome_sentence">Your notes stay offline &amp; private. No ads, no telemetry and the app is free &amp; open source.</string>
+
+    <string name="intro_tools_title">Meet the tools</string>
+    <string name="intro_tools_title_with_tool">Meet the %1$s tool</string>
+    <string name="intro_tools_subtitle">Tap a tool, then tap an option to see what it does.</string>
+    <string name="intro_tools_highlighter">Highlighter</string>
+    <string name="intro_tools_image">Image</string>
+
+    <string name="intro_tool_pen_options_1_desc">Choose solid, dotted, dashed or wavy strokes.</string>
+    <string name="intro_tool_pen_options_2_desc">Five custom colours. Tap one to use it, tap it again to edit it.</string>
+    <string name="intro_tool_pen_options_3_desc">Three thickness slots. Tap to use, tap again to fine-tune the size.</string>
+
+    <string name="intro_tool_eraser_pixel">Pixel</string>
+    <string name="intro_tool_eraser_stroke">Stroke</string>
+    <string name="intro_tool_eraser_options_1_desc">Pixel eraser rubs out exactly what you move over; stroke eraser removes whole strokes at once.</string>
+    <string name="intro_tool_eraser_options_2_desc">Three custom eraser sizes, from a fine tip to a wide sweep.</string>
+
+    <string name="intro_tool_highlighter_options_1_desc">Straight or freehand highlight shapes and modes.</string>
+    <string name="intro_tool_highlighter_options_2_desc">Five highlight colours: yellow, green, pink, blue and orange, each editable.</string>
+    <string name="intro_tool_highlighter_options_3_desc">Three sizes, from a fine underline to a broad sweep.</string>
+
+    <string name="intro_tool_lasso_options_1_desc">Free, rectangular or circular selection. Then move, resize, rotate, recolour, duplicate, delete, flip, copy, cut and paste.</string>
+
+    <string name="intro_tool_shape_options_1_desc">Rectangle, oval, triangle, line or arrow.</string>
+    <string name="intro_tool_shape_options_2_desc">Choose the shape\'s size, colour and thickness.</string>
+
+    <string name="intro_tool_table_options_1_desc">Solid, dotted, dashed or wavy table borders.</string>
+    <string name="intro_tool_table_options_2_desc">Draw the table area, pick rows and columns, then add header rows, cell colours, rounded corners and editable cell text, with a live preview.</string>
+    <string name="intro_tool_table_options_3_desc">Thin, medium or thick table borders.</string>
+
+    <string name="intro_tool_laser_options_1_desc">The laser trail\'s colour.</string>
+    <string name="intro_tool_laser_options_2_desc">The laser trail\'s size. The trail fades away after a moment.</string>
+
+    <string name="intro_tool_text_options_1_desc">Small, medium or large text. Tap the page and type anywhere; move or resize it afterwards.</string>
+
+    <string name="intro_tool_image_options_1_desc">Take a photo with the camera.</string>
+    <string name="intro_tool_image_options_2_desc">Pick from your gallery or recent photos. Crop and rotate before placing.</string>
+
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <string name="intro_tools_undo_footer">Undo &amp; redo every change</string>
+
+    <string name="intro_popup_line_styles">Solid: one continuous line. Dotted: evenly spaced dots. Dashed: short dashes.</string>
+    <string name="intro_popup_stabilization">Stabilization smooths your strokes. Higher levels smooth more.</string>
+    <string name="intro_popup_thickness">Drag the slider or tap the − and + buttons to set the stroke size.</string>
+    <string name="intro_popup_hl_shape">Free follows your hand; Straight snaps to a perfectly straight line.</string>
+    <string name="intro_popup_hl_mode">Normal highlights over the page; Text highlights only text when text is detected. Else, it will work like the normal one.</string>
+    <string name="intro_line_style_solid">Solid</string>
+    <string name="intro_line_style_dotted">Dotted</string>
+    <string name="intro_line_style_dashed">Dashed</string>
+
+    <string name="intro_editing_title">Editing</string>
+    <string name="intro_editing_subtitle">How you write and draw. Turn each option on or off.</string>
+    <string name="intro_editing_row_pages">Add pages continuously</string>
+    <string name="intro_editing_row_pages_desc">When you write on the last page, a new page is added automatically, so there\'s no need to tap the + button.</string>
+    <string name="intro_editing_row_options">Show tool options</string>
+    <string name="intro_editing_row_options_desc">A tool\'s options appear automatically when you switch to it. Turn this off to keep them closed until you tap the tool button.</string>
+    <string name="intro_editing_row_tabs">Tabs mode</string>
+    <string name="intro_editing_row_tabs_desc">Switch between open notes from a tab strip above the toolbar, like browser tabs. Tap the title to see all open notes.</string>
+    <string name="intro_editing_row_canvas">Canvas color</string>
+    <string name="intro_editing_row_canvas_desc">The colour behind your pages. It matches your wallpaper by default (Material You), and you can pick any colour you like.</string>
+    <string name="intro_editing_row_scribble">Scribble to erase</string>
+    <string name="intro_editing_scribble_easy">Easy</string>
+    <string name="intro_editing_scribble_hard">Hard</string>
+    <string name="intro_editing_row_canvas_default">Default</string>
+    <string name="intro_editing_row_scribble_desc">Scribble back and forth over ink with the pen to erase it. Easy needs only a few passes; hard needs a denser scribble, so accidental wiggles are less likely to erase.</string>
+
+    <string name="intro_home_title">Home screen</string>
+    <string name="intro_home_subtitle">How your notebook list looks. Turn each option on or off.</string>
+    <string name="intro_home_row_layout">View layout</string>
+    <string name="intro_home_layout_grid">Grid</string>
+    <string name="intro_home_layout_list">List</string>
+    <string name="intro_home_thumb_first">First</string>
+    <string name="intro_home_thumb_last">Last</string>
+    <string name="intro_home_thumb_last_used">Last used</string>
+    <string name="intro_home_row_layout_desc">Show your notebooks and folders as a grid or as a list.</string>
+    <string name="intro_home_row_notebook_thumb">Notebook thumbnail</string>
+    <string name="intro_home_row_notebook_thumb_desc">What your notebook covers show: the first page, the last page, or the page you used most recently.</string>
+    <string name="intro_home_row_pdf_thumb">Imported PDF thumbnail</string>
+    <string name="intro_home_row_pdf_thumb_desc">Choose whether imported PDFs show their first or last page on the cover.</string>
+    <string name="intro_home_row_marquee">Marquee text</string>
+    <string name="intro_home_row_marquee_desc">Long notebook names scroll slowly across the home screen, so you can read them in full.</string>
+    <string name="intro_settings_later">You can change these anytime in Settings.</string>
+
+    <string name="settings_show_intro_again">Show intro again</string>
 </resources>

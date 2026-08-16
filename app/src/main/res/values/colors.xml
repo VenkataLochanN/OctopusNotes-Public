@@ -11,10 +11,7 @@
     <color name="blue">#2196F3</color>
     <color name="green">#4CAF50</color>
 
-    <!-- Paper/canvas surround. Intentionally NOT overridden in values-night
-         so the writing surface stays light (black ink stays visible). -->
     <color name="canvas_background">#F2F2F2</color>
 
-    <!-- Dark grey gap/surround shown between and around PDF pages. -->
     <color name="pdf_surround">#2A2A2A</color>
 </resources>

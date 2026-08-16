@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,12 +28,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-// --- Lifecycle Owners for Compose Dialogs ---
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
-// --- Jetpack Compose Imports ---
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -74,7 +73,7 @@ import androidx.compose.ui.text.font.FontWeight
 data class PageSize(val name: String, val width: Int, val height: Int)
 
 data class TemplateSettings(
-    val type: String, // "BLANK", "RULE", "GRID", "CUSTOM"
+    val type: String,
     val bgColor: ComposeColor,
     val density: Float,
     val brightness: Float,
@@ -90,12 +89,15 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
     private lateinit var adapter: NotebookAdapter
     private val displayItems = mutableListOf<DisplayItem>()
 
-    // Folder navigation: stack of folders from root to current. Empty = root ("All Notes").
     private val folderPath = mutableListOf<Folder>()
     private val currentFolderId: Long get() = folderPath.lastOrNull()?.id ?: 0L
     private var searchQuery: String = ""
     private var favoritesMode = false
     private var binMode = false
+
+    private var tagFilter: String? = null
+
+    private var suppressTagFilterClear = false
 
     private lateinit var notebooksRecyclerView: AutofitRecyclerView
     private lateinit var emptyViewTextView: TextView
@@ -103,18 +105,16 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
     private lateinit var breadcrumbBar: android.widget.LinearLayout
     private lateinit var addNotebookFab: ExtendedFloatingActionButton
     private lateinit var selectionDock: View
+    private lateinit var binClearDock: View
     private lateinit var sortLabel: TextView
 
-    // Multi-select
     private val selectedFolderIds = linkedSetOf<Long>()
     private val selectedNotebookIds = linkedSetOf<Long>()
     private var selectionMode = false
 
-    // State for Image Picker
     private val customImageUriState = mutableStateOf<Uri?>(null)
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        // GetContent() returns a transient URI that becomes unreadable later — copy it into
-        // app storage so the custom template survives page-adds and app restarts.
+
         customImageUriState.value = uri?.let { PageTemplate.copyTemplateImage(this, it) } ?: uri
     }
 
@@ -123,6 +123,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
             when {
                 selectionMode -> exitSelectionMode()
                 searchInput.text.isNotEmpty() -> searchInput.setText("")
+                tagFilter != null -> { clearTagFilter(); loadDataFromDatabase() }
                 folderPath.isNotEmpty() -> {
                     folderPath.removeAt(folderPath.lastIndex)
                     loadDataFromDatabase()
@@ -156,7 +157,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                         }
                     }
                     dataManager.setNotebookPdfPath(id, dest.absolutePath)
-                    // Generate the home thumbnail now so the list shows it instead of a skeleton.
+
                     ThumbnailGenerator.generate(this@MainActivity, id, dest, isImported = true)
                     id
                 }
@@ -164,7 +165,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                 loadDataFromDatabase()
                 openDrawing(newId)
             } catch (c: kotlinx.coroutines.CancellationException) {
-                // Roll back the partially-imported notebook (runs even though the job is cancelled).
+
                 withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) {
                     createdId?.let { id ->
                         java.io.File(filesDir, "pdf_$id.pdf").delete()
@@ -192,7 +193,6 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         } catch (_: Exception) { -1L }
     }
 
-    /** Copies [input]→[output] reporting integer percent (throttled). Throws on cancel. */
     private fun copyWithProgress(
         input: java.io.InputStream,
         output: java.io.OutputStream,
@@ -237,9 +237,6 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         }
     }
 
-    // =========================================================================
-    // DEFAULT TEMPLATE SETTINGS MANAGEMENT
-    // =========================================================================
     private fun saveDefaultTemplate(settings: TemplateSettings) {
         val prefs = getSharedPreferences("OctopusNotesPrefs", Context.MODE_PRIVATE)
         val json = JSONObject().apply {
@@ -291,22 +288,30 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
             applyViewModePreference()
             loadDataFromDatabase()
             refreshEditedThumbnail()
+
+            lifecycleScope.launch {
+                DrawingActivity.lastSaveJob?.join()
+                InfiniteCanvasActivity.lastSaveJob?.join()
+                withContext(Dispatchers.IO) {
+                    SyncFolderManager.mirrorAll(this@MainActivity, dataManager.getAllNotebooksIncludingBin())
+                }
+                refreshSyncBanner()
+            }
         }
     }
 
-    // ------------------------------------------------------------------------
-    //  HOME THUMBNAILS
-    //
-    //  Thumbnails only ever appear on this screen, so they are written here and
-    //  nowhere else: on creation/import (above) and, for a notebook that was just
-    //  edited, when the editor hands control back to us.
-    // ------------------------------------------------------------------------
+    private fun refreshSyncBanner() {
+        val banner = findViewById<View>(R.id.syncFolderBanner) ?: return
+        if (!SyncFolderManager.isMissing(this)) {
+            banner.visibility = View.GONE
+            SyncFolderManager.clearMissingNotified(this)
+        } else if (!SyncFolderManager.wasMissingNotified(this)) {
+            banner.visibility = View.VISIBLE
+            SyncFolderManager.markMissingNotified(this)
+        }
 
-    /**
-     * The notebook handed to DrawingActivity; its thumbnail is stale until we come back.
-     * Kept in prefs rather than a field so it also survives this activity being destroyed
-     * while the editor is in front.
-     */
+    }
+
     private var editedNotebookId: Long
         get() = getSharedPreferences("notebook_state", Context.MODE_PRIVATE)
             .getLong("pending_thumb_id", -1L)
@@ -315,37 +320,44 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
 
     private fun openDrawing(notebookId: Long, title: String? = null) {
         editedNotebookId = notebookId
+
+        if (TabSession.isEnabled(this)) TabSession.addOrFocus(this, notebookId)
         startActivity(Intent(this, DrawingActivity::class.java).apply {
             putExtra("NOTEBOOK_ID", notebookId)
             if (title != null) putExtra("NOTEBOOK_TITLE", title)
         })
     }
 
-    /** Re-renders the thumbnail of the notebook we just came back from, then refreshes the list. */
+    private fun openInfiniteCanvas(notebookId: Long, title: String? = null) {
+        editedNotebookId = notebookId
+        if (TabSession.isEnabled(this)) TabSession.addOrFocus(this, notebookId)
+        startActivity(Intent(this, InfiniteCanvasActivity::class.java).apply {
+            putExtra("NOTEBOOK_ID", notebookId)
+            if (title != null) putExtra("NOTEBOOK_TITLE", title)
+        })
+    }
+
     private fun refreshEditedThumbnail() {
         val id = editedNotebookId
         if (id < 0) return
         editedNotebookId = -1L
         lifecycleScope.launch {
-            // The editor's last save runs detached and may still be writing the ink file.
+
             DrawingActivity.lastSaveJob?.join()
-            val ok = withContext(Dispatchers.IO) { writeHomeThumbnail(id) }
-            // The adapter keys its bitmap cache by file modtime, so a rebind picks up the new file.
+            InfiniteCanvasActivity.lastSaveJob?.join()
+            val isInfinite = dataManager.getNotebook(id)?.documentType == DocumentType.INFINITE
+            val ok = withContext(Dispatchers.IO) {
+                if (isInfinite) writeInfiniteThumbnail(id) else writeHomeThumbnail(id)
+            }
+
             if (ok && ::adapter.isInitialized) adapter.notifyDataSetChanged()
         }
     }
 
-    /**
-     * Renders `thumb_<id>.png` for [notebookId] from its PDF plus its saved ink. Heavy —
-     * call off the main thread. Returns true when a new thumbnail was written.
-     */
     private suspend fun writeHomeThumbnail(notebookId: Long): Boolean {
         val notebook = dataManager.getNotebook(notebookId) ?: return false
         val file = notebook.pdfPath?.let { java.io.File(it) }?.takeIf { it.exists() } ?: return false
 
-        // Decode the ink into a known coordinate space; strokePageSizes() below describes the
-        // same space so the renderer can scale it onto the thumbnail. Documents saved before
-        // the authoring width was recorded were drawn in portrait — the display's short side.
         val inkWidth = resources.displayMetrics.let {
             minOf(it.widthPixels, it.heightPixels).toFloat()
         }
@@ -353,7 +365,6 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         strokeManager.imagesDir = java.io.File(filesDir, "images").apply { mkdirs() }
         strokeManager.loadDecodedData(DrawingRepository(this).load(notebookId, inkWidth, inkWidth).pages)
 
-        // No saved page template means an imported PDF rather than a notebook we generated.
         val isImported = PageTemplate.fromJson(
             getSharedPreferences("OctopusNotesPrefs", Context.MODE_PRIVATE)
                 .getString("template_$notebookId", null)
@@ -372,12 +383,54 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         )
     }
 
-    /**
-     * The per-page coordinate space the strokes live in: [inkWidth] wide, with the page's own
-     * aspect ratio. Only pages that actually carry ink are opened — walking every page of a
-     * large PDF just to learn its aspect would be far slower than the render itself. Pages
-     * without ink get a harmless A4 default that is never used.
-     */
+    private suspend fun writeInfiniteThumbnail(notebookId: Long): Boolean =
+        withContext(Dispatchers.IO) {
+            val notebook = dataManager.getNotebook(notebookId) ?: return@withContext false
+            if (notebook.documentType != DocumentType.INFINITE) return@withContext false
+            val result = DrawingRepository(this@MainActivity).loadInfinite(notebookId)
+            val sm = StrokeManager()
+            sm.imagesDir = java.io.File(filesDir, "images").apply { mkdirs() }
+            sm.loadDecodedData(result.pages)
+            val strokes = sm.knownStrokesForPage(0)
+            if (strokes.isEmpty()) return@withContext false
+
+            val bounds = android.graphics.RectF()
+            var first = true
+            val b = android.graphics.RectF()
+            for (s in strokes) {
+                s.path.computeBounds(b, true)
+                if (first) { bounds.set(b); first = false } else bounds.union(b)
+            }
+            bounds.inset(-40f, -40f)
+            if (bounds.width() < 1f || bounds.height() < 1f) return@withContext false
+
+            val w = ThumbnailGenerator.WIDTH_PX
+            val scale = minOf(w / bounds.width(), w / bounds.height())
+            val h = (bounds.height() * scale).toInt().coerceIn(1, 2400)
+            val bmp = try {
+                android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+            } catch (e: OutOfMemoryError) {
+                return@withContext false
+            }
+            val canvas = android.graphics.Canvas(bmp)
+            canvas.drawColor(android.graphics.Color.WHITE)
+            canvas.save()
+            canvas.scale(scale, scale)
+            canvas.translate(-bounds.left, -bounds.top)
+
+            sm.drawPageStrokes(0, canvas, 1f, 1f, ghostSelected = false)
+            canvas.restore()
+            val ok = try {
+                ThumbnailGenerator.thumbFile(this@MainActivity, notebookId).outputStream().use {
+                    bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, it)
+                }
+            } catch (e: Exception) {
+                false
+            }
+            bmp.recycle()
+            ok
+        }
+
     private fun strokePageSizes(
         file: java.io.File,
         pagesWithInk: Set<Int>,
@@ -416,18 +469,25 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         if (mode != currentViewMode) {
             currentViewMode = mode
             notebooksRecyclerView.setListMode(mode == "LIST")
-            // Recreate adapter with the new view mode so layouts change
+
             adapter = NotebookAdapter(displayItems, this, lifecycleScope, mode)
             notebooksRecyclerView.adapter = adapter
         }
 
         if (mode == "GRID") {
-            notebooksRecyclerView.setColumnOverride(cols) // 0 = auto-fit (min 2)
+            notebooksRecyclerView.setColumnOverride(cols)
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val prefs = getSharedPreferences("OctopusNotesPrefs", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("onboarding_completed", false)) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+            finish()
+            return
+        }
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
         val notesDao = AppDatabase.getDatabase(this).notesDao()
@@ -443,9 +503,16 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         notebooksRecyclerView.adapter = adapter
         setupDragAndDrop()
         applyViewModePreference()
+
+        tagFilter = savedInstanceState?.getString("tag_filter")
         loadDataFromDatabase()
 
-        // Manage PDFs opened elsewhere.
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                SyncFolderManager.mirrorAll(this@MainActivity, dataManager.getAllNotebooksIncludingBin())
+            }
+        }
+
         handleIncomingPdf(intent)
     }
 
@@ -472,7 +539,6 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         job = lifecycleScope.launch {
             var createdId: Long? = null
 
-            /** Undoes the half-created notebook; also runs when the job is cancelled. */
             suspend fun rollbackImport() {
                 withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) {
                     createdId?.let { id ->
@@ -487,9 +553,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                     val id = dataManager.createNotebookWithPdf(title, currentFolderId, null)
                     createdId = id
                     val dest = java.io.File(filesDir, "pdf_$id.pdf")
-                    // ACTION_VIEW hands out a transient read grant — it can already be revoked
-                    // (or the file simply unreadable) by the time we read. Fail the import so
-                    // we roll back instead of leaving a notebook pointing at an empty/missing PDF.
+
                     val input = contentResolver.openInputStream(uri)
                         ?: throw java.io.IOException("Cannot read $uri")
                     input.use { inputStream ->
@@ -500,7 +564,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                         }
                     }
                     dataManager.setNotebookPdfPath(id, dest.absolutePath)
-                    // Generate the home thumbnail now so the list shows it instead of a skeleton.
+
                     ThumbnailGenerator.generate(this@MainActivity, id, dest, isImported = true)
                     id
                 }
@@ -508,13 +572,12 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                 loadDataFromDatabase()
                 openDrawing(newId)
             } catch (c: kotlinx.coroutines.CancellationException) {
-                // User tapped cancel (or the activity was torn down) — undo the partial import.
+
                 rollbackImport()
                 progress.dismiss()
                 loadDataFromDatabase()
             } catch (t: Throwable) {
-                // Revoked permission / IO error / unreadable PDF — undo the partial import
-                // and tell the user, instead of leaving a broken notebook behind.
+
                 rollbackImport()
                 progress.dismiss()
                 android.widget.Toast.makeText(this@MainActivity, "Import failed", android.widget.Toast.LENGTH_LONG).show()
@@ -527,7 +590,12 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
             android.widget.Toast.makeText(this, "Restore item to open it", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
-        openDrawing(notebook.id, notebook.title)
+
+        if (notebook.documentType == DocumentType.INFINITE) {
+            openInfiniteCanvas(notebook.id, notebook.title)
+        } else {
+            openDrawing(notebook.id, notebook.title)
+        }
     }
 
     private fun setupViews() {
@@ -537,49 +605,85 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         breadcrumbBar = findViewById(R.id.breadcrumbBar)
         addNotebookFab = findViewById(R.id.addNotebookFab)
         selectionDock = findViewById(R.id.selectionDock)
+        binClearDock = findViewById(R.id.binClearDock)
+        findViewById<View>(R.id.binClearAction).setOnClickListener { confirmClearBin() }
 
         searchInput.addTextChangedListener {
             searchQuery = it?.toString().orEmpty()
             loadDataFromDatabase()
         }
         addNotebookFab.setOnClickListener { showCreateDialog() }
+
+        addNotebookFab.setOnLongClickListener {
+            createInstantNote()
+            true
+        }
         findViewById<ImageButton>(R.id.settingsButton).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
-        // Filter chips
+        val syncBanner = findViewById<View>(R.id.syncFolderBanner)
+        syncBanner.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+        findViewById<View>(R.id.syncBannerFix).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+        findViewById<View>(R.id.syncBannerClose).setOnClickListener {
+            syncBanner.visibility = View.GONE
+        }
+
         findViewById<com.google.android.material.chip.ChipGroup>(R.id.filterChips)
             .setOnCheckedStateChangeListener { _, checkedIds ->
                 favoritesMode = checkedIds.contains(R.id.chipFavorites)
+                val wasInBin = binMode
                 binMode = checkedIds.contains(R.id.chipBin)
                 if (binMode) {
                     addNotebookFab.hide()
-                } else if (!selectionMode) {
-                    addNotebookFab.show()
+                } else {
+
+                    if (wasInBin && selectionMode) exitSelectionMode()
+                    else if (!selectionMode) addNotebookFab.show()
+                }
+
+                if (!suppressTagFilterClear) {
+                    tagFilter = null
+                    collapseTagRow()
                 }
                 loadDataFromDatabase()
             }
-        findViewById<View>(R.id.chipTags).setOnClickListener {
-            android.widget.Toast.makeText(this, "Tags — coming soon", android.widget.Toast.LENGTH_SHORT).show()
+
+        findViewById<View>(R.id.chipAll).setOnClickListener {
+            if (tagFilter != null) {
+                tagFilter = null
+                collapseTagRow()
+                loadDataFromDatabase()
+            }
         }
+
+        findViewById<View>(R.id.chipTags).setOnClickListener { toggleTagRow() }
 
         findViewById<ImageButton>(R.id.sortButton).setOnClickListener { showSortPopup(it) }
         sortLabel = findViewById(R.id.sortLabel)
         updateSortLabel()
 
-        // Selection dock actions
         findViewById<View>(R.id.dockClose).setOnClickListener { exitSelectionMode() }
         findViewById<View>(R.id.dockMove).setOnClickListener { moveSelected() }
         findViewById<View>(R.id.dockLock).setOnClickListener {
             android.widget.Toast.makeText(this, "Coming soon", android.widget.Toast.LENGTH_SHORT).show()
         }
         findViewById<View>(R.id.dockDelete).setOnClickListener { deleteSelected() }
+        findViewById<View>(R.id.dockRestore).setOnClickListener { restoreSelected() }
+        findViewById<View>(R.id.dockDeletePerm).setOnClickListener { deleteSelectedPermanently() }
     }
 
     private fun loadDataFromDatabase() {
+        syncTagChip()
+        syncTagChips()
         lifecycleScope.launch {
             val data = when {
                 searchQuery.isNotBlank() -> dataManager.searchAll(searchQuery)
+                tagFilter != null -> dataManager.getNotebooksByTag(tagFilter!!)
                 binMode -> dataManager.getBinData()
                 favoritesMode -> dataManager.getDataForScreen(-1L)
                 else -> dataManager.getDataForScreen(currentFolderId)
@@ -587,10 +691,11 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
             displayItems.clear()
             displayItems.addAll(sortItems(data.folders, data.notebooks))
             adapter.notifyDataSetChanged()
-            // Animate items in on start / folder navigation (but not while typing a search).
+
             if (searchQuery.isBlank()) notebooksRecyclerView.scheduleLayoutAnimation()
             updateEmptyViewVisibility()
             updateBreadcrumb()
+            updateBinClearDock()
             updateSortLabel()
             onBackPressedCallback.isEnabled = selectionMode || folderPath.isNotEmpty() || searchQuery.isNotBlank()
         }
@@ -629,7 +734,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         }
         val timeOf: (DisplayItem) -> Long = {
             when (it) {
-                is DisplayItem.FolderItem -> it.folder.createdAt // folders only track creation time
+                is DisplayItem.FolderItem -> it.folder.createdAt
                 is DisplayItem.NotebookItem -> when (field) {
                     "CREATED" -> it.notebook.createdAt
                     "OPENED" -> it.notebook.lastOpened
@@ -709,6 +814,12 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
             breadcrumbBar.addView(makeCrumb("Bin", isLast = true, onClick = null))
             return
         }
+        if (tagFilter != null) {
+            breadcrumbBar.addView(makeCrumb(
+                "Tag · ${NotebookTags.nameOf(this, tagFilter) ?: "Tagged"}", isLast = true, onClick = null
+            ))
+            return
+        }
         if (favoritesMode) {
             breadcrumbBar.addView(makeCrumb("Favorites", isLast = true, onClick = null))
             return
@@ -752,6 +863,44 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         }
     }
 
+    private fun confirmClearBin() {
+        val count = displayItems.size
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Clear bin?")
+            .setMessage(
+                if (count == 1) "Permanently delete 1 item from the bin? This can't be undone."
+                else "Permanently delete all $count items from the bin? This can't be undone."
+            )
+            .setPositiveButton("Clear all") { _, _ ->
+                lifecycleScope.launch {
+                    dataManager.clearBin()
+                    android.widget.Toast.makeText(this@MainActivity, "Bin cleared", android.widget.Toast.LENGTH_SHORT).show()
+                    loadDataFromDatabase()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun updateBinClearDock() {
+        if (!::binClearDock.isInitialized) return
+        findViewById<TextView>(R.id.binClearCount).text = displayItems.size.toString()
+        val show = binMode && displayItems.isNotEmpty()
+        if (show && binClearDock.visibility != View.VISIBLE) {
+            binClearDock.visibility = View.VISIBLE
+            binClearDock.post {
+                binClearDock.translationY = binClearDock.height.toFloat()
+                binClearDock.animate().translationY(0f).setDuration(220).start()
+            }
+        } else if (!show && binClearDock.visibility == View.VISIBLE) {
+            binClearDock.animate().translationY(binClearDock.height.toFloat()).setDuration(180)
+                .withEndAction {
+                    binClearDock.visibility = View.GONE
+                    binClearDock.translationY = 0f
+                }.start()
+        }
+    }
+
     override fun onFolderClick(folder: Folder) {
         if (binMode) {
             android.widget.Toast.makeText(this, "Restore item to open it", android.widget.Toast.LENGTH_SHORT).show()
@@ -761,12 +910,13 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
             val path = buildFolderPath(folder)
             folderPath.clear()
             folderPath.addAll(path)
-            // Leaving search returns to the folder view; the watcher reloads with the new path.
-            if (searchInput.text.isNotEmpty()) searchInput.setText("") else loadDataFromDatabase()
+
+            if (searchInput.text.isNotEmpty()) searchInput.setText("")
+            if (tagFilter != null) clearTagFilter()
+            loadDataFromDatabase()
         }
     }
 
-    /** Walks parentId up to the root to build the breadcrumb path to [folder]. */
     private suspend fun buildFolderPath(folder: Folder): List<Folder> {
         val chain = ArrayDeque<Folder>()
         var current: Folder? = folder
@@ -778,19 +928,22 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         return chain.toList()
     }
 
-    // ---------------- Multi-select ----------------
-
     override fun onItemLongPress(item: DisplayItem) {
-        if (binMode) {
-            showBinItemOptions(item)
-            return
-        }
         if (!selectionMode) enterSelectionMode()
         setSelected(item, true)
+        adapter.animateTickIn(item)
         adapter.notifyDataSetChanged()
         updateDock()
     }
-    
+
+    override fun onSelectionLongPress(item: DisplayItem): Boolean {
+        if (binMode) {
+            toggleSelection(item)
+            return true
+        }
+        return false
+    }
+
     private fun showBinItemOptions(item: DisplayItem) {
         val title = when (item) {
             is DisplayItem.FolderItem -> item.folder.name
@@ -945,7 +1098,10 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
     }
 
     override fun toggleSelection(item: DisplayItem) {
-        setSelected(item, !isItemSelected(item))
+        val selecting = !isItemSelected(item)
+        setSelected(item, selecting)
+
+        if (selecting) adapter.animateTickIn(item)
         if (selectedFolderIds.isEmpty() && selectedNotebookIds.isEmpty()) {
             exitSelectionMode()
         } else {
@@ -966,6 +1122,8 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
     private fun enterSelectionMode() {
         selectionMode = true
         addNotebookFab.hide()
+
+        if (binMode) binClearDock.visibility = View.GONE
         showDock(true)
         onBackPressedCallback.isEnabled = true
     }
@@ -975,7 +1133,9 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         selectedFolderIds.clear()
         selectedNotebookIds.clear()
         showDock(false)
-        addNotebookFab.show()
+
+        if (!binMode) addNotebookFab.show()
+        updateBinClearDock()
         adapter.notifyDataSetChanged()
         onBackPressedCallback.isEnabled = folderPath.isNotEmpty() || searchQuery.isNotBlank()
     }
@@ -983,6 +1143,13 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
     private fun updateDock() {
         findViewById<TextView>(R.id.dockCount).text =
             (selectedFolderIds.size + selectedNotebookIds.size).toString()
+
+        val bin = binMode
+        findViewById<View>(R.id.dockMove).visibility = if (bin) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.dockLock).visibility = if (bin) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.dockDelete).visibility = if (bin) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.dockRestore).visibility = if (bin) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.dockDeletePerm).visibility = if (bin) View.VISIBLE else View.GONE
     }
 
     private fun showDock(show: Boolean) {
@@ -1026,13 +1193,55 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
             .show()
     }
 
+    private fun restoreSelected() {
+        val count = selectedFolderIds.size + selectedNotebookIds.size
+        if (count == 0) return
+        val nbIds = selectedNotebookIds.toList()
+        val fIds = selectedFolderIds.toList()
+        lifecycleScope.launch {
+            nbIds.forEach { id -> dataManager.getNotebook(id)?.let { dataManager.restoreFromBin(it) } }
+            fIds.forEach { id -> dataManager.getFolder(id)?.let { dataManager.restoreFromBin(it) } }
+            android.widget.Toast.makeText(
+                this@MainActivity,
+                if (count == 1) "Item restored" else "$count items restored",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            exitSelectionMode()
+            loadDataFromDatabase()
+        }
+    }
+
+    private fun deleteSelectedPermanently() {
+        val count = selectedFolderIds.size + selectedNotebookIds.size
+        if (count == 0) return
+        val nbIds = selectedNotebookIds.toList()
+        val fIds = selectedFolderIds.toList()
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Delete $count item${if (count > 1) "s" else ""} permanently?")
+            .setMessage(
+                if (count == 1) "This item and its contents will be gone forever. This can't be undone."
+                else "These $count items and their contents will be gone forever. This can't be undone."
+            )
+            .setPositiveButton("Delete permanently") { _, _ ->
+                lifecycleScope.launch {
+                    nbIds.forEach { id -> dataManager.getNotebook(id)?.let { dataManager.deleteNotebook(it, this@MainActivity) } }
+                    fIds.forEach { id -> dataManager.getFolder(id)?.let { dataManager.deleteFolder(it) } }
+                    android.widget.Toast.makeText(this@MainActivity, "Deleted permanently", android.widget.Toast.LENGTH_SHORT).show()
+                    exitSelectionMode()
+                    loadDataFromDatabase()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun moveSelected() {
         if (selectedFolderIds.isEmpty() && selectedNotebookIds.isEmpty()) return
         val nbIds = selectedNotebookIds.toList()
         val fIds = selectedFolderIds.toList()
         lifecycleScope.launch {
             val allFolders = AppDatabase.getDatabase(this@MainActivity).notesDao().getAllFolders()
-            // Can't move selected folders into themselves.
+
             val destFolders = allFolders.filter { it.id !in selectedFolderIds }
             val options = (listOf("All Notes (root)") + destFolders.map { it.name }).toTypedArray()
             val destIds = listOf(0L) + destFolders.map { it.id }
@@ -1060,6 +1269,26 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         val content = layoutInflater.inflate(R.layout.popup_notebook_menu, null)
         val popup = buildAnchoredPopup(content)
         content.findViewById<TextView>(R.id.popupTitle).text = notebook.title
+
+        val popupMeta = content.findViewById<TextView>(R.id.popupMeta)
+        popupMeta.text = buildString {
+            if (notebook.isFavorite) append("Favorite")
+            notebook.tagColorHex?.let { tag ->
+                if (isNotEmpty()) append("  •  ")
+                append(NotebookTags.nameOf(this@MainActivity, tag) ?: "Tagged")
+            }
+        }
+        popupMeta.visibility = if (popupMeta.text.isNullOrEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+
+        val headerTagColor = notebook.tagColorHex?.let { hex ->
+            try { android.graphics.Color.parseColor(hex) } catch (e: IllegalArgumentException) { null }
+        }
+        content.findViewById<ImageView>(R.id.popupHeaderIcon).imageTintList =
+            android.content.res.ColorStateList.valueOf(
+                headerTagColor ?: com.google.android.material.color.MaterialColors.getColor(
+                    content, com.google.android.material.R.attr.colorPrimary, 0
+                )
+            )
         content.findViewById<TextView>(R.id.bsFav).text =
             if (notebook.isFavorite) "Remove from Favorites" else "Add to Favorites"
         content.findViewById<View>(R.id.bsRename).setOnClickListener { popup.dismiss(); renameNotebook(notebook) }
@@ -1067,17 +1296,26 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
             popup.dismiss(); android.widget.Toast.makeText(this, "Coming soon", android.widget.Toast.LENGTH_SHORT).show()
         }
         content.findViewById<View>(R.id.bsFav).setOnClickListener { popup.dismiss(); toggleNotebookFavorite(notebook) }
+        content.findViewById<TextView>(R.id.bsTag).text =
+            if (notebook.tagColorHex != null) "Change Tag" else "Add Tag"
+        content.findViewById<View>(R.id.bsTag).setOnClickListener { popup.dismiss(); showTagPicker(anchor, notebook) }
         content.findViewById<View>(R.id.bsMove).setOnClickListener { popup.dismiss(); moveNotebook(notebook) }
         content.findViewById<View>(R.id.bsDuplicate).setOnClickListener { popup.dismiss(); duplicateNotebook(notebook) }
         content.findViewById<View>(R.id.bsDelete).setOnClickListener { popup.dismiss(); showDeleteNotebookDialog(notebook) }
         showAnchoredPopup(popup, anchor)
     }
 
-    /** Creates a rounded Material-3 styled popup window that dismisses on outside touch. */
     private fun buildAnchoredPopup(content: View): android.widget.PopupWindow {
+
+        val maxWidth = (300 * resources.displayMetrics.density).toInt()
+        content.measure(
+            View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val width = minOf(content.measuredWidth, maxWidth)
         val popup = android.widget.PopupWindow(
             content,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            width,
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
             true
         )
@@ -1086,28 +1324,245 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         return popup
     }
 
-    /** Anchors the popup over the pressed item, flipping above it when there isn't room below. */
     private fun showAnchoredPopup(popup: android.widget.PopupWindow, anchor: View) {
+        val popupWidth = popup.width
+
         popup.contentView.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(popupWidth, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
-        val popupWidth = popup.contentView.measuredWidth
         val popupHeight = popup.contentView.measuredHeight
-        val xOffset = (anchor.width - popupWidth).coerceAtLeast(0) / 2
-
         val loc = IntArray(2)
         anchor.getLocationOnScreen(loc)
-        val anchorTop = loc[1]
-        val screenHeight = resources.displayMetrics.heightPixels
-        val spaceBelow = screenHeight - (anchorTop + anchor.height)
 
-        if (popupHeight > spaceBelow && anchorTop > popupHeight) {
-            // Not enough room below → place the popup above the anchor.
-            popup.showAsDropDown(anchor, xOffset, -(anchor.height + popupHeight))
+        val display = android.graphics.Rect()
+        anchor.getWindowVisibleDisplayFrame(display)
+        val margin = (8 * resources.displayMetrics.density).toInt()
+        val left = (loc[0] + (anchor.width - popupWidth) / 2)
+            .coerceIn(display.left + margin, display.right - popupWidth - margin)
+        val spaceBelow = display.bottom - (loc[1] + anchor.height) - margin
+        val showAbove = popupHeight > spaceBelow && loc[1] - display.top > popupHeight + margin
+        val top = if (showAbove) {
+            loc[1] - popupHeight - margin
         } else {
-            popup.showAsDropDown(anchor, xOffset, -anchor.height / 2)
+            (loc[1] + anchor.height + margin).coerceAtMost(display.bottom - popupHeight - margin)
         }
+
+        popup.showAtLocation(anchor, android.view.Gravity.TOP or android.view.Gravity.START, left, top)
+    }
+
+    private fun clearTagFilter() {
+        tagFilter = null
+    }
+
+    private fun syncTagChip() {
+        val chip = findViewById<com.google.android.material.chip.Chip>(R.id.chipTags)
+        chip.chipIconTint = android.content.res.ColorStateList.valueOf(
+            tagFilter?.let { android.graphics.Color.parseColor(it) }
+                ?: com.google.android.material.color.MaterialColors.getColor(
+                    chip, com.google.android.material.R.attr.colorControlNormal, 0
+                )
+        )
+    }
+
+    private fun toggleTagRow() {
+        if (findViewById<View>(R.id.tagsScroll).visibility == View.VISIBLE) collapseTagRow()
+        else expandTagRow()
+    }
+
+    private fun expandTagRow() {
+        val scroll = findViewById<View>(R.id.tagsScroll)
+        syncTagChips()
+        if (scroll.visibility == View.VISIBLE) return
+        scroll.alpha = 0f
+        scroll.translationY = -dp(8).toFloat()
+        scroll.visibility = View.VISIBLE
+        scroll.animate()
+            .alpha(1f).translationY(0f)
+            .setDuration(180L)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .start()
+        val group = findViewById<com.google.android.material.chip.ChipGroup>(R.id.tagChips)
+        for (i in 0 until group.childCount) {
+            val chip = group.getChildAt(i)
+            chip.alpha = 0f
+            chip.scaleX = 0.7f
+            chip.scaleY = 0.7f
+            chip.animate()
+                .alpha(1f).scaleX(1f).scaleY(1f)
+                .setDuration(220L)
+                .setStartDelay(40L + i * 30L)
+                .setInterpolator(android.view.animation.OvershootInterpolator(1.15f))
+                .start()
+        }
+    }
+
+    private fun collapseTagRow() {
+        val scroll = findViewById<View>(R.id.tagsScroll)
+        if (scroll.visibility != View.VISIBLE) return
+        scroll.animate()
+            .alpha(0f).translationY(-dp(8).toFloat())
+            .setDuration(150L)
+            .setInterpolator(android.view.animation.AccelerateInterpolator())
+            .withEndAction {
+                scroll.visibility = View.GONE
+                scroll.alpha = 1f
+                scroll.translationY = 0f
+            }
+            .start()
+    }
+
+    private fun syncTagChips() {
+        val group = findViewById<com.google.android.material.chip.ChipGroup>(R.id.tagChips)
+        if (group.childCount == 0) {
+            NotebookTags.COLORS.forEach { tag ->
+                val chip = layoutInflater.inflate(R.layout.item_tag_chip, group, false)
+                        as com.google.android.material.chip.Chip
+
+                val tagColor = android.graphics.Color.parseColor(tag.hex)
+                val onTagColor = if (isLightColor(tagColor))
+                    android.graphics.Color.parseColor("#1F1F1F")
+                else android.graphics.Color.WHITE
+                chip.chipBackgroundColor = android.content.res.ColorStateList.valueOf(tagColor)
+                chip.setTextColor(onTagColor)
+                chip.checkedIconTint = android.content.res.ColorStateList.valueOf(onTagColor)
+                chip.setOnClickListener {
+                    pulseTagChip()
+                    applyTagColor(tag.hex)
+                }
+                chip.setOnLongClickListener {
+                    showRenameTagDialog(chip, tag, reopenPicker = false)
+                    true
+                }
+                group.addView(chip)
+            }
+        }
+        NotebookTags.COLORS.forEachIndexed { i, tag ->
+            val chip = group.getChildAt(i) as? com.google.android.material.chip.Chip
+                ?: return@forEachIndexed
+            chip.text = NotebookTags.nameOf(this, tag.hex) ?: tag.name
+            chip.isChecked = tagFilter?.equals(tag.hex, ignoreCase = true) == true
+        }
+    }
+
+    private fun isLightColor(color: Int): Boolean {
+        val r = android.graphics.Color.red(color) / 255.0
+        val g = android.graphics.Color.green(color) / 255.0
+        val b = android.graphics.Color.blue(color) / 255.0
+        return 0.299 * r + 0.587 * g + 0.114 * b >= 0.6
+    }
+
+    private fun pulseTagChip() {
+        val chip = findViewById<View>(R.id.chipTags)
+        chip.animate().scaleX(1.12f).scaleY(1.12f).setDuration(110L)
+            .setInterpolator(android.view.animation.AccelerateDecelerateInterpolator())
+            .withEndAction {
+                chip.animate().scaleX(1f).scaleY(1f).setDuration(200L)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(2f))
+                    .start()
+            }
+            .start()
+    }
+
+    private fun showTagPicker(anchor: View, forNotebook: Notebook? = null, forFolder: Folder? = null) {
+        val content = layoutInflater.inflate(R.layout.popup_tag_picker, null)
+        val popup = buildAnchoredPopup(content)
+        val activeColor = forNotebook?.tagColorHex ?: forFolder?.tagColorHex
+
+        content.findViewById<TextView>(R.id.popupTitle).text = "Tag color"
+
+        val removeRow = content.findViewById<TextView>(R.id.bsRemoveTag)
+        removeRow.visibility = if (activeColor != null) View.VISIBLE else View.GONE
+        removeRow.setOnClickListener {
+            popup.dismiss()
+            lifecycleScope.launch {
+                when {
+                    forNotebook != null -> dataManager.updateNotebook(forNotebook.copy(tagColorHex = null))
+                    forFolder != null -> dataManager.updateFolder(forFolder.copy(tagColorHex = null))
+                }
+                loadDataFromDatabase()
+            }
+        }
+
+        val rowIds = listOf(
+            R.id.tagRow0, R.id.tagRow1, R.id.tagRow2, R.id.tagRow3,
+            R.id.tagRow4, R.id.tagRow5, R.id.tagRow6
+        )
+        NotebookTags.COLORS.forEachIndexed { i, tag ->
+            val row = content.findViewById<TextView>(rowIds[i])
+
+            row.text = buildString {
+                if (activeColor?.equals(tag.hex, ignoreCase = true) == true) append("✓  ")
+                append(NotebookTags.nameOf(this@MainActivity, tag.hex) ?: tag.name)
+            }
+            (row.background as? android.graphics.drawable.GradientDrawable)
+                ?.setColor(android.graphics.Color.parseColor(tag.hex))
+            row.setOnClickListener {
+                popup.dismiss()
+                applyTagColor(tag.hex, forNotebook, forFolder)
+            }
+            row.setOnLongClickListener {
+                popup.dismiss()
+                showRenameTagDialog(anchor, tag, forNotebook, forFolder)
+                true
+            }
+        }
+        showAnchoredPopup(popup, anchor)
+    }
+
+    private fun showRenameTagDialog(
+        anchor: View,
+        tag: NotebookTags.TagColor,
+        forNotebook: Notebook? = null,
+        forFolder: Folder? = null,
+        reopenPicker: Boolean = true
+    ) {
+        val input = EditText(this).apply {
+            setText(NotebookTags.nameOf(this@MainActivity, tag.hex) ?: tag.name)
+            selectAll()
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Rename tag")
+            .setMessage("The new name shows wherever this tag color is used.")
+            .setView(input)
+            .setPositiveButton("Rename") { _, _ ->
+                NotebookTags.rename(this, tag.hex, input.text.toString().trim())
+
+                loadDataFromDatabase()
+                if (reopenPicker) showTagPicker(anchor, forNotebook, forFolder)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun applyTagColor(hex: String, notebook: Notebook? = null, folder: Folder? = null) {
+        if (notebook == null && folder == null) {
+
+            if (tagFilter?.equals(hex, ignoreCase = true) == true) {
+                clearTagFilter()
+            } else {
+
+                suppressTagFilterClear = true
+                findViewById<com.google.android.material.chip.ChipGroup>(R.id.filterChips).check(R.id.chipAll)
+                suppressTagFilterClear = false
+                tagFilter = hex
+            }
+            loadDataFromDatabase()
+        } else {
+            lifecycleScope.launch {
+                if (notebook != null) {
+                    dataManager.updateNotebook(notebook.copy(tagColorHex = hex))
+                } else {
+                    folder?.let { dataManager.updateFolder(it.copy(tagColorHex = hex)) }
+                }
+                loadDataFromDatabase()
+            }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("tag_filter", tagFilter)
     }
 
     private fun renameNotebook(notebook: Notebook) {
@@ -1160,12 +1615,39 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         val content = layoutInflater.inflate(R.layout.popup_folder_menu, null)
         val popup = buildAnchoredPopup(content)
         content.findViewById<TextView>(R.id.popupTitle).text = folder.name
+
+        content.findViewById<TextView>(R.id.popupMeta).visibility = android.view.View.GONE
         val pickColor = { hex: String -> popup.dismiss(); setFolderColor(folder, hex) }
-        content.findViewById<View>(R.id.c1).setOnClickListener { pickColor("#4285F4") }
-        content.findViewById<View>(R.id.c2).setOnClickListener { pickColor("#34A853") }
-        content.findViewById<View>(R.id.c3).setOnClickListener { pickColor("#FBBC05") }
-        content.findViewById<View>(R.id.c4).setOnClickListener { pickColor("#EA4335") }
-        content.findViewById<View>(R.id.c5).setOnClickListener { pickColor("#9C27B0") }
+        val swatchColors = mapOf(
+            R.id.c1 to "#4285F4", R.id.c2 to "#34A853", R.id.c3 to "#FBBC05",
+            R.id.c4 to "#EA4335", R.id.c5 to "#9C27B0"
+        )
+        swatchColors.forEach { (id, hex) ->
+            val swatch = content.findViewById<View>(id)
+
+            if (hex.equals(folder.colorHex, ignoreCase = true)) {
+                swatch.setBackgroundResource(R.drawable.bg_color_slot_selected)
+            }
+
+            (swatch.background as? android.graphics.drawable.LayerDrawable)
+                ?.findDrawableByLayerId(R.id.color_shape)
+                ?.let { it as? android.graphics.drawable.GradientDrawable }
+                ?.setColor(android.graphics.Color.parseColor(hex))
+            swatch.setOnClickListener { pickColor(hex) }
+        }
+
+        val folderTagColor = folder.tagColorHex?.let { hex ->
+            try { android.graphics.Color.parseColor(hex) } catch (e: IllegalArgumentException) { null }
+        }
+        content.findViewById<ImageView>(R.id.popupHeaderIcon).imageTintList =
+            android.content.res.ColorStateList.valueOf(
+                folderTagColor ?: com.google.android.material.color.MaterialColors.getColor(
+                    content, com.google.android.material.R.attr.colorPrimary, 0
+                )
+            )
+        content.findViewById<TextView>(R.id.bsTag).text =
+            if (folder.tagColorHex != null) "Change Tag" else "Add Tag"
+        content.findViewById<View>(R.id.bsTag).setOnClickListener { popup.dismiss(); showTagPicker(anchor, forFolder = folder) }
         content.findViewById<View>(R.id.bsCustomColor).setOnClickListener { popup.dismiss(); showColorPickerDialog(folder) }
         content.findViewById<View>(R.id.bsRename).setOnClickListener { popup.dismiss(); renameFolder(folder) }
         content.findViewById<View>(R.id.bsMove).setOnClickListener {
@@ -1217,6 +1699,10 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                             dialog.dismiss()
                             showCreateNotebookDialog()
                         },
+                        onNewWhiteboard = {
+                            dialog.dismiss()
+                            showCreateWhiteboardDialog()
+                        },
                         onImportPdf = {
                             dialog.dismiss()
                             importPdf.launch(arrayOf("application/pdf"))
@@ -1226,17 +1712,16 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
             }
         }
         dialog.setContentView(composeView)
-        setDialogWidth(dialog)
+        setCreateDialogWidth(dialog)
         dialog.show()
     }
 
-    // =========================================================================
-    // COMPOSE DIALOGS
-    // =========================================================================
     @Composable
     private fun AppTheme(content: @Composable () -> Unit) {
         val darkTheme = isSystemInDarkTheme()
-        val colors = if (darkTheme) darkColorScheme() else lightColorScheme()
+
+        val colors = if (darkTheme) dynamicDarkColorScheme(LocalContext.current)
+        else dynamicLightColorScheme(LocalContext.current)
         MaterialTheme(colorScheme = colors, content = content)
     }
 
@@ -1305,6 +1790,44 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         dialog.show()
     }
 
+    private fun showCreateWhiteboardDialog() {
+        val dialog = android.app.Dialog(this, R.style.Theme_OctopusNotes)
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.setCancelable(false)
+        dialog.setCanceledOnTouchOutside(false)
+
+        val composeView = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(this@MainActivity)
+            setViewTreeViewModelStoreOwner(this@MainActivity)
+            setViewTreeSavedStateRegistryOwner(this@MainActivity)
+            setContent {
+                AppTheme {
+                    CreateWhiteboardDialog(
+                        onDismiss = { dialog.dismiss() },
+                        onCreate = { title ->
+                            dialog.dismiss()
+                            createWhiteboardFlow(title)
+                        }
+                    )
+                }
+            }
+        }
+        dialog.setContentView(composeView)
+        setDialogWidth(dialog)
+        dialog.show()
+    }
+
+    private fun createWhiteboardFlow(title: String) {
+        lifecycleScope.launch {
+            val newId = withContext(Dispatchers.IO) {
+                dataManager.createWhiteboard(title.trim(), currentFolderId)
+            }
+            loadDataFromDatabase()
+            openInfiniteCanvas(newId)
+        }
+    }
+
     private fun showAdvancedTemplateDialog(initialSettings: TemplateSettings?, initialTitle: String = "") {
         val dialog = android.app.Dialog(this, R.style.Theme_OctopusNotes)
         dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
@@ -1352,6 +1875,29 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         dialog.window?.attributes = layoutParams
     }
 
+    private fun setCreateDialogWidth(dialog: android.app.Dialog) {
+        val layoutParams = android.view.WindowManager.LayoutParams()
+        layoutParams.copyFrom(dialog.window?.attributes)
+        layoutParams.width = android.view.WindowManager.LayoutParams.WRAP_CONTENT
+        layoutParams.height = android.view.WindowManager.LayoutParams.WRAP_CONTENT
+        dialog.window?.attributes = layoutParams
+    }
+
+    private fun createInstantNote() {
+        val settings = loadDefaultTemplate() ?: TemplateSettings(
+            type = "BLANK",
+            bgColor = ComposeColor(0xFFFFFFFF),
+            density = 4f,
+            brightness = 5f,
+            thickness = 5f,
+            lineColor = ComposeColor.LightGray,
+            pageSize = PageSize("A4", 595, 842),
+            isCustom = false,
+            customImgUri = null
+        )
+        createNotebookFlow(defaultNotebookTitle(), settings)
+    }
+
     private fun createNotebookFlow(title: String, settings: TemplateSettings) {
         lifecycleScope.launch {
             val progress = createProgressDialog("Generating template...")
@@ -1362,7 +1908,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                 val dest = java.io.File(filesDir, "pdf_$id.pdf")
                 dest.writeBytes(bytes)
                 dataManager.setNotebookPdfPath(id, dest.absolutePath)
-                // Generate the home thumbnail now so the list shows it instead of a skeleton.
+
                 ThumbnailGenerator.generate(this@MainActivity, id, dest, isImported = false)
                 id
             }
@@ -1373,7 +1919,6 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         }
     }
 
-    /** Persists a notebook's creation template so new pages can match it later. */
     private fun saveNotebookTemplate(id: Long, settings: TemplateSettings) {
         val prefs = getSharedPreferences("OctopusNotesPrefs", Context.MODE_PRIVATE)
         val json = JSONObject().apply {
@@ -1394,14 +1939,14 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
     private fun createCustomPdfBytes(settings: TemplateSettings, context: Context): ByteArray {
         val outputStream = java.io.ByteArrayOutputStream()
         val document = android.graphics.pdf.PdfDocument()
-        // New books start with two pages.
+
         for (pageNum in 1..2) {
         val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(settings.pageSize.width, settings.pageSize.height, pageNum).create()
         val page = document.startPage(pageInfo)
         val canvas = page.canvas
 
         if (settings.isCustom && settings.customImgUri != null) {
-            // Software-decoded bitmap: hardware bitmaps throw on this software canvas → black page.
+
             val bitmap = PageTemplate.decodeSoftwareBitmap(context, settings.customImgUri)
             canvas.drawColor(android.graphics.Color.WHITE)
             if (bitmap != null) {
@@ -1455,9 +2000,6 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         return outputStream.toByteArray()
     }
 
-    // =========================================================================
-    // FOLDERS / DELETE
-    // =========================================================================
     private fun showDeleteNotebookDialog(notebook: Notebook) {
         MaterialAlertDialogBuilder(this).setTitle("Move to Bin")
             .setMessage("Are you sure you want to move '${notebook.title}' to Bin?")
@@ -1484,7 +2026,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
 
     private fun showColorPickerDialog(folder: Folder) {
         val initial = try { android.graphics.Color.parseColor(folder.colorHex) } catch (e: Exception) { android.graphics.Color.parseColor("#FFC107") }
-        // No page to sample here, so the eyedropper stays off.
+
         ColorPickerDialog.show(this, initial) { color ->
             val hex = String.format("#%06X", 0xFFFFFF and color)
             lifecycleScope.launch {
@@ -1495,23 +2037,26 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
     }
 
     private fun updateEmptyViewVisibility() {
+        emptyViewTextView.text = if (tagFilter != null) {
+            "No notebooks tagged this color yet.\nPick a tag from a notebook's ⋯ menu to see it here."
+        } else {
+            "Nothing here yet.\nTap 'Create' to add a note or folder!"
+        }
         emptyViewTextView.visibility = if (displayItems.isEmpty()) View.VISIBLE else View.GONE
         notebooksRecyclerView.visibility = if (displayItems.isEmpty()) View.GONE else View.VISIBLE
     }
 
     private var pendingDropFolderId: Long? = null
 
-    /** Reused across frames — allocating in a draw pass would churn during every drag. */
     private val dropPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
 
     private fun setupDragAndDrop() {
-        // Dragging is only active in selection mode: drag a selected item onto a
-        // (non-selected) folder to move everything that's selected into it.
+
         val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.START or ItemTouchHelper.END, 0
         ) {
-            override fun isLongPressDragEnabled(): Boolean = selectionMode
-            // We don't reorder the grid — drag is only used to drop onto a folder.
+            override fun isLongPressDragEnabled(): Boolean = selectionMode && !binMode
+
             override fun onMove(r: RecyclerView, vh: RecyclerView.ViewHolder, t: RecyclerView.ViewHolder) = false
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
             override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
@@ -1519,22 +2064,14 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                 if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) pendingDropFolderId = null
             }
             override fun getDragDirs(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int {
-                return if (selectionMode) {
+
+                return if (selectionMode && !binMode) {
                     ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.START or ItemTouchHelper.END
                 } else 0
             }
 
-            /** The folder currently under the drag, highlighted and drawn each frame. */
             private var dropTargetView: View? = null
 
-            /**
-             * Resolves the hovered folder from the dragged item's centre.
-             *
-             * This can't be done in chooseDropTarget: ItemTouchHelper only calls that when
-             * it already has candidates under the drag, so hovering off every folder never
-             * called it and the previous target stayed pending — which is how items got
-             * moved into a folder the user had deliberately dragged away from.
-             */
             private fun folderUnder(
                 rv: RecyclerView,
                 dragged: RecyclerView.ViewHolder,
@@ -1549,7 +2086,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                     if (holder !is NotebookAdapter.FolderViewHolder) continue
                     val item = displayItems.getOrNull(holder.adapterPosition) as? DisplayItem.FolderItem
                         ?: continue
-                    // Can't drop a selected folder into itself.
+
                     if (item.folder.id in selectedFolderIds) continue
                     return child to item.folder.id
                 }
@@ -1566,9 +2103,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                 isCurrentlyActive: Boolean
             ) {
                 super.onChildDraw(c, rv, vh, dX, dY, actionState, isCurrentlyActive)
-                // Only while the finger is down. onChildDraw keeps firing during the
-                // settle-back animation after release, and recomputing then would clear
-                // the target before clearView could act on it.
+
                 if (actionState != ItemTouchHelper.ACTION_STATE_DRAG || !isCurrentlyActive) return
                 val hit = folderUnder(
                     rv, vh,
@@ -1590,8 +2125,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
             ) {
                 super.onChildDrawOver(c, rv, vh, dX, dY, actionState, isCurrentlyActive)
                 val target = dropTargetView ?: return
-                // Drawn here rather than by toggling a view in each item layout, so the
-                // highlight lands correctly for both the grid and list folder layouts.
+
                 val inset = dp(6).toFloat()
                 val radius = dp(14).toFloat()
                 val rect = android.graphics.RectF(
@@ -1616,7 +2150,7 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
                 pendingDropFolderId = null
                 dropTargetView = null
                 if (target != null && selectionMode) {
-                    // Include the dragged item itself even if it wasn't tapped-selected.
+
                     displayItems.getOrNull(viewHolder.adapterPosition)?.let { setSelected(it, true) }
                     moveSelectedTo(target)
                 }
@@ -1643,22 +2177,20 @@ class MainActivity : AppCompatActivity(), NotebookAdapter.OnItemInteractionListe
         ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             topBar.setPadding(topBar.paddingLeft, systemBars.top + dp(8), topBar.paddingRight, topBar.paddingBottom)
-            // Extra bottom padding so the FAB never covers the last row.
+
             notebooksRecyclerView.setPadding(0, 0, 0, systemBars.bottom + dp(96))
             (addNotebookFab.layoutParams as android.view.ViewGroup.MarginLayoutParams).bottomMargin = systemBars.bottom + dp(16)
             addNotebookFab.requestLayout()
             (selectionDock.layoutParams as android.view.ViewGroup.MarginLayoutParams).bottomMargin = systemBars.bottom + dp(16)
             selectionDock.requestLayout()
+            (binClearDock.layoutParams as android.view.ViewGroup.MarginLayoutParams).bottomMargin = systemBars.bottom + dp(16)
+            binClearDock.requestLayout()
             insets
         }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
-
-// =========================================================================
-// JETPACK COMPOSE UI SCREENS
-// =========================================================================
 
 @Composable
 fun TemplatePreview(settings: TemplateSettings, modifier: Modifier = Modifier) {
@@ -1727,9 +2259,10 @@ fun CreateNewDialog(
     onDismiss: () -> Unit,
     onNewFolder: () -> Unit,
     onNewNotebook: () -> Unit,
+    onNewWhiteboard: () -> Unit,
     onImportPdf: () -> Unit
 ) {
-    // Spring the dialog in: fade + scale from 0.92 up to 1.0.
+
     var appeared by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { appeared = true }
     val dialogScale by animateFloatAsState(
@@ -1743,9 +2276,9 @@ fun CreateNewDialog(
 
     Surface(
         shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 6.dp,
-        shadowElevation = 10.dp,
+
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+
         modifier = Modifier.graphicsLayer {
             scaleX = dialogScale
             scaleY = dialogScale
@@ -1758,6 +2291,7 @@ fun CreateNewDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .widthIn(max = 400.dp)
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
@@ -1766,19 +2300,12 @@ fun CreateNewDialog(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.create_dialog_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
             Spacer(Modifier.height(20.dp))
 
             CreateOptionCard(
                 icon = R.drawable.ic_folder,
                 accent = ComposeColor(0xFF4285F4),
                 title = stringResource(R.string.create_folder),
-                subtitle = stringResource(R.string.create_folder_sub),
                 onClick = onNewFolder
             )
             Spacer(Modifier.height(10.dp))
@@ -1786,15 +2313,20 @@ fun CreateNewDialog(
                 icon = R.drawable.ic_pen,
                 accent = ComposeColor(0xFF9C27B0),
                 title = stringResource(R.string.create_notebook),
-                subtitle = stringResource(R.string.create_notebook_sub),
                 onClick = onNewNotebook
+            )
+            Spacer(Modifier.height(10.dp))
+            CreateOptionCard(
+                icon = R.drawable.ic_grid,
+                accent = ComposeColor(0xFF00ACC1),
+                title = stringResource(R.string.create_whiteboard_beta),
+                onClick = onNewWhiteboard
             )
             Spacer(Modifier.height(10.dp))
             CreateOptionCard(
                 icon = R.drawable.ic_pdf,
                 accent = ComposeColor(0xFFEA4335),
                 title = stringResource(R.string.create_pdf),
-                subtitle = stringResource(R.string.create_pdf_sub),
                 onClick = onImportPdf
             )
 
@@ -1811,11 +2343,66 @@ fun CreateNewDialog(
 }
 
 @Composable
+fun CreateWhiteboardDialog(
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit
+) {
+    val defaultTitle = remember { defaultNotebookTitle() }
+    var title by remember { mutableStateOf(defaultTitle) }
+    var isError by remember { mutableStateOf(false) }
+    val configuration = LocalConfiguration.current
+    val maxDialogHeight = (configuration.screenHeightDp * 0.90f).dp
+
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Box(modifier = Modifier.heightIn(max = maxDialogHeight)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp)
+            ) {
+                Text(stringResource(R.string.create_whiteboard), style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it; isError = false },
+                    label = { Text(stringResource(R.string.whiteboard_title)) },
+                    isError = isError,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (isError) {
+                    Text(
+                        text = stringResource(R.string.title_cannot_be_empty),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.create_whiteboard_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = {
+                        if (title.isBlank()) isError = true else onCreate(title)
+                    }) { Text(stringResource(R.string.create)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun CreateOptionCard(
     icon: Int,
     accent: ComposeColor,
     title: String,
-    subtitle: String,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -1863,12 +2450,6 @@ private fun CreateOptionCard(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
         Icon(
             painter = painterResource(R.drawable.ic_chevron_right),
@@ -1886,7 +2467,7 @@ fun CreateFolderDialog(
 ) {
     var folderName by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
-    // Keep these 5 in sync with the folder long-press popup swatches.
+
     val folderColors = listOf("#4285F4", "#34A853", "#FBBC05", "#EA4335", "#9C27B0")
     var selectedColor by remember { mutableStateOf(folderColors.first()) }
     var customHex by remember { mutableStateOf("") }
@@ -1905,7 +2486,7 @@ fun CreateFolderDialog(
     }
     val configuration = LocalConfiguration.current
     val maxDialogHeight = (configuration.screenHeightDp * 0.90f).dp
-    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Box(modifier = Modifier.heightIn(max = maxDialogHeight)) {
             Column(
                 modifier = Modifier
@@ -2021,6 +2602,18 @@ fun CreateFolderDialog(
     }
 }
 
+fun defaultNotebookTitle(): String {
+    val c = java.util.Calendar.getInstance()
+    return String.format(
+        java.util.Locale.US, "Untitled %02d%02d%02d %02d%02d",
+        c.get(java.util.Calendar.DAY_OF_MONTH),
+        c.get(java.util.Calendar.MONTH) + 1,
+        c.get(java.util.Calendar.YEAR) % 100,
+        c.get(java.util.Calendar.HOUR_OF_DAY),
+        c.get(java.util.Calendar.MINUTE)
+    )
+}
+
 @Composable
 fun BasicTemplateScreen(
     defaultSettings: TemplateSettings?,
@@ -2028,12 +2621,14 @@ fun BasicTemplateScreen(
     onCreate: (String, TemplateSettings) -> Unit,
     onMoreOptions: (String) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
+
+    val defaultTitle = remember { defaultNotebookTitle() }
+    var title by remember { mutableStateOf(defaultTitle) }
     var isError by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val maxDialogHeight = (configuration.screenHeightDp * 0.90f).dp
 
-    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Box(modifier = Modifier.heightIn(max = maxDialogHeight)) {
             Column(
                 modifier = Modifier
@@ -2105,12 +2700,19 @@ fun BasicTemplateScreen(
                         }
                     }) { Text("Create") }
                 }
+
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Tip: long-press the + button on the home screen to create an instant note with the default template.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AdvancedTemplateScreen(
     initialSettings: TemplateSettings?,
@@ -2128,7 +2730,7 @@ fun AdvancedTemplateScreen(
     var isError by remember { mutableStateOf(false) }
     var isCustomMode by remember { mutableStateOf(initialSettings?.isCustom ?: false) }
     var lineStyle by remember {
-        mutableStateOf(when (initialSettings?.type) { "GRID" -> "GRID"; "DOTS" -> "DOTS"; else -> "RULE" })
+        mutableStateOf(when (initialSettings?.type) { "BLANK" -> "BLANK"; "GRID" -> "GRID"; "DOTS" -> "DOTS"; else -> "RULE" })
     }
     var setAsDefault by remember { mutableStateOf(false) }
 
@@ -2180,7 +2782,7 @@ fun AdvancedTemplateScreen(
         }
     }
 
-    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Box(modifier = Modifier.heightIn(max = maxDialogHeight)) {
             Column(
                 modifier = Modifier
@@ -2256,7 +2858,9 @@ fun AdvancedTemplateScreen(
                 Spacer(Modifier.height(16.dp))
 
                 if (!isCustomMode) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                    FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = lineStyle == "BLANK", onClick = { lineStyle = "BLANK" }, label = { Text("None") })
                         FilterChip(selected = lineStyle == "RULE", onClick = { lineStyle = "RULE" }, label = { Text("Ruled") })
                         FilterChip(selected = lineStyle == "GRID", onClick = { lineStyle = "GRID" }, label = { Text("Grid") })
                         FilterChip(selected = lineStyle == "DOTS", onClick = { lineStyle = "DOTS" }, label = { Text("Dots") })

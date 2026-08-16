@@ -19,7 +19,7 @@ class PageGridAdapter(
     private val thumbWidthPx: Int,
     private var currentPage: Int,
     private val scope: CoroutineScope,
-    /** Actual page indices to display (e.g. all pages, or only bookmarked ones). */
+
     private var pages: List<Int>,
     private val isBookmarked: (Int) -> Boolean,
     private val onClick: (Int) -> Unit,
@@ -28,15 +28,10 @@ class PageGridAdapter(
     private val isSelectionMode: () -> Boolean,
     private val isSelected: (Int) -> Boolean,
     private val onSelectToggle: (Int) -> Unit,
-    /** Long press on a thumbnail; the host decides between selecting and starting a drag. */
+
     private val onLongPress: (Int, VH) -> Unit = { _, _ -> }
 ) : RecyclerView.Adapter<PageGridAdapter.VH>() {
 
-    /**
-     * Bitmaps currently set on a visible ImageView, keyed by page position. We must NOT return
-     * these to the renderer's pool while they're displayed — the next render would draw onto the
-     * same Bitmap object and the ImageView would silently show the wrong thumbnail.
-     */
     private val displayedBitmaps = java.util.IdentityHashMap<Bitmap, Int>()
 
     private val cache: LruCache<Int, Bitmap> = run {
@@ -46,8 +41,7 @@ class PageGridAdapter(
 
             override fun entryRemoved(evicted: Boolean, key: Int, oldValue: Bitmap, newValue: Bitmap?) {
                 if (!evicted || oldValue.isRecycled) return
-                // Only return to the pool if no ViewHolder is currently showing this bitmap.
-                // If it IS displayed, it is released in onViewRecycled / the next bind instead.
+
                 if (!displayedBitmaps.containsKey(oldValue)) {
                     renderer.releaseBitmap(oldValue)
                 }
@@ -55,8 +49,6 @@ class PageGridAdapter(
         }
     }
 
-    /** Pages whose thumbnail render is currently running, so a fast scroll doesn't queue a
-     *  second render for the same page (they'd only pile up behind the same renderer pool). */
     private val inFlight = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
 
     fun setPages(newPages: List<Int>) {
@@ -64,17 +56,12 @@ class PageGridAdapter(
         notifyDataSetChanged()
     }
 
-    /** Page numbers change on a reorder, so cached thumbnails no longer match their keys. */
     fun refreshAfterReorder(newPages: List<Int>, newCurrentPage: Int) {
         cache.evictAll()
         currentPage = newCurrentPage
         setPages(newPages)
     }
 
-    /**
-     * Reorders in place for drag feedback only — nothing is written to disk until the
-     * drag is dropped and the host commits the move.
-     */
     fun moveItem(fromPos: Int, toPos: Int) {
         val list = pages.toMutableList()
         if (fromPos !in list.indices || toPos !in list.indices) return
@@ -112,7 +99,8 @@ class PageGridAdapter(
             if (bookmarked) R.drawable.ic_bookmark else R.drawable.ic_bookmark_border
         )
         holder.bookmark.setColorFilter(
-            if (bookmarked) 0xFF2196F3.toInt() else 0x99FFFFFF.toInt()
+
+            if (bookmarked) 0xFF2196F3.toInt() else 0x99000000.toInt()
         )
         holder.bookmark.setOnClickListener { onBookmarkToggle(page) }
         holder.menu.setOnClickListener { onMenu(page, it) }
@@ -131,8 +119,6 @@ class PageGridAdapter(
             true
         }
 
-        // Recycled bind: its queued render never runs (renders are cancellable), so a fast
-        // fling skips off-screen pages instead of rendering them all in order.
         holder.currentJob?.cancel()
         holder.currentJob = null
         releaseDisplayedBitmap(holder)
@@ -145,16 +131,14 @@ class PageGridAdapter(
         }
         if (holder.image.drawable != null) holder.image.setImageBitmap(null)
         holder.image.tag = page
-        // One render per page: rebinding the same page during a fling shouldn't start another.
+
         if (!inFlight.add(page)) return
         holder.currentJob = scope.launch {
             var rendered = false
             try {
-                // Holder recycled/rebound before this coroutine ran — nobody is looking at this
-                // page, so skip the native render instead of queueing work that gets thrown away.
+
                 if (holder.image.tag != page) return@launch
-                // Suspends onto the renderer's own worker(s); cancelling this job before the
-                // render starts skips the native work entirely.
+
                 val bmp = try {
                     renderer.renderSuspend(page, thumbWidthPx)
                 } catch (t: CancellationException) {
@@ -168,18 +152,13 @@ class PageGridAdapter(
                     displayedBitmaps[bmp] = page
                     holder.image.setImageBitmap(bmp)
                 } else {
-                    // The original holder was recycled and a different holder now shows this
-                    // page (its own bind early-returned because this render was in flight).
-                    // Rebinding it from cache prevents a blank thumbnail until re-scroll.
+
                     val pos = pages.indexOf(page)
                     if (pos >= 0) notifyItemChanged(pos)
                 }
             } finally {
                 inFlight.remove(page)
-                // No bitmap was produced (render cancelled mid-flight, failed, or the holder
-                // was recycled before it started). A visible holder for this page that skipped
-                // its own render because this one was in flight would otherwise stay a skeleton
-                // forever — rebinding it starts a fresh render now that inFlight is free.
+
                 if (!rendered) {
                     val pos = pages.indexOf(page)
                     if (pos >= 0) notifyItemChanged(pos)
@@ -195,10 +174,6 @@ class PageGridAdapter(
         if (holder.image.drawable != null) holder.image.setImageBitmap(null)
     }
 
-    /**
-     * Removes the bitmap currently shown by [holder] from [displayedBitmaps]. If the bitmap is no
-     * longer in the LruCache either, it is returned to the renderer's pool for reuse.
-     */
     private fun releaseDisplayedBitmap(holder: VH) {
         val bmp = (holder.image.drawable as? android.graphics.drawable.BitmapDrawable)
             ?.bitmap ?: return

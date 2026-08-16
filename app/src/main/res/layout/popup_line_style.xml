@@ -7,42 +7,38 @@
     android:elevation="20dp"
     android:orientation="vertical"
     android:padding="8dp">
-
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:orientation="horizontal">
-
         <ImageButton
             android:id="@+id/styleSolid"
             android:layout_width="48dp" android:layout_height="48dp"
+            android:elevation="4dp"
             android:padding="12dp" android:scaleType="fitCenter"
             android:src="@drawable/ic_line_solid"
             android:contentDescription="Solid"
             android:tint="?attr/colorOnSurfaceVariant"
-            android:background="@drawable/selectable_tool_background"
-            android:foreground="?attr/selectableItemBackgroundBorderless" />
-
+            android:background="@drawable/selectable_tool_background" />
         <ImageButton
             android:id="@+id/styleDotted"
             android:layout_width="48dp" android:layout_height="48dp"
+            android:elevation="4dp"
             android:padding="12dp" android:scaleType="fitCenter"
             android:src="@drawable/ic_line_dotted"
             android:contentDescription="Dotted"
             android:tint="?attr/colorOnSurfaceVariant"
-            android:background="@drawable/selectable_tool_background"
-            android:foreground="?attr/selectableItemBackgroundBorderless" />
-
+            android:background="@drawable/selectable_tool_background" />
         <ImageButton
             android:id="@+id/styleDashed"
             android:layout_width="48dp" android:layout_height="48dp"
+            android:elevation="4dp"
             android:padding="12dp" android:scaleType="fitCenter"
             android:src="@drawable/ic_line_dashed"
             android:contentDescription="Dashed"
             android:tint="?attr/colorOnSurfaceVariant"
-            android:background="@drawable/selectable_tool_background"
-            android:foreground="?attr/selectableItemBackgroundBorderless" />
+            android:background="@drawable/selectable_tool_background" />
     </LinearLayout>
 
     <View
@@ -58,7 +54,6 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingHorizontal="8dp">
-
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"

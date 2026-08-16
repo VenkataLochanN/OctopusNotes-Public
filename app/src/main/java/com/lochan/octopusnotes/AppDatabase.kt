@@ -5,14 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-/**
- * The main database class for the application.
- *
- * @property entities The list of all tables in the database.
- * @property version The current version of the database schema.
- *                   This MUST be incremented every time you change the schema.
- */
-@Database(entities = [Notebook::class, Folder::class, Drawing::class], version = 8)
+@Database(entities = [Notebook::class, Folder::class, Drawing::class], version = 11)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun notesDao(): NotesDao
@@ -52,6 +45,22 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE folders ADD COLUMN deletedAt INTEGER NOT NULL DEFAULT 0")
             }
         }
+        private val MIGRATION_8_9 = object : androidx.room.migration.Migration(8, 9) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notebooks ADD COLUMN tagColorHex TEXT")
+            }
+        }
+        private val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+
+                db.execSQL("ALTER TABLE notebooks ADD COLUMN documentType TEXT NOT NULL DEFAULT 'PAGED'")
+            }
+        }
+        private val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE folders ADD COLUMN tagColorHex TEXT")
+            }
+        }
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -60,21 +69,14 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     com.lochan.octopusnotes.BuildConfig.DB_NAME
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
-                    .fallbackToDestructiveMigration() // safety net only
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance
             }
         }
 
-        /**
-         * Closes the current database and clears the cached instance so the next [getDatabase]
-         * call builds a fresh one. Used by import, which must release the on-disk database
-         * files before replacing them. Without the reset, [getDatabase] would keep handing out
-         * the closed instance and every later query would crash with
-         * IllegalStateException ("Attempt to re-open an already-closed object…").
-         */
         fun closeAndReset() {
             synchronized(this) {
                 INSTANCE?.close()

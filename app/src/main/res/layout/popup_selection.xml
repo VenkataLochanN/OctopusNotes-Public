@@ -1,33 +1,216 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content" android:layout_height="50dp"
+    android:layout_width="wrap_content" android:layout_height="wrap_content"
     android:background="@drawable/popup_background"
-    android:orientation="horizontal" android:gravity="center_vertical" android:paddingHorizontal="12dp">
+    android:orientation="vertical" android:paddingHorizontal="12dp">
 
-    <View android:id="@+id/selColorBtn"
-        android:layout_width="24dp" android:layout_height="24dp"
-        android:background="@drawable/bg_color_slot" />
+    <LinearLayout
+        android:layout_width="wrap_content" android:layout_height="50dp"
+        android:orientation="horizontal" android:gravity="center_vertical">
 
-    <TextView android:id="@+id/selAngleBtn"
-        android:layout_width="40dp" android:layout_height="match_parent"
-        android:gravity="center" android:text="0°" android:textSize="16sp" android:textColor="?attr/colorOnSurface"/>
+        <LinearLayout android:id="@+id/selActionsRow"
+            android:layout_width="wrap_content" android:layout_height="match_parent"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <View android:id="@+id/selColorBtn"
+                android:layout_width="24dp" android:layout_height="24dp"
+                android:background="@drawable/bg_color_slot" />
 
-    <View android:layout_width="1dp" android:layout_height="24dp"
-        android:background="?attr/colorOutlineVariant" android:layout_marginHorizontal="8dp"/>
+            <TextView android:id="@+id/selAngleBtn"
+                android:layout_width="40dp" android:layout_height="match_parent"
+                android:gravity="center" android:text="0°" android:textSize="16sp" android:textColor="?attr/colorOnSurface"/>
 
-    <!-- No padding: siblings have none, and the default fitCenter scales the glyph to the
-         button, so any padding here would render this icon smaller than the rest. -->
-    <ImageButton android:id="@+id/selDupBtn"
-        android:layout_width="40dp" android:layout_height="match_parent"
-        android:src="@drawable/ic_duplicate" android:tint="?attr/colorOnSurface"
-        android:contentDescription="Duplicate"
-        android:background="?attr/selectableItemBackgroundBorderless"/>
+            <View android:layout_width="1dp" android:layout_height="24dp"
+                android:background="?attr/colorOutlineVariant" android:layout_marginHorizontal="8dp"/>
 
-    <ImageButton android:id="@+id/selDelBtn"
-        android:layout_width="40dp" android:layout_height="match_parent"
-        android:src="@drawable/ic_close" android:tint="#F44336" android:background="?attr/selectableItemBackgroundBorderless"/>
+            <ImageButton android:id="@+id/selDupBtn"
+                android:layout_width="40dp" android:layout_height="match_parent"
+                android:elevation="4dp"
+                android:src="@drawable/ic_duplicate" android:tint="?attr/colorOnSurface"
+                android:contentDescription="Duplicate"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
 
-    <ImageButton android:id="@+id/selMoreBtn"
-        android:layout_width="40dp" android:layout_height="match_parent"
-        android:src="@drawable/ic_more_vert" android:tint="?attr/colorOnSurface" android:background="?attr/selectableItemBackgroundBorderless"/>
+            <ImageButton android:id="@+id/selDelBtn"
+                android:layout_width="40dp" android:layout_height="match_parent"
+                android:elevation="4dp"
+                android:src="@drawable/ic_close" android:tint="#F44336" android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <ImageButton android:id="@+id/selMoreBtn"
+                android:layout_width="40dp" android:layout_height="match_parent"
+                android:elevation="4dp"
+                android:src="@drawable/ic_more_vert" android:tint="?attr/colorOnSurface" android:background="?attr/selectableItemBackgroundBorderless"/>
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/selColorsRow"
+            android:layout_width="wrap_content" android:layout_height="match_parent"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:visibility="gone">
+            <View android:id="@+id/selQuickColor0"
+                android:layout_width="30dp" android:layout_height="30dp"
+                android:layout_marginHorizontal="3dp" android:background="@drawable/bg_color_slot" />
+
+            <View android:id="@+id/selQuickColor1"
+                android:layout_width="30dp" android:layout_height="30dp"
+                android:layout_marginHorizontal="3dp" android:background="@drawable/bg_color_slot" />
+
+            <View android:id="@+id/selQuickColor2"
+                android:layout_width="30dp" android:layout_height="30dp"
+                android:layout_marginHorizontal="3dp" android:background="@drawable/bg_color_slot" />
+
+            <View android:id="@+id/selQuickColor3"
+                android:layout_width="30dp" android:layout_height="30dp"
+                android:layout_marginHorizontal="3dp" android:background="@drawable/bg_color_slot" />
+
+            <View android:id="@+id/selQuickColor4"
+                android:layout_width="30dp" android:layout_height="30dp"
+                android:layout_marginHorizontal="3dp" android:background="@drawable/bg_color_slot" />
+
+            <View android:layout_width="1dp" android:layout_height="24dp"
+                android:background="?attr/colorOutlineVariant" android:layout_marginHorizontal="6dp"/>
+
+            <ImageButton android:id="@+id/selColorCloseBtn"
+                android:layout_width="40dp" android:layout_height="match_parent"
+                android:elevation="4dp"
+                android:src="@drawable/ic_close" android:tint="?attr/colorOnSurface"
+                android:contentDescription="Close colours"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <ImageButton android:id="@+id/selColorMoreBtn"
+                android:layout_width="40dp" android:layout_height="match_parent"
+                android:elevation="4dp"
+                android:src="@drawable/ic_add" android:tint="?attr/colorOnSurface"
+                android:contentDescription="More colours"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/selTableRow"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:orientation="vertical" android:gravity="center_vertical"
+        android:paddingTop="2dp" android:paddingBottom="6dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/table_rows_short"
+                android:textSize="12sp" android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginEnd="4dp"/>
+
+            <ImageButton android:id="@+id/selTableRowsMinus"
+                android:layout_width="36dp" android:layout_height="36dp"
+                android:padding="7dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_remove" android:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/table_rows_decrease"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <TextView android:id="@+id/selTableRowsValue"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:minWidth="22dp" android:gravity="center"
+                android:textColor="?attr/colorOnSurface" android:textSize="14sp" android:text="3"/>
+
+            <ImageButton android:id="@+id/selTableRowsPlus"
+                android:layout_width="36dp" android:layout_height="36dp"
+                android:padding="7dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_add" android:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/table_rows_increase"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <View android:layout_width="1dp" android:layout_height="20dp"
+                android:background="?attr/colorOutlineVariant" android:layout_marginHorizontal="6dp"/>
+
+            <TextView
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/table_cols_short"
+                android:textSize="12sp" android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginEnd="4dp"/>
+
+            <ImageButton android:id="@+id/selTableColsMinus"
+                android:layout_width="36dp" android:layout_height="36dp"
+                android:padding="7dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_remove" android:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/table_cols_decrease"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <TextView android:id="@+id/selTableColsValue"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:minWidth="22dp" android:gravity="center"
+                android:textColor="?attr/colorOnSurface" android:textSize="14sp" android:text="3"/>
+
+            <ImageButton android:id="@+id/selTableColsPlus"
+                android:layout_width="36dp" android:layout_height="36dp"
+                android:padding="7dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_add" android:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/table_cols_increase"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView android:id="@+id/selTableHeaderBtn"
+                android:layout_width="0dp" android:layout_height="34dp" android:layout_weight="1"
+                android:gravity="center_vertical|start" android:paddingHorizontal="8dp"
+                android:textSize="13sp" android:textStyle="bold"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:text="@string/table_header_off"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <View android:layout_width="1dp" android:layout_height="18dp"
+                android:background="?attr/colorOutlineVariant" android:layout_marginHorizontal="4dp"/>
+
+            <TextView android:id="@+id/selTableColHeaderBtn"
+                android:layout_width="0dp" android:layout_height="34dp" android:layout_weight="1"
+                android:gravity="center_vertical|end" android:paddingHorizontal="8dp"
+                android:textSize="13sp" android:textStyle="bold"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:text="@string/table_col_header_off"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <View android:id="@+id/selTableHeaderColorBtn"
+                android:layout_width="20dp" android:layout_height="20dp"
+                android:layout_marginHorizontal="4dp"
+                android:contentDescription="@string/table_header_color"
+                android:background="@drawable/bg_color_slot"/>
+
+            <View android:id="@+id/selTableColColorBtn"
+                android:layout_width="20dp" android:layout_height="20dp"
+                android:layout_marginHorizontal="4dp"
+                android:contentDescription="@string/table_col_color"
+                android:background="@drawable/bg_color_slot"/>
+
+            <View android:layout_width="1dp" android:layout_height="20dp"
+                android:background="?attr/colorOutlineVariant" android:layout_marginHorizontal="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/table_corner"
+                android:textSize="12sp" android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginEnd="2dp"/>
+
+            <ImageButton android:id="@+id/selTableRadiusMinus"
+                android:layout_width="32dp" android:layout_height="32dp"
+                android:padding="6dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_remove" android:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/table_radius_decrease"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <TextView android:id="@+id/selTableRadiusValue"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:minWidth="22dp" android:gravity="center"
+                android:textColor="?attr/colorOnSurface" android:textSize="14sp" android:text="0"/>
+
+            <ImageButton android:id="@+id/selTableRadiusPlus"
+                android:layout_width="32dp" android:layout_height="32dp"
+                android:padding="6dp" android:scaleType="centerInside"
+                android:src="@drawable/ic_add" android:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/table_radius_increase"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>

@@ -13,15 +13,8 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 
-/**
- * Views backing the colour picker. All of them work in HSV and report changes through a
- * listener — HSV is kept as the source of truth by the dialog so dragging never drifts the
- * way it would if every move round-tripped through a packed sRGB int.
- */
-
 private fun View.dp(v: Float) = v * resources.displayMetrics.density
 
-/** Draws the ring used to mark a selection on top of arbitrary colours. */
 private fun Canvas.drawSelector(cx: Float, cy: Float, r: Float, ring: Paint, density: Float) {
     ring.color = Color.BLACK
     ring.strokeWidth = density * 3f
@@ -31,13 +24,11 @@ private fun Canvas.drawSelector(cx: Float, cy: Float, r: Float, ring: Paint, den
     drawCircle(cx, cy, r, ring)
 }
 
-/** Saturation (x) against value (y) for a fixed hue. */
 class SaturationValueView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
-    /** Fired continuously while dragging. */
     var onChange: ((saturation: Float, value: Float) -> Unit)? = null
 
     private var hue = 0f
@@ -93,7 +84,7 @@ class SaturationValueView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP -> {
-                // The dialog may sit inside a scrolling container; keep the drag ours.
+
                 parent?.requestDisallowInterceptTouchEvent(true)
                 saturation = (event.x / width).coerceIn(0f, 1f)
                 value = (1f - event.y / height).coerceIn(0f, 1f)
@@ -106,7 +97,6 @@ class SaturationValueView @JvmOverloads constructor(
     }
 }
 
-/** Horizontal hue track, 0..360. */
 class HueBarView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -131,7 +121,7 @@ class HueBarView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        // Inset by the thumb so it never gets clipped at either end.
+
         val inset = thumbRadius
         track.set(inset, (h - trackHeight) / 2f, w - inset, (h + trackHeight) / 2f)
         val hues = IntArray(7) { Color.HSVToColor(floatArrayOf(it * 60f, 1f, 1f)) }
@@ -166,10 +156,6 @@ class HueBarView @JvmOverloads constructor(
     }
 }
 
-/**
- * Fixed palette of tints and shades. Drawn as cells rather than built from child views —
- * a 12x10 grid of Views would cost 120 measure/layout passes every time the tab flips.
- */
 class ColorPaletteGridView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -190,15 +176,14 @@ class ColorPaletteGridView @JvmOverloads constructor(
         buildPalette()
     }
 
-    /** Column 0 is a neutral ramp; the rest sweep hue across columns, tint→shade down rows. */
     private fun buildPalette() {
         for (row in 0 until rows) {
             val t = row / (rows - 1f)
-            // Greys: white at the top through to black at the bottom.
+
             swatches[row * cols] = Color.HSVToColor(floatArrayOf(0f, 0f, 1f - t))
             for (col in 1 until cols) {
                 val hue = (col - 1) * (360f / (cols - 1))
-                // First half moves pastel→pure, second half pure→dark.
+
                 val s = if (t <= 0.5f) 0.15f + 1.7f * t else 1f
                 val v = if (t <= 0.5f) 1f else 1f - 1.4f * (t - 0.5f)
                 swatches[row * cols + col] = Color.HSVToColor(
@@ -208,7 +193,6 @@ class ColorPaletteGridView @JvmOverloads constructor(
         }
     }
 
-    /** Rings the cell matching [color], if the palette happens to contain it. */
     fun setSelectedColor(color: Int) {
         val opaque = color or 0xFF000000.toInt()
         val idx = swatches.indexOfFirst { it == opaque }
@@ -221,7 +205,7 @@ class ColorPaletteGridView @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val w = MeasureSpec.getSize(widthMeasureSpec)
-        // Square cells, so the height follows from the width.
+
         setMeasuredDimension(w, Math.round(w.toFloat() / cols * rows))
     }
 
@@ -242,7 +226,7 @@ class ColorPaletteGridView @JvmOverloads constructor(
             val col = i % cols
             val row = i / cols
             cellPaint.color = swatches[i]
-            // Overdraw by a hair: exact edges leave seams from float rounding.
+
             canvas.drawRect(col * cw, row * ch, (col + 1) * cw + 1f, (row + 1) * ch + 1f, cellPaint)
         }
         canvas.restoreToCount(save)
@@ -271,17 +255,13 @@ class ColorPaletteGridView @JvmOverloads constructor(
     }
 }
 
-/**
- * Full-screen overlay for sampling a colour off the page. Reads from a snapshot taken
- * before the overlay appears, so the loupe it draws can never sample itself.
- */
 class EyedropperOverlayView(context: Context) : View(context) {
 
     var onPicked: ((Int) -> Unit)? = null
     var onCancelled: (() -> Unit)? = null
 
     private var snapshot: Bitmap? = null
-    /** Snapshot origin in screen coordinates, to map touches onto the bitmap. */
+
     private var snapshotOriginX = 0
     private var snapshotOriginY = 0
 
@@ -310,11 +290,6 @@ class EyedropperOverlayView(context: Context) : View(context) {
         invalidate()
     }
 
-    /**
-     * Drops the snapshot. A full-screen ARGB_8888 copy is several megabytes, so it is
-     * freed as soon as the overlay is detached rather than left to the collector.
-     * Only safe once the view can no longer be drawn.
-     */
     fun release() {
         snapshot?.recycle()
         snapshot = null
@@ -327,7 +302,6 @@ class EyedropperOverlayView(context: Context) : View(context) {
             return
         }
 
-        // Sit the loupe above the finger, flipping below it near the top edge.
         val cx = touchX
         val above = touchY - loupeRadius - dp(28f)
         val cy = if (above - loupeRadius < 0) touchY + loupeRadius + dp(28f) else above
@@ -336,14 +310,13 @@ class EyedropperOverlayView(context: Context) : View(context) {
         loupeClip.addCircle(cx, cy, loupeRadius, Path.Direction.CW)
         val save = canvas.save()
         canvas.clipPath(loupeClip)
-        // Magnify the snapshot about the sampled pixel, unfiltered so pixels stay crisp.
+
         canvas.translate(cx, cy)
         canvas.scale(zoom, zoom)
         canvas.translate(-bitmapX().toFloat() - 0.5f, -bitmapY().toFloat() - 0.5f)
         canvas.drawBitmap(bmp, 0f, 0f, loupePaint)
         canvas.restoreToCount(save)
 
-        // Outline the exact pixel being read.
         cellPaint.color = Color.WHITE
         cellPaint.strokeWidth = dp(1.5f)
         canvas.drawRect(cx - zoom / 2f, cy - zoom / 2f, cx + zoom / 2f, cy + zoom / 2f, cellPaint)

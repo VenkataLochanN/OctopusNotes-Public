@@ -5,6 +5,7 @@ import android.graphics.*
 import android.graphics.pdf.PdfDocument
 import android.os.Bundle
 import android.view.Choreographer
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageButton
@@ -25,21 +26,22 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.tom_roush.pdfbox.pdmodel.PDDocument
-import com.tom_roush.pdfbox.pdmodel.PDPage
-import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
-import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
-import com.tom_roush.pdfbox.cos.COSDictionary
-import com.tom_roush.pdfbox.cos.COSName
+import com.lochan.octopusnotes.pdfedit.IncrementalPdfEditor
+import com.lochan.octopusnotes.pdfedit.PdfEditException
+import com.lochan.octopusnotes.pdfedit.PdfLinkReader
+import com.lochan.octopusnotes.pdfedit.PdfOutlineReader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class DrawingActivity : AppCompatActivity() {
 
@@ -59,43 +61,44 @@ class DrawingActivity : AppCompatActivity() {
     private var currentPage = 0
     private var totalPages = 1
     private var activeToolButton: ImageButton? = null
+    private var tabsController: TabsController? = null
 
-    // --- Horizontal pen dock state ---
-    // Size presets are customizable slots (like the color swatches): each slot keeps its
-    // own persisted size, and the active slot is saved + always highlighted.
     private val dockThicknessDefaults = floatArrayOf(5f, 7f, 10f)
     private val dockThickness = FloatArray(3)
     private var dockActiveThicknessIndex = 2
     private val dockDefaultColors = intArrayOf(
         Color.BLACK,
-        Color.parseColor("#1565C0"), // blue
-        Color.parseColor("#C62828"), // red
-        Color.parseColor("#2E7D32"), // green
-        Color.parseColor("#F9A825")  // amber
+        Color.parseColor("#1565C0"),
+        Color.parseColor("#C62828"),
+        Color.parseColor("#2E7D32"),
+        Color.parseColor("#F9A825")
     )
     private val dockColors = IntArray(5)
     private var dockActiveColorIndex = 0
 
+    private var tableThickness: FloatArray? = null
+    private var tableActiveThicknessIndex = -1
+    private var tableLineStyle: String? = null
+    private var laserThickness: FloatArray? = null
+    private var laserActiveThicknessIndex = -1
+
     private var savedDataLoaded = false
-    /** True once saved strokes have been decoded into the StrokeManager. Saving before this
-     *  point would overwrite the notebook file with an empty document — never allowed. */
+
     private var strokesLoaded = false
-    /** True when strokes changed since the last successful save. */
+
     private var strokesDirty = false
-    /**
-     * The page width (px) the in-memory strokes are currently expressed in. Set when they
-     * are loaded and kept in step with the laid-out width, so ink survives a rotation or
-     * window resize. See [DrawingCodec] for the coordinate space.
-     */
+
     private var inkBaseWidth = 0f
     private var pageRestorePending = true
     private var pdfFilePath: String? = null
 
-    // --- Barrel button (stylus side button) → temporary eraser ---
-    /** True while the current stroke was started with the stylus barrel button held. */
     private var barrelStrokeInProgress = false
 
-    // --- Search state ---
+    private val stylusSwitcher = StylusToolSwitcher(
+        activateTool = { stylusActivateTool(it) },
+        currentToolId = { activeToolId() }
+    )
+
     private var pdfTextIndex: PdfTextIndex? = null
     private var searchMatches: List<PdfTextIndex.Match> = emptyList()
     private var searchPos = -1
@@ -103,26 +106,15 @@ class DrawingActivity : AppCompatActivity() {
     private var selectionTotalDx = 0f
     private var selectionTotalDy = 0f
 
-    // --- Scroll pill state ---
     private lateinit var scrollPillTrack: View
     private lateinit var scrollPillThumb: View
     private var scrollPillDragging = false
-    /**
-     * Latest finger fraction along the track, captured in ACTION_MOVE and consumed once per
-     * Choreographer frame. A fast drag fires many ACTION_MOVEs per frame; coalescing them
-     * into one `scrollBy` per frame keeps the main thread responsive instead of issuing a
-     * big scroll + dozens of binds for *every* move event (which overshot the 5s input
-     * dispatch window and caused the ANR).
-     */
+
     private var dragPendingFraction: Float = 0f
-    /** True once the finger actually moved along the track — guards against a bare tap on
-     *  the pill (DOWN→UP with no MOVE) jumping the document. */
+
     private var dragMoved = false
     private var dragFramePosted = false
 
-    /** Max distance the list may travel in one drag frame, in viewport heights. Capping it
-     *  keeps a fast pull through a 4000-page PDF at a handful of binds per frame instead of
-     *  one giant scrollBy that binds every page it traverses. */
     private val maxDragViewportsPerFrame = 3
 
     private val dragFrameCallback = object : Choreographer.FrameCallback {
@@ -130,8 +122,7 @@ class DrawingActivity : AppCompatActivity() {
             dragFramePosted = false
             if (!scrollPillDragging) return
             if (applyDragFraction(dragPendingFraction)) {
-                // Still catching up to the finger's latest position — keep stepping every
-                // frame even if no new MOVE arrived (finger paused mid-drag).
+
                 dragFramePosted = true
                 Choreographer.getInstance().postFrameCallback(this)
             }
@@ -141,7 +132,7 @@ class DrawingActivity : AppCompatActivity() {
     private val scrollPillFadeRunnable = Runnable {
         if (!scrollPillDragging) scrollPillThumb.animate().alpha(0f).setDuration(300)
             .withEndAction {
-                // Hide once faded so it no longer receives touches near the right edge.
+
                 if (!scrollPillDragging && scrollPillThumb.alpha == 0f) {
                     scrollPillThumb.visibility = View.INVISIBLE
                 }
@@ -153,32 +144,23 @@ class DrawingActivity : AppCompatActivity() {
     @Volatile private var searchGen = 0
     private val statePrefs by lazy { getSharedPreferences("notebook_state", MODE_PRIVATE) }
 
-
-    // Image picker for the advanced (change) template dialog.
     private val templateImageUriState = androidx.compose.runtime.mutableStateOf<android.net.Uri?>(null)
     private val templatePickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            // Copy into app storage — the picker URI is transient and won't decode later.
+
             templateImageUriState.value = uri?.let { PageTemplate.copyTemplateImage(this, it) } ?: uri
         }
 
-    // --- Image tool ---
     private var selectionTotalScale = 1f
-    private val insertImagePickerLauncher =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            uri?.let { insertImageFromUri(it) }
-        }
-    private val imagePermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-            refreshImageToolStrip()
-        }
+
+    private lateinit var contentTools: ContentToolsController
 
     private val searchFillPaint = Paint().apply {
-        color = Color.parseColor("#66FFEB3B") // translucent yellow
+        color = Color.parseColor("#66FFEB3B")
         style = Paint.Style.FILL
     }
     private val activeFillPaint = Paint().apply {
-        color = Color.parseColor("#99FF9800") // stronger orange
+        color = Color.parseColor("#99FF9800")
         style = Paint.Style.FILL
     }
 
@@ -193,7 +175,7 @@ class DrawingActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_drawing)
 
-        com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(applicationContext)
+        findViewById<View>(R.id.drawingRootLayout).setBackgroundColor(CanvasColor.current(this))
 
         val notesDao = AppDatabase.getDatabase(this).notesDao()
         dataManager = DataManager(notesDao, cacheDir, filesDir)
@@ -201,8 +183,16 @@ class DrawingActivity : AppCompatActivity() {
         notebookId = intent.getLongExtra("NOTEBOOK_ID", -1L)
         if (notebookId >= 0) lifecycleScope.launch { dataManager.touchOpened(notebookId) }
 
+        tabsController = TabsController(
+            this, lifecycleScope, dataManager, { notebookId }, { saveDrawing() },
+            switchInPlace = ::switchNotebookInPlace
+        )
+        tabsController?.attach()
+
         strokeManager = StrokeManager()
         strokeManager.imagesDir = java.io.File(filesDir, "images").apply { mkdirs() }
+
+        strokeManager.onLayerRendered = { invalidateInk() }
 
         currentPage = statePrefs.getInt("last_page_$notebookId", 0)
         totalPages = statePrefs.getInt("page_count_$notebookId", 1)
@@ -210,23 +200,37 @@ class DrawingActivity : AppCompatActivity() {
         historyManager = HistoryManager()
         historyManager.onMutation = { strokesDirty = true }
 
+        historyManager.onHistoryChanged = { updateUndoRedoButtons() }
+
         setupViews()
         setupEdgeToEdge()
         loadPdf()
     }
 
-    /** Redraws strokes + search highlights on all visible page overlays. */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (::drawingView.isInitialized && drawingView.onStylusKeyEvent(event)) return true
+        return super.dispatchKeyEvent(event)
+    }
+
     private fun invalidateInk() {
         pdfAdapter?.notifyInkChanged()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // Drop any coalesced drag frame so it never fires against a torn-down RecyclerView.
+
         Choreographer.getInstance().removeFrameCallback(dragFrameCallback)
         dragFramePosted = false
         strokeManager.clearBitmapCache()
+        strokeManager.shutdown()
         pdfEngine?.close()
+
+        val pending = lastSaveJob
+        if (pending != null && pending.isActive) {
+            Thread {
+                try { runBlocking { pending.join() } } catch (_: Exception) {}
+            }.start()
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -235,11 +239,107 @@ class DrawingActivity : AppCompatActivity() {
         drawingView = findViewById(R.id.drawingView)
         pageNumberTextView = findViewById(R.id.pageNumberTextView)
 
+        drawingView.scribbleReversalThreshold = if (
+            getSharedPreferences("OctopusNotesPrefs", MODE_PRIVATE)
+                .getString("scribble_erase_difficulty", "EASY") == "HARD"
+        ) 4 else 3
+
         toolSettingsManager = ToolSettingsManager(this, drawingView)
 
-        pdfRecyclerView.addOnLayoutChangeListener { _, l, _, r, _, oldL, _, oldR, _ ->
-            if ((r - l) != (oldR - oldL)) onInkWidthChanged()
-        }
+        contentTools = ContentToolsController(
+            this,
+            strokeManager,
+            historyManager,
+            host = object : ContentToolsHost {
+                override val anchorView: View get() = pdfRecyclerView
+                override val smallDock: Boolean get() = this@DrawingActivity.smallDock
+                override val supportsTableStructure: Boolean get() = true
+                override fun contentRectToScreen(pageIndex: Int, rect: RectF): RectF? {
+                    val rv = pdfRecyclerView
+                    val zoom = rv.zoom
+                    var ox = 0f
+                    var oy = 0f
+                    var found = false
+                    for (i in 0 until rv.childCount) {
+                        val c = rv.getChildAt(i) ?: continue
+                        if (rv.getChildAdapterPosition(c) == pageIndex) { ox = c.left.toFloat(); oy = c.top.toFloat(); found = true; break }
+                    }
+                    if (!found) {
+                        for (i in 0 until rv.childCount) {
+                            val c = rv.getChildAt(i) ?: continue
+                            if (rv.getChildAdapterPosition(c) >= 0) { ox = c.left.toFloat(); oy = c.top.toFloat(); found = true; break }
+                        }
+                    }
+                    if (!found) return null
+                    val m = Matrix().apply {
+                        postTranslate(ox, oy)
+                        postScale(zoom, zoom)
+                        postTranslate(rv.transX, rv.transY)
+                    }
+                    val screen = RectF(rect)
+                    m.mapRect(screen)
+                    return screen
+                }
+                override fun showPendingTable(pageIndex: Int, rect: RectF, rows: Int, cols: Int, headerRow: Boolean, headerCol: Boolean) =
+                    drawingView.showPendingTable(pageIndex, rect, rows, cols, headerRow, headerCol)
+                override fun updatePendingTableGrid(rows: Int, cols: Int, headerRow: Boolean, headerCol: Boolean) =
+                    drawingView.updatePendingTableGrid(rows, cols, headerRow, headerCol)
+                override fun clearPendingTable() = drawingView.clearPendingTable()
+                override fun placeTarget(): ContentPlaceTarget {
+                    val rv = pdfRecyclerView
+                    val contentCenterY = (rv.height / 2f - rv.transY) / rv.zoom
+                    var pageIndex = -1
+                    var child: View? = null
+                    for (i in 0 until rv.childCount) {
+                        val c = rv.getChildAt(i) ?: continue
+                        val pos = rv.getChildAdapterPosition(c)
+                        if (pos < 0) continue
+                        if (contentCenterY >= c.top && contentCenterY < c.bottom) { pageIndex = pos; child = c; break }
+                    }
+                    if (child == null) {
+                        for (i in 0 until rv.childCount) {
+                            val c = rv.getChildAt(i) ?: continue
+                            val pos = rv.getChildAdapterPosition(c)
+                            if (pos >= 0) { pageIndex = pos; child = c; break }
+                        }
+                    }
+                    val c = child ?: return ContentPlaceTarget(0, RectF(0f, 0f, 1f, 1f), PointF(0f, 0f))
+                    val area = RectF(0f, 0f, c.width.toFloat(), c.height.toFloat())
+                    val center = PointF(c.width / 2f, (contentCenterY - c.top).coerceIn(0f, c.height.toFloat()))
+                    return ContentPlaceTarget(pageIndex, area, center)
+                }
+                override fun textWrapWidth(pageIndex: Int): Float =
+                    pdfRecyclerView.findViewHolderForAdapterPosition(pageIndex)?.itemView?.width?.toFloat()
+                        ?: pdfRecyclerView.width.toFloat()
+                override fun textColor(): Int = dockColors[dockActiveColorIndex]
+                override fun applyTapeSettings(pattern: String, width: Float) {
+                    drawingView.tapePattern = pattern
+                    drawingView.tapeWidth = width
+                }
+                override fun onContentChanged() {
+                    invalidateInk()
+                    updateUndoRedoButtons()
+                }
+                override fun onObjectPlaced(pageIndex: Int, stroke: StrokeData) {
+                    val result = strokeManager.selectStrokes(pageIndex, listOf(stroke)) ?: return
+                    val origin = drawingView.pageOrigin(pageIndex)
+                    presentSelection(origin?.x ?: 0f, origin?.y ?: 0f, result.second)
+                    invalidateInk()
+                }
+                override fun onTableReplaced(pageIndex: Int, oldTable: StrokeData, newTable: StrokeData) {
+                    if (strokeManager.activeSelectionPageIndex == pageIndex &&
+                        strokeManager.activeSelectionStrokes.any { it.type == StrokeType.TABLE && it.id == oldTable.id }
+                    ) {
+                        strokeManager.selectStrokes(pageIndex, listOf(newTable))
+                        drawingView.updateSelectionVisuals(strokeManager.activeSelectionStrokes)
+                    }
+                }
+                override fun onOpenTableStructure(pageIndex: Int, table: StrokeData, row: Int, col: Int) =
+                    openTableStructurePopup(pageIndex, table, row, col)
+            }
+        )
+
+        pdfRecyclerView.onViewportWidthChanged = { newWidth, _ -> onInkWidthChanged(newWidth.toFloat()) }
 
         pdfRecyclerView.layoutManager = pdfRecyclerView.createZoomAwareLayoutManager()
         pdfRecyclerView.onPageChanged = { page, count -> onPageChanged(page, count) }
@@ -250,7 +350,6 @@ class DrawingActivity : AppCompatActivity() {
             setOnClickListener { showZoomOptions() }
         }
 
-        // --- TOOL BUTTONS ---
         val backButton: ImageButton = findViewById(R.id.backButton)
         val penButton: ImageButton = findViewById(R.id.penButton)
         val eraserButton: ImageButton = findViewById(R.id.eraserButton)
@@ -271,13 +370,18 @@ class DrawingActivity : AppCompatActivity() {
         setupEraserDock()
         setupHighlighterDock()
         setupLassoDock()
+        setupShapeDock()
+        setupTextDock()
         configureDockPlacement()
+        applyDockTransitions()
 
         val undoButton: ImageButton = findViewById(R.id.undoButton)
         val redoButton: ImageButton = findViewById(R.id.redoButton)
 
         undoButton.setOnClickListener {
             if (historyManager.undo(strokeManager)) {
+
+                strokeManager.cancelSelection()
                 drawingView.clearSelectionVisuals()
                 selectionPopup?.dismiss()
                 invalidateInk()
@@ -323,69 +427,131 @@ class DrawingActivity : AppCompatActivity() {
             }
         }
 
-        val imageButton: ImageButton = findViewById(R.id.imageButton)
-        imageButton.setOnClickListener {
-            if (activeToolButton != imageButton) {
-                setActiveTool(imageButton)
-                // The image tool doesn't draw — touches scroll; a chosen image enters
-                // selection mode which handles its own touches.
-                drawingView.setDrawingMode(false)
+        val shapeButton: ImageButton = findViewById(R.id.shapeButton)
+        shapeButton.setOnClickListener {
+            if (activeToolButton != shapeButton) {
+                setActiveTool(shapeButton)
+                applyShapeSettings()
             } else {
                 toggleToolOptions()
             }
         }
-        findViewById<View>(R.id.imageGrantButton).setOnClickListener {
-            imagePermissionLauncher.launch(imagesPermission())
+
+        val tableButton: ImageButton = findViewById(R.id.tableButton)
+        tableButton.setOnClickListener {
+            if (activeToolButton != tableButton) {
+                setActiveTool(tableButton)
+                applyTableSettings()
+            } else {
+                toggleToolOptions()
+            }
         }
-        findViewById<ImageButton>(R.id.imagePickButton).setOnClickListener {
-            insertImagePickerLauncher.launch("image/*")
+
+        val laserButton: ImageButton = findViewById(R.id.laserButton)
+        laserButton.setOnClickListener {
+            if (activeToolButton != laserButton) {
+                setActiveTool(laserButton)
+                applyLaserSettings()
+            } else {
+                toggleToolOptions()
+            }
         }
+
+        val measureButton: ImageButton = findViewById(R.id.measureButton)
+        measureButton.setOnClickListener {
+            if (activeToolButton != measureButton) {
+                setActiveTool(measureButton)
+                applyMeasureSettings()
+            } else {
+                toggleToolOptions()
+            }
+        }
+
+        val tapeButton: ImageButton = findViewById(R.id.tapeButton)
+        tapeButton.setOnClickListener {
+            if (activeToolButton != tapeButton) {
+                setActiveTool(tapeButton)
+                applyTapeSettings()
+            } else {
+                toggleToolOptions()
+            }
+        }
+
+        val textButton: ImageButton = findViewById(R.id.textButton)
+        textButton.setOnClickListener {
+            if (activeToolButton != textButton) {
+                setActiveTool(textButton)
+                applyTextSettings()
+            } else {
+                toggleToolOptions()
+            }
+        }
+
+        val imageButton: ImageButton = findViewById(R.id.imageButton)
+        imageButton.setOnClickListener {
+            if (activeToolButton != imageButton) {
+                setActiveTool(imageButton)
+
+                drawingView.setDrawingMode(false)
+                drawingView.clearMeasure()
+            } else {
+                toggleToolOptions()
+            }
+        }
+        contentTools.wireImageStrip()
+        contentTools.wireTapeStrip()
         drawingView.selectionBitmapProvider = { strokeManager.bitmapFor(it) }
+        drawingView.selectionStrokeRenderer = { canvas, stroke, zoom ->
+            when (stroke.type) {
+                StrokeType.TABLE -> strokeManager.drawTableStroke(canvas, stroke, zoom = zoom)
+                StrokeType.TEXT -> strokeManager.drawTextStroke(canvas, stroke)
+                StrokeType.TAPE -> strokeManager.drawTapeStroke(canvas, stroke)
+                else -> {}
+            }
+        }
+
+        drawingView.onSelectionTransformChanged = { repositionSelectionPopup() }
+        pdfRecyclerView.onPanned = { dx, dy -> drawingView.translateSelectionScreen(dx, dy) }
+        pdfRecyclerView.onZoomed = { drawingView.refreshSelectionForViewport() }
+        pdfRecyclerView.addOnScrollListener(object : androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+            override fun onScrolled(rv: androidx.recyclerview.widget.RecyclerView, dx: Int, dy: Int) {
+                if (dx != 0 || dy != 0) drawingView.translateSelectionScreen(-dx.toFloat(), -dy.toFloat())
+            }
+        })
 
         addPageButton.setOnClickListener { showAddPagePopup(addPageButton) }
         pageNumberTextView.setOnClickListener { showJumpToPageDialog() }
 
         setupScrollPill()
 
-        // --- DRAWING VIEW CALLBACKS ---
         drawingView.onStrokeFinishedListener = { pageIndex, path, paint, contourData ->
-            // Barrel-button strokes route to the eraser regardless of the selected tool,
-            // using the dock's current eraser type (pixel or stroke).
+
             val effectiveToolId = if (barrelStrokeInProgress) R.id.eraserButton else activeToolButton?.id
 
-            if (effectiveToolId == R.id.eraserButton && toolSettingsManager.currentEraserType == DrawingView.Tool.PIXEL_ERASER) {
-                // Deep-copy the page's strokes on the main thread — the only thread allowed
-                // to touch live ink — then run the expensive path geometry on those private
-                // copies on a background thread. The old code read the live Path/Paint
-                // objects from Dispatchers.Default while the main thread drew / erased them,
-                // which could throw ConcurrentModificationException or race Skia internals.
-                val snapshot = strokeManager.snapshotPageStrokes(pageIndex)
-                // Capture the eraser geometry on the main thread too, so the coroutine
-                // never even reads the stroke-callback objects from the background.
-                val eraserPath = Path(path)
-                val eraserSize = paint.strokeWidth
-                lifecycleScope.launch {
-                    val action = withContext(Dispatchers.Default) {
-                        snapshot?.let { strokeManager.computePixelErase(pageIndex, eraserPath, eraserSize, it) }
-                    }
-                    if (action != null) {
-                        historyManager.execute(action, strokeManager)
-                        invalidateInk()
-                        updateUndoRedoButtons()
-                    }
-                }
-            } else {
-                val action = when (effectiveToolId) {
-                    R.id.eraserButton -> strokeManager.processErase(pageIndex, path, paint, DrawingView.Tool.STROKE_ERASER)
-                    R.id.highlighterButton -> handleHighlighterStrokeAction(pageIndex, path, paint, contourData)
-                    else -> handlePenStrokeAction(pageIndex, path, paint, contourData)
-                }
+            val action = when (effectiveToolId) {
 
-                if (action != null) {
-                    historyManager.execute(action, strokeManager)
-                    invalidateInk()
-                    updateUndoRedoButtons()
-                    maybeAutoAppendPage(pageIndex)
+                R.id.eraserButton -> strokeManager.processErase(pageIndex, path, paint, toolSettingsManager.currentEraserType)
+                R.id.highlighterButton -> handleHighlighterStrokeAction(pageIndex, path, paint, contourData)
+                R.id.shapeButton -> strokeManager.processPen(pageIndex, path, paint, DrawingView.Tool.SHAPE, drawingView.penLineStyle, contourData)
+                R.id.tableButton -> {
+                    contentTools.onTableStrokeFinished(pageIndex, path, paint, drawingView.penLineStyle)
+                    null
+                }
+                R.id.tapeButton -> {
+                    contentTools.onTapeStrokeFinished(pageIndex, path, paint, drawingView.tapePattern, drawingView.tapeWidth)
+                    null
+                }
+                else -> handlePenStrokeAction(pageIndex, path, paint, contourData)
+            }
+
+            if (action != null) {
+                historyManager.execute(action, strokeManager)
+                invalidateInk()
+                updateUndoRedoButtons()
+                maybeAutoAppendPage(pageIndex)
+
+                if (effectiveToolId == R.id.shapeButton && action is DrawingAction.AddStroke) {
+                    selectShapeAfterDraw(pageIndex, action.stroke)
                 }
             }
         }
@@ -393,8 +559,17 @@ class DrawingActivity : AppCompatActivity() {
         drawingView.onLassoFinishedListener = { lassoScreenPath ->
             handleLassoSelection(lassoScreenPath)
         }
-        drawingView.onSelectionMovedListener = { dx, dy, scale ->
-            handleSelectionCommit(dx, dy, scale)
+        drawingView.onTextTapListener = { pageIndex, pageX, pageY ->
+            contentTools.onTextTap(pageIndex, pageX, pageY)
+        }
+        drawingView.onTableCellTapListener = { pageIndex, pageX, pageY ->
+            contentTools.onTableCellTap(pageIndex, pageX, pageY)
+        }
+        drawingView.onTapeTapListener = { pageIndex, pageX, pageY ->
+            contentTools.onTapeTap(pageIndex, pageX, pageY)
+        }
+        drawingView.onSelectionMovedListener = { transform ->
+            handleSelectionCommit(transform)
         }
 
         drawingView.onFingerLongPress = { x, y -> showPastePopup(x, y) }
@@ -402,14 +577,13 @@ class DrawingActivity : AppCompatActivity() {
         drawingView.onBarrelButtonChanged = { pressed ->
             if (pressed) {
                 barrelStrokeInProgress = true
-                // Temporary eraser honours the dock's current eraser type + size.
+
                 drawingView.setTool(toolSettingsManager.currentEraserType)
                 drawingView.setBrushSize(toolSettingsManager.lastEraserSize)
                 drawingView.setDrawingMode(true)
             } else {
                 barrelStrokeInProgress = false
-                // Restore whatever tool is actually selected in the dock — never a stale
-                // snapshot, which could clobber a tool the user switched to meanwhile.
+
                 when (activeToolButton?.id) {
                     R.id.eraserButton -> toolSettingsManager.applyEraserSettings()
                     R.id.highlighterButton -> toolSettingsManager.applyHighlighterSettings()
@@ -417,12 +591,25 @@ class DrawingActivity : AppCompatActivity() {
                         drawingView.setTool(DrawingView.Tool.LASSO)
                         drawingView.setDrawingMode(true)
                     }
+                    R.id.shapeButton -> applyShapeSettings()
+                    R.id.tableButton -> applyTableSettings()
+                    R.id.laserButton -> applyLaserSettings()
+                    R.id.textButton -> applyTextSettings()
+                    R.id.measureButton -> applyMeasureSettings()
                     else -> toolSettingsManager.applyPenSettings()
                 }
             }
         }
 
-        // --- SEARCH ---
+        drawingView.onStylusPrimaryAction = { stylusSwitcher.apply(toolSettingsManager.stylusSettings.primaryAction) }
+        drawingView.onStylusSecondaryAction = {
+            if (toolSettingsManager.stylusSettings.secondaryAction == StylusAction.ERASER) {
+                drawingView.engageBarrel()
+            } else {
+                stylusSwitcher.apply(toolSettingsManager.stylusSettings.secondaryAction)
+            }
+        }
+
         val searchButton: ImageButton = findViewById(R.id.searchButton)
         val searchBar: View = findViewById(R.id.searchBar)
         val searchInput: android.widget.EditText = findViewById(R.id.searchInput)
@@ -433,23 +620,13 @@ class DrawingActivity : AppCompatActivity() {
             if (show) animateSearchBar(searchBar, true) { searchInput.requestFocus() }
             else animateSearchBar(searchBar, false)
         }
-        findViewById<ImageButton>(R.id.searchClose).setOnClickListener {
-            // Stop any in-flight streaming search (bumping the generation makes
-            // shouldStop() return true and guards stray UI callbacks).
-            searchJob?.cancel()
-            searchGen++
-            animateSearchBar(searchBar, false)
-            searchMatches = emptyList(); searchPos = -1; setActiveHighlight(null)
-            highlightsByPage.clear(); invalidateInk()
-            searchCount.text = ""
-            setSearchNavEnabled(false)
-            findViewById<View>(R.id.searchProgressPill).visibility = View.GONE
-        }
+        findViewById<ImageButton>(R.id.searchClose).setOnClickListener { resetSearchUi() }
         findViewById<ImageButton>(R.id.searchNext).setOnClickListener { stepSearch(+1, searchCount) }
         findViewById<ImageButton>(R.id.searchPrev).setOnClickListener { stepSearch(-1, searchCount) }
         findViewById<ImageButton>(R.id.searchDropdown).setOnClickListener {
             showSearchResultsDropdown(searchBar, searchCount)
         }
+
         setSearchNavEnabled(false)
         searchInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
@@ -457,7 +634,6 @@ class DrawingActivity : AppCompatActivity() {
             } else false
         }
 
-        // --- OVERFLOW (3 dots) ---
         val overflowButton: ImageButton = findViewById(R.id.overflowButton)
         overflowButton.setOnClickListener { showOverflowMenu(overflowButton) }
     }
@@ -471,12 +647,6 @@ class DrawingActivity : AppCompatActivity() {
         redoBtn.alpha = if (historyManager.canRedo()) 1f else 0.3f
     }
 
-    // --- Highlighter text snapping (uses PdfTextIndex) ---
-
-    /**
-     * Pen stroke — unless it was a scribble gesture over existing ink, in which case the
-     * strokes underneath are erased instead (scribble-to-erase, pen tool only).
-     */
     private fun handlePenStrokeAction(pageIndex: Int, path: Path, paint: Paint, contourData: FloatArray? = null): DrawingAction? {
         if (drawingView.lastStrokeWasScribble) {
             val erasePaint = Paint().apply {
@@ -487,7 +657,7 @@ class DrawingActivity : AppCompatActivity() {
             }
             val erase = strokeManager.processErase(pageIndex, path, erasePaint, DrawingView.Tool.STROKE_ERASER)
             if (erase != null) return erase
-            // Nothing under the scribble — it's just ink; fall through and draw it.
+
         }
         return strokeManager.processPen(pageIndex, path, paint, DrawingView.Tool.PEN, drawingView.penLineStyle, contourData)
     }
@@ -507,10 +677,7 @@ class DrawingActivity : AppCompatActivity() {
         }
 
         val dragBounds = RectF().also { pagePath.computeBounds(it, true) }
-        // Strokes are authored in the laid-out child's coordinate space — use the actual
-        // child dimensions so snapped rects land exactly where the text is. (The old
-        // strokePageSizes() lookup returned a default A4 aspect for pages without ink,
-        // misplacing highlights vertically on non-A4 PDFs.)
+
         val child = pdfRecyclerView.findViewHolderForAdapterPosition(pageIndex)?.itemView
         val pw: Float
         val ph: Float
@@ -531,7 +698,7 @@ class DrawingActivity : AppCompatActivity() {
             val actions = mutableListOf<DrawingAction>()
             for (rectPath in snapped) {
                 val fill = Paint(paint).apply { style = Paint.Style.FILL }
-                // Uses named arguments so the default UUID is automatically applied
+
                 val stroke = StrokeData(path = rectPath, paint = fill, isPixelEraser = false, type = StrokeType.HIGHLIGHTER)
                 actions.add(DrawingAction.AddStroke(pageIndex, stroke))
             }
@@ -562,20 +729,17 @@ class DrawingActivity : AppCompatActivity() {
         return out
     }
 
-    // --- Search methods ---
-
     private fun runSearch(query: String, countView: TextView) {
         val path = pdfFilePath ?: run {
             Toast.makeText(this, "Open a PDF to search", Toast.LENGTH_SHORT).show()
             return
         }
         if (query.isBlank()) return
-        // Native (pdfium) search when the platform supports it; pdfbox index as fallback.
+
         val useNative = NativePdfSearch.isSupported
         val index = if (useNative) null
         else pdfTextIndex ?: PdfTextIndex(File(path)).also { pdfTextIndex = it }
 
-        // Start a fresh search, superseding any in-flight one.
         searchJob?.cancel()
         val gen = ++searchGen
         searchMatches = emptyList(); searchPos = -1; setActiveHighlight(null)
@@ -592,7 +756,7 @@ class DrawingActivity : AppCompatActivity() {
             var failed = false
             withContext(Dispatchers.IO) {
                 try {
-                    // Emits matches page-by-page so results appear instantly, not after the whole PDF.
+
                     val emit = { pageIndex: Int, total: Int, matches: List<PdfTextIndex.Match> ->
                         runOnUiThread {
                             if (gen != searchGen) return@runOnUiThread
@@ -606,7 +770,7 @@ class DrawingActivity : AppCompatActivity() {
                                 setSearchNavEnabled(true)
                                 if (searchPos == -1) {
                                     searchPos = 0
-                                    focusMatch(0, countView) // jump to first result immediately
+                                    focusMatch(0, countView)
                                 } else {
                                     countView.text = "${searchPos + 1}/${searchMatches.size}"
                                 }
@@ -644,7 +808,17 @@ class DrawingActivity : AppCompatActivity() {
         }
     }
 
-    /** Slides + fades the search bar in/out (it's anchored at the top, below the dock). */
+    private fun resetSearchUi() {
+        searchJob?.cancel()
+        searchGen++
+        animateSearchBar(findViewById(R.id.searchBar), false)
+        searchMatches = emptyList(); searchPos = -1; setActiveHighlight(null)
+        highlightsByPage.clear(); invalidateInk()
+        findViewById<TextView>(R.id.searchCount).text = ""
+        setSearchNavEnabled(false)
+        findViewById<View>(R.id.searchProgressPill).visibility = View.GONE
+    }
+
     private fun animateSearchBar(searchBar: View, show: Boolean, onShown: (() -> Unit)? = null) {
         searchBar.animate().cancel()
         val slide = (40 * resources.displayMetrics.density)
@@ -709,7 +883,6 @@ class DrawingActivity : AppCompatActivity() {
         focusMatch(searchPos, countView)
     }
 
-    /** Bolds and yellow-highlights every occurrence of [query] within [text]. */
     private fun highlightQuery(text: String, query: String): CharSequence {
         if (query.isBlank()) return text
         val span = android.text.SpannableString(text)
@@ -728,7 +901,6 @@ class DrawingActivity : AppCompatActivity() {
         return span
     }
 
-    /** Rounded dropdown listing each match with a context snippet; tapping jumps to it. */
     private fun showSearchResultsDropdown(anchor: View, countView: TextView) {
         if (searchMatches.isEmpty()) {
             Toast.makeText(this, "No results yet", Toast.LENGTH_SHORT).show()
@@ -755,7 +927,6 @@ class DrawingActivity : AppCompatActivity() {
             container.addView(row)
         }
 
-        // Cap height so long lists scroll instead of covering the screen.
         content.measure(
             View.MeasureSpec.makeMeasureSpec(anchor.width, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -765,8 +936,6 @@ class DrawingActivity : AppCompatActivity() {
 
         popup.showAsDropDown(anchor, 0, (4 * resources.displayMetrics.density).toInt())
     }
-
-    // --- PDF LOADING (native PdfRenderer engine) ---
 
     private fun loadPdf() {
         findViewById<View>(R.id.pdfLoadingOverlay).visibility = View.VISIBLE
@@ -787,13 +956,44 @@ class DrawingActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * (Re)builds the PDF engine + adapter for [file].
-     *
-     * [restoreScroll] = (firstVisiblePosition, topOffsetPx). When provided, the view is restored
-     * to that exact scroll position instead of jumping to [currentPage] — used for in-place edits
-     * (e.g. auto-appending a page) so the user isn't yanked elsewhere.
-     */
+    fun switchNotebookInPlace(target: Notebook): Boolean {
+        if (target.documentType == DocumentType.INFINITE) return false
+
+        persistLastPage()
+
+        contentTools.dismissPopups()
+        selectionPopup?.dismiss()
+        drawingView.clearSelectionVisuals()
+        drawingView.clearPendingTable()
+        resetSearchUi()
+        pdfTextIndex = null
+        outlineLoadJob?.cancel()
+        outlineCacheValue = null
+        findViewById<View>(R.id.outlineLoadingPill).visibility = View.GONE
+        findViewById<View>(R.id.zoomIndicator).visibility = View.GONE
+
+        strokeManager.cancelSelection()
+        strokeManager.loadDecodedData(emptyMap())
+        historyManager.clear()
+        updateUndoRedoButtons()
+
+        notebookId = target.id
+        if (notebookId >= 0) lifecycleScope.launch { dataManager.touchOpened(notebookId) }
+        pdfFilePath = null
+        currentPage = statePrefs.getInt("last_page_$notebookId", 0)
+        totalPages = statePrefs.getInt("page_count_$notebookId", 1)
+        savedDataLoaded = false
+        strokesLoaded = false
+        strokesDirty = false
+        inkBaseWidth = 0f
+        templateImageUriState.value = null
+
+        pdfRecyclerView.resetZoom()
+
+        loadPdf()
+        return true
+    }
+
     private fun setupPdfEngine(file: File, restoreScroll: Pair<Int, Int>? = null) {
         pageRestorePending = true
         pdfEngine?.close()
@@ -807,14 +1007,14 @@ class DrawingActivity : AppCompatActivity() {
         pdfEngine = engine
         totalPages = engine.pageCount
         statePrefs.edit().putInt("page_count_$notebookId", totalPages).apply()
-        // Warm the size cache on the engine's render thread so scrolling never blocks on getPageSize().
+
         lifecycleScope.launch { engine.prefetchSizes() }
 
         val adapter = PdfPageAdapter(engine, lifecycleScope, strokeManager).apply {
             highlightsByPage = this@DrawingActivity.highlightsByPage
             searchFillPaint = this@DrawingActivity.searchFillPaint
             activeFillPaint = this@DrawingActivity.activeFillPaint
-            zoom = pdfRecyclerView.zoom // keep zoom consistent across reloads
+            zoom = pdfRecyclerView.zoom
             onFirstRender = {
                 findViewById<View>(R.id.pdfLoadingOverlay).visibility = View.GONE
             }
@@ -823,7 +1023,6 @@ class DrawingActivity : AppCompatActivity() {
         pdfRecyclerView.adapter = adapter
         drawingView.setPdfRecyclerView(pdfRecyclerView, adapter, engine)
 
-        // Sharp zoom: re-render the visible region at screen resolution once the zoom settles.
         pdfRecyclerView.clearHiResTiles()
         pdfRecyclerView.hiResScope = lifecycleScope
         pdfRecyclerView.hiResRenderer = { page, lx, ly, z, childW, outW, outH ->
@@ -831,7 +1030,7 @@ class DrawingActivity : AppCompatActivity() {
         }
         pdfRecyclerView.drawPageInk = { canvas, page, pageW, pageH ->
             strokeManager.drawPageStrokes(page, canvas, 1f, 1f)
-            // Search highlights (normalised page coords) so tiles don't hide them.
+
             highlightsByPage[page]?.forEach { r ->
                 val active = pdfAdapter?.activeHighlightPage == page && pdfAdapter?.activeHighlightRect == r
                 canvas.drawRect(
@@ -882,8 +1081,6 @@ class DrawingActivity : AppCompatActivity() {
         return outputStream.toByteArray()
     }
 
-    // --- Add page / delete (search index must be cleared on modifications) ---
-
     private fun showAddPagePopup(anchor: View) {
         val view = layoutInflater.inflate(R.layout.popup_add_page, null)
         val widthPx = (260 * resources.displayMetrics.density).toInt()
@@ -900,8 +1097,6 @@ class DrawingActivity : AppCompatActivity() {
         view.findViewById<View>(R.id.optionEnd).setOnClickListener { addPageAt(totalPages); popup.dismiss() }
         popup.showAsDropDown(anchor, 0, 8)
     }
-
-    // --- Per-notebook page template ---
 
     private fun loadNotebookTemplate(): PageTemplate? =
         PageTemplate.fromJson(
@@ -920,7 +1115,6 @@ class DrawingActivity : AppCompatActivity() {
         Pair(595, 842)
     }
 
-    /** Compact preset chooser (Blank / Ruled / Grid / Dotted) sized to the current page. */
     private fun showTemplateChooser(onPick: (PageTemplate) -> Unit) {
         val labels = arrayOf("Blank", "Ruled", "Grid", "Dotted")
         val codes = arrayOf("BLANK", "RULE", "GRID", "DOTS")
@@ -935,7 +1129,7 @@ class DrawingActivity : AppCompatActivity() {
     private fun addPageAt(insertIndex: Int) {
         val path = pdfFilePath
         if (path == null) {
-            // Legacy blank notebook with no backing PDF.
+
             historyManager.clear()
             strokeManager.shiftPages(insertIndex, totalPages)
             strokesDirty = true
@@ -951,12 +1145,11 @@ class DrawingActivity : AppCompatActivity() {
         if (tpl != null) {
             insertTemplatePage(path, insertIndex, tpl)
         } else {
-            // No stored template – show the full template picker (and remember the choice).
+
             showAddPageTemplateDialog(path, insertIndex)
         }
     }
 
-    /** Full (advanced) template picker for adding a page to a PDF with no stored template. */
     private fun showAddPageTemplateDialog(path: String, insertIndex: Int) {
         templateImageUriState.value = null
         val dialog = android.app.Dialog(this, R.style.Theme_OctopusNotes)
@@ -969,9 +1162,11 @@ class DrawingActivity : AppCompatActivity() {
             setViewTreeSavedStateRegistryOwner(this@DrawingActivity)
             setContent {
                 val dark = androidx.compose.foundation.isSystemInDarkTheme()
+
+                val ctx = androidx.compose.ui.platform.LocalContext.current
                 androidx.compose.material3.MaterialTheme(
-                    colorScheme = if (dark) androidx.compose.material3.darkColorScheme()
-                    else androidx.compose.material3.lightColorScheme()
+                    colorScheme = if (dark) androidx.compose.material3.dynamicDarkColorScheme(ctx)
+                    else androidx.compose.material3.dynamicLightColorScheme(ctx)
                 ) {
                     AdvancedTemplateScreen(
                         initialSettings = null,
@@ -1013,7 +1208,7 @@ class DrawingActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 busy.dismiss()
-                Toast.makeText(this@DrawingActivity, "Couldn't save the PDF — please try again", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@DrawingActivity, editErrorText(e, "Couldn't save the PDF. Please try again"), Toast.LENGTH_LONG).show()
                 return@launch
             }
             busy.dismiss()
@@ -1032,12 +1227,6 @@ class DrawingActivity : AppCompatActivity() {
 
     private var isAutoAppending = false
 
-    /**
-     * "Add pages continuously": when the user draws on the last page (and the setting is on),
-     * silently append a fresh page to the end using the notebook template. Appending at the end
-     * shifts no existing pages, so undo history and stroke page-indices stay valid, and we keep
-     * the user on the page they're writing on (no jump).
-     */
     private fun maybeAutoAppendPage(pageIndex: Int) {
         val prefs = getSharedPreferences("OctopusNotesPrefs", MODE_PRIVATE)
         if (!prefs.getBoolean("continuous_pages", false)) return
@@ -1050,8 +1239,7 @@ class DrawingActivity : AppCompatActivity() {
             PageTemplate.preset("BLANK", w, h).also { saveNotebookTemplate(it) }
         }
         lifecycleScope.launch {
-            // Write the page and open a fresh engine, all off the main thread. The old engine
-            // keeps serving renders from its open FD in the meantime, so drawing never pauses.
+
             val newEngine = withContext(Dispatchers.IO) {
                 try {
                     insertTemplatePageIntoPdf(File(path), totalPages, tpl)
@@ -1065,8 +1253,6 @@ class DrawingActivity : AppCompatActivity() {
                 return@launch
             }
 
-            // Seamless swap: same adapter, same bitmap cache, same scroll — the only UI
-            // change is one new item appended below. No reload, no white flash.
             val oldEngine = pdfEngine
             pdfEngine = newEngine
             lifecycleScope.launch { newEngine.prefetchSizes() }
@@ -1089,22 +1275,35 @@ class DrawingActivity : AppCompatActivity() {
         }
     }
 
-    /** Loads a PDF spooling parse buffers to disk, so large files don't OOM. */
-    private fun loadPdfLowMemory(file: File): PDDocument {
-        val mem = com.tom_roush.pdfbox.io.MemoryUsageSetting.setupTempFileOnly().setTempDir(cacheDir)
-        return PDDocument.load(file, mem)
+    private fun editPdfSafely(file: File, action: (IncrementalPdfEditor) -> Unit) {
+        val tmp = File(file.parentFile, file.name + ".tmp")
+        try {
+            val editor = IncrementalPdfEditor.open(file)
+            action(editor)
+            editor.save(tmp)
+            swapPdfIntoPlace(tmp, file)
+        } catch (e: Exception) {
+            tmp.delete()
+            throw e
+        }
     }
 
-    /**
-     * Atomically replaces [file] with the freshly written [tmp] (same directory, same
-     * filesystem). The current [file] is first rotated to a `.bak`; the tmp is renamed
-     * into place; if that rename fails the backup is restored so the notebook's PDF is
-     * never left missing, and the tmp is cleaned up. On success the previous version
-     * stays as `.bak` (a crash-safety copy, matching [DrawingRepository.save]'s policy)
-     * and the next edit overwrites it. Throws [java.io.IOException] when the swap can't
-     * be completed, so callers can abort their in-memory mutations instead of letting
-     * the PDF desync from the stroke/page state.
-     */
+    private fun renderTemplateJpeg(tpl: PageTemplate, wPt: Float, hPt: Float): Triple<ByteArray, Int, Int> {
+        val scale = 2
+        val bmp = tpl.renderBitmap(this, (wPt * scale).toInt(), (hPt * scale).toInt())
+        try {
+            val out = java.io.ByteArrayOutputStream()
+            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+            return Triple(out.toByteArray(), bmp.width, bmp.height)
+        } finally {
+            bmp.recycle()
+        }
+    }
+
+    private fun editErrorText(e: Exception, fallback: String): String =
+        if (e is PdfEditException.Unsupported) "This PDF uses an unsupported format (encrypted) and can't be edited."
+        else fallback
+
     private fun swapPdfIntoPlace(tmp: File, file: File) {
         val bak = File(file.parentFile, file.name + ".bak")
         if (file.exists()) {
@@ -1115,10 +1314,9 @@ class DrawingActivity : AppCompatActivity() {
             }
         }
         if (!tmp.renameTo(file)) {
-            // The new file didn't land — put the original back so the notebook keeps a PDF.
+
             if (!bak.renameTo(file)) {
-                // Double failure: the original couldn't be restored either. Surface both
-                // so it's clear the PDF is missing, not silently "fine".
+
                 tmp.delete()
                 throw java.io.IOException(
                     "Failed to move ${tmp.name} into place (and could not restore ${bak.name})"
@@ -1127,54 +1325,19 @@ class DrawingActivity : AppCompatActivity() {
             tmp.delete()
             throw java.io.IOException("Failed to move ${tmp.name} into place")
         }
-        // Success: the stale tmp is gone (renamed away); `.bak` holds the previous version.
+
     }
 
     private fun insertTemplatePageIntoPdf(file: File, insertIndex: Int, tpl: PageTemplate) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        loadPdfLowMemory(file).use { doc ->
-            val count = doc.numberOfPages
+        editPdfSafely(file) { editor ->
+            val count = editor.pageCount
             val refIndex = if (insertIndex < count) insertIndex else count - 1
-            val box = if (refIndex in 0 until count) doc.getPage(refIndex).mediaBox else PDRectangle.A4
-            val newPage = PDPage(PDRectangle(box.width, box.height))
-            drawTemplateBackground(doc, newPage, box.width, box.height, tpl, prepend = false)
-
-            if (insertIndex >= count) doc.pages.add(newPage)
-            else doc.pages.insertBefore(newPage, doc.getPage(insertIndex))
-
-            doc.save(tmp)
-        }
-        swapPdfIntoPlace(tmp, file)
-    }
-
-    /**
-     * Draws [tpl] as a full-page image. When [prepend] is true the background is written
-     * *under* any existing page content (so original PDF content stays visible on top).
-     */
-    private fun drawTemplateBackground(
-        doc: PDDocument,
-        page: PDPage,
-        wPt: Float,
-        hPt: Float,
-        tpl: PageTemplate,
-        prepend: Boolean
-    ) {
-        val scale = 2
-        val bmp = tpl.renderBitmap(this, (wPt * scale).toInt(), (hPt * scale).toInt())
-        try {
-            val img = com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(doc, bmp)
-            val mode = if (prepend) PDPageContentStream.AppendMode.PREPEND else PDPageContentStream.AppendMode.APPEND
-            PDPageContentStream(doc, page, mode, true, true).use { cs ->
-                cs.drawImage(img, 0f, 0f, wPt, hPt)
-            }
-        } finally {
-            bmp.recycle()
+            val size = if (refIndex in 0 until count) editor.pageSize(refIndex) else 595f to 842f
+            val jpeg = renderTemplateJpeg(tpl, size.first, size.second)
+            editor.insertTemplatePage(insertIndex, size.first, size.second, jpeg.first, jpeg.second, jpeg.third)
         }
     }
 
-    // --- Change template of current / all pages (from overflow menu) ---
-
-    /** Opens the full (advanced) template editor in change mode, with Apply / Apply-to-whole-PDF. */
     private fun showChangeTemplateDialog() {
         if (pdfFilePath == null) {
             Toast.makeText(this, "No PDF page to change", Toast.LENGTH_SHORT).show()
@@ -1193,9 +1356,11 @@ class DrawingActivity : AppCompatActivity() {
             setViewTreeSavedStateRegistryOwner(this@DrawingActivity)
             setContent {
                 val dark = androidx.compose.foundation.isSystemInDarkTheme()
+
+                val ctx = androidx.compose.ui.platform.LocalContext.current
                 androidx.compose.material3.MaterialTheme(
-                    colorScheme = if (dark) androidx.compose.material3.darkColorScheme()
-                    else androidx.compose.material3.lightColorScheme()
+                    colorScheme = if (dark) androidx.compose.material3.dynamicDarkColorScheme(ctx)
+                    else androidx.compose.material3.dynamicLightColorScheme(ctx)
                 ) {
                     AdvancedTemplateScreen(
                         initialSettings = initial,
@@ -1253,16 +1418,15 @@ class DrawingActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val hasContent = withContext(Dispatchers.IO) {
                 try {
-                    loadPdfLowMemory(File(path)).use { doc ->
-                        val range = if (allPages) 0 until doc.numberOfPages else currentPage..currentPage
-                        range.any { it in 0 until doc.numberOfPages && pageHasOriginalContent(doc.getPage(it)) }
-                    }
+                    val editor = IncrementalPdfEditor.open(File(path))
+                    val range = if (allPages) 0 until editor.pageCount else currentPage..currentPage
+                    range.any { it in 0 until editor.pageCount && editor.pageHasFontResources(it) }
                 } catch (e: Exception) { false }
             }
             val scope = if (allPages) "all $totalPages pages" else "this page"
             val message = buildString {
                 append("Apply this template to $scope?")
-                if (hasContent) append("\n\nSome of these pages contain original PDF content — the template will be drawn behind it.")
+                if (hasContent) append("\n\nSome of these pages contain original PDF content. The template will be drawn behind it.")
             }
             MaterialAlertDialogBuilder(this@DrawingActivity)
                 .setTitle("Apply template")
@@ -1279,7 +1443,7 @@ class DrawingActivity : AppCompatActivity() {
         busy.show()
         lifecycleScope.launch {
             try {
-                // Close the renderer before pdfbox touches the file so the two don't compete.
+
                 pdfEngine?.close()
                 pdfEngine = null
                 withContext(Dispatchers.IO) { applyTemplateToPdf(File(path), tpl, allPages, currentPage) }
@@ -1293,42 +1457,32 @@ class DrawingActivity : AppCompatActivity() {
                 busy.dismiss()
                 Toast.makeText(
                     this@DrawingActivity,
-                    "Failed to apply template — the file may be closed by another operation.\nPlease try again.",
+                    editErrorText(e, "Failed to apply template. The file may be closed by another operation.\nPlease try again."),
                     Toast.LENGTH_LONG
                 ).show()
-                // Reopen the engine so the user can keep working.
+
                 loadPdf()
             }
         }
     }
 
     private fun applyTemplateToPdf(file: File, tpl: PageTemplate, allPages: Boolean, currentIndex: Int) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        loadPdfLowMemory(file).use { doc ->
-            val n = doc.numberOfPages
-            val targets = if (allPages) (0 until n) else (currentIndex..currentIndex)
-            for (i in targets) {
-                if (i !in 0 until n) continue
-                val page = doc.getPage(i)
-                val box = page.mediaBox
-                // PREPEND only for imported PDFs with original content (the template goes behind it).
-                // For app-created notebooks the old template is a full-page opaque image, so
-                // APPEND replaces it instead of hiding the new one underneath.
-                val prepend = pageHasOriginalContent(page)
-                drawTemplateBackground(doc, page, box.width, box.height, tpl, prepend = prepend)
-            }
-            doc.save(tmp)
-        }
-        swapPdfIntoPlace(tmp, file)
-    }
+        editPdfSafely(file) { editor ->
+            val n = editor.pageCount
+            val pages = (if (allPages) 0 until n else currentIndex..currentIndex).filter { it in 0 until n }
+            if (pages.isEmpty()) return@editPdfSafely
 
-    /** Heuristic: a page has original (non-template) content if it references fonts.
-     *  Image XObjects are deliberately NOT checked — drawTemplateBackground writes
-     *  template images into the page, and treating those as "original content" would
-     *  cause a second template change to PREPEND behind the first one (invisible). */
-    private fun pageHasOriginalContent(page: PDPage): Boolean {
-        val res = page.resources ?: return false
-        return res.fontNames?.iterator()?.hasNext() == true
+            val prepend = pages.filter { editor.pageHasFontResources(it) }
+            val append = pages.filterNot { it in prepend }
+            val size = editor.pageSize(pages.first())
+            val jpeg = renderTemplateJpeg(tpl, size.first, size.second)
+            if (prepend.isNotEmpty()) {
+                editor.applyTemplate(prepend, jpeg.first, jpeg.second, jpeg.third, prepend = true)
+            }
+            if (append.isNotEmpty()) {
+                editor.applyTemplate(append, jpeg.first, jpeg.second, jpeg.third, prepend = false)
+            }
+        }
     }
 
     private fun showBusyDialog(message: String): AlertDialog {
@@ -1354,27 +1508,90 @@ class DrawingActivity : AppCompatActivity() {
         }.show()
     }
 
+    private fun activeToolId(): String? = when (activeToolButton?.id) {
+        R.id.penButton -> "PEN"
+        R.id.eraserButton -> "ERASER"
+        R.id.highlighterButton -> "HIGHLIGHTER"
+        R.id.selectionButton -> "LASSO"
+        R.id.shapeButton -> "SHAPE"
+        R.id.tableButton -> "TABLE"
+        R.id.laserButton -> "LASER"
+        R.id.textButton -> "TEXT"
+        R.id.imageButton -> "IMAGE"
+        R.id.measureButton -> "MEASURE"
+        R.id.tapeButton -> "TAPE"
+        else -> null
+    }
+
+    private fun stylusActivateTool(toolId: String) {
+        val buttonId = when (toolId) {
+            "PEN" -> R.id.penButton
+            "ERASER" -> R.id.eraserButton
+            "HIGHLIGHTER" -> R.id.highlighterButton
+            "LASSO" -> R.id.selectionButton
+            "SHAPE" -> R.id.shapeButton
+            "TABLE" -> R.id.tableButton
+            "LASER" -> R.id.laserButton
+            "TEXT" -> R.id.textButton
+            "IMAGE" -> R.id.imageButton
+            "MEASURE" -> R.id.measureButton
+            "TAPE" -> R.id.tapeButton
+            else -> return
+        }
+        val btn = findViewById<ImageButton>(buttonId) ?: return
+        when (buttonId) {
+            R.id.penButton -> { setActiveTool(btn); toolSettingsManager.applyPenSettings() }
+            R.id.eraserButton -> { setActiveTool(btn); toolSettingsManager.applyEraserSettings() }
+            R.id.highlighterButton -> { setActiveTool(btn); toolSettingsManager.applyHighlighterSettings() }
+            R.id.selectionButton -> {
+                setActiveTool(btn)
+                drawingView.setTool(DrawingView.Tool.LASSO)
+                drawingView.setDrawingMode(true)
+            }
+            R.id.shapeButton -> { setActiveTool(btn); applyShapeSettings() }
+            R.id.tableButton -> { setActiveTool(btn); applyTableSettings() }
+            R.id.laserButton -> { setActiveTool(btn); applyLaserSettings() }
+            R.id.textButton -> { setActiveTool(btn); applyTextSettings() }
+            R.id.imageButton -> {
+                setActiveTool(btn)
+                drawingView.setDrawingMode(false)
+            }
+            R.id.measureButton -> { setActiveTool(btn); applyMeasureSettings() }
+            R.id.tapeButton -> { setActiveTool(btn); applyTapeSettings() }
+        }
+    }
+
     private fun setActiveTool(selectedButton: ImageButton) {
-        activeToolButton?.isSelected = false
-        selectedButton.isSelected = true
-        activeToolButton = selectedButton
-        toolOptionsHidden = false
-        showActiveToolOptions()
         val key = when (selectedButton.id) {
             R.id.penButton -> "PEN"
             R.id.eraserButton -> "ERASER"
             R.id.highlighterButton -> "HIGHLIGHTER"
             R.id.selectionButton -> "LASSO"
+            R.id.shapeButton -> "SHAPE"
+            R.id.tableButton -> "TABLE"
+            R.id.laserButton -> "LASER"
+            R.id.textButton -> "TEXT"
             R.id.imageButton -> "IMAGE"
+            R.id.measureButton -> "MEASURE"
+            R.id.tapeButton -> "TAPE"
             else -> return
         }
+
+        stylusSwitcher.onToolActivated(key)
+        activeToolButton?.isSelected = false
+        selectedButton.isSelected = true
+        activeToolButton = selectedButton
+
+        toolOptionsHidden = !penPrefs().getBoolean("TOOL_OPTIONS_AUTO_SHOW", true)
+        showActiveToolOptions()
         penPrefs().edit().putString("LAST_ACTIVE_TOOL", key).apply()
+
+        restoreActiveToolDockState()
     }
 
     private var smallDock = false
     private var toolOptionsHidden = false
 
-    /** Shows the option strip matching the active tool + the scroll that hosts it. */
     private fun showActiveToolOptions() {
         val hasOptions = !dockCollapsed && !toolOptionsHidden
         val id = if (hasOptions) (activeToolButton?.id ?: -1) else -1
@@ -1386,24 +1603,31 @@ class DrawingActivity : AppCompatActivity() {
             if (id == R.id.highlighterButton) View.VISIBLE else View.GONE
         findViewById<View>(R.id.lassoPropsStrip).visibility =
             if (id == R.id.selectionButton) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.shapePropsStrip).visibility =
+            if (id == R.id.shapeButton) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.tablePropsStrip).visibility =
+            if (id == R.id.tableButton) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.laserPropsStrip).visibility =
+            if (id == R.id.laserButton) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.textPropsStrip).visibility =
+            if (id == R.id.textButton) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.tapePropsStrip).visibility =
+            if (id == R.id.tapeButton) View.VISIBLE else View.GONE
         findViewById<View>(R.id.imagePropsStrip).visibility =
             if (id == R.id.imageButton) View.VISIBLE else View.GONE
-        if (id == R.id.imageButton) refreshImageToolStrip()
+        if (id == R.id.imageButton) contentTools.refreshImageToolStrip()
 
-        // The options scroll container is only present when a strip should show.
-        val optionsVisible = id != -1
+        val optionsVisible = id != -1 && id != R.id.measureButton
         val scroll = if (smallDock) R.id.optionsScrollV else R.id.optionsScrollH
         findViewById<View>(scroll).visibility = if (optionsVisible) View.VISIBLE else View.GONE
-        if (smallDock && optionsVisible) capDockScrolls()
+        if (optionsVisible) capDockScrolls()
     }
 
-    /**
-     * On small (phone) screens the dock lives on the left edge (vertically centred): a vertical
-     * tools column on the **left**, the tool-options column to its **right**. Both columns
-     * scroll vertically. Larger screens keep the XML top-centre layout (tools row on top,
-     * options row below, both scrolling horizontally).
-     */
     private fun configureDockPlacement() {
+
+        findViewById<View>(R.id.drawingRootLayout)
+            .viewTreeObserver.addOnGlobalLayoutListener { capDockScrolls() }
+
         if (resources.configuration.screenWidthDp >= 600) return
         smallDock = true
 
@@ -1416,35 +1640,29 @@ class DrawingActivity : AppCompatActivity() {
         val optionsScrollH = findViewById<android.widget.HorizontalScrollView>(R.id.optionsScrollH)
         val optionsScrollV = findViewById<android.widget.ScrollView>(R.id.optionsScrollV)
 
-        // Dock becomes a horizontal pair of columns; tools left, options right.
         toolDock.orientation = android.widget.LinearLayout.HORIZONTAL
 
-        // Tools: stack vertically inside the vertical scroll.
         toolsScrollH.removeView(toolDockItems)
         toolsScrollV.addView(toolDockItems)
         toolDockItems.orientation = android.widget.LinearLayout.VERTICAL
         toolsScrollH.visibility = View.GONE
         toolsScrollV.visibility = View.VISIBLE
 
-        // Options: stack vertically inside the vertical scroll.
         optionsScrollH.removeView(optionsRow)
         optionsScrollV.addView(optionsRow)
         optionsRow.orientation = android.widget.LinearLayout.VERTICAL
         optionsRow.gravity = android.view.Gravity.CENTER_HORIZONTAL
         optionsScrollH.visibility = View.GONE
-        listOf(R.id.penPropsStrip, R.id.eraserPropsStrip, R.id.highlighterPropsStrip, R.id.lassoPropsStrip, R.id.imagePropsStrip)
+        listOf(R.id.penPropsStrip, R.id.eraserPropsStrip, R.id.highlighterPropsStrip, R.id.lassoPropsStrip, R.id.shapePropsStrip, R.id.tablePropsStrip, R.id.laserPropsStrip, R.id.imagePropsStrip)
             .forEach { makeStripVertical(findViewById(it)) }
 
-        // Order children: toolsGroup (left), optionsScrollV (right).
         toolDock.removeView(optionsScrollV)
-        toolDock.addView(optionsScrollV) // now last → rightmost
+        toolDock.addView(optionsScrollV)
 
-        // Collapse toggle.
         val collapseBtn = findViewById<ImageButton>(R.id.dockCollapseButton)
         collapseBtn.visibility = View.VISIBLE
         collapseBtn.setOnClickListener { setDockCollapsed(!dockCollapsed) }
 
-        // Anchor the dock to the left edge, vertically centred.
         val lp = toolDock.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
         val parent = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
         val unset = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
@@ -1453,23 +1671,50 @@ class DrawingActivity : AppCompatActivity() {
         lp.endToStart = unset
         lp.endToEnd = unset
         lp.topToTop = parent
+        lp.topToBottom = unset
         lp.bottomToBottom = parent
         toolDock.layoutParams = lp
 
-        // Search bar returns to the top-right (the dock no longer occupies the top).
         val searchBar = findViewById<View>(R.id.searchBar)
         val slp = searchBar.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
         slp.topToBottom = R.id.topBarEnd
         searchBar.layoutParams = slp
 
-        // Re-apply option visibility now that smallDock is on (picks optionsScrollV).
         showActiveToolOptions()
 
-        // Phones start with the dock collapsed to keep the canvas clear.
-        setDockCollapsed(true)
+        setDockCollapsed(penPrefs().getBoolean("DOCK_COLLAPSED", true))
     }
 
-    /** Re-orients an option strip (LinearLayout) to vertical, fixing its dividers + spacing. */
+    private fun applyDockTransitions() {
+        val duration = 200L
+        val transition = android.animation.LayoutTransition().apply {
+            setDuration(duration)
+            setInterpolator(
+                android.animation.LayoutTransition.CHANGING,
+                android.view.animation.DecelerateInterpolator()
+            )
+
+            setAnimator(
+                android.animation.LayoutTransition.APPEARING,
+                android.animation.ObjectAnimator.ofFloat(null, "alpha", 0f, 1f).apply {
+                    setDuration(duration)
+                }
+            )
+            setAnimator(
+                android.animation.LayoutTransition.DISAPPEARING,
+                android.animation.ObjectAnimator.ofFloat(null, "alpha", 1f, 0f).apply {
+                    setDuration(duration)
+                }
+            )
+        }
+
+        listOf(
+            R.id.optionsScrollH,
+            R.id.optionsScrollV,
+            R.id.optionsRow
+        ).forEach { id -> (findViewById<android.view.ViewGroup>(id)).layoutTransition = transition }
+    }
+
     private fun makeStripVertical(strip: android.widget.LinearLayout) {
         strip.orientation = android.widget.LinearLayout.VERTICAL
         strip.gravity = android.view.Gravity.CENTER_HORIZONTAL
@@ -1480,7 +1725,7 @@ class DrawingActivity : AppCompatActivity() {
             val child = strip.getChildAt(i)
             val lp = child.layoutParams as android.widget.LinearLayout.LayoutParams
             if (child.id == View.NO_ID && lp.width in 1..thin) {
-                // Vertical (1dp-wide) divider becomes a horizontal one.
+
                 lp.width = (28 * density).toInt()
                 lp.height = (1 * density).toInt().coerceAtLeast(1)
                 lp.setMargins(0, (5 * density).toInt(), 0, (5 * density).toInt())
@@ -1491,25 +1736,55 @@ class DrawingActivity : AppCompatActivity() {
         }
     }
 
-    /** Caps the small-dock scroll columns to the viewport so tall content scrolls instead of clipping. */
     private fun capDockScrolls() {
-        if (!smallDock) return
+        if (dockCollapsed) return
         val root = findViewById<View>(R.id.drawingRootLayout)
         root.post {
-            val cap = (root.height * 0.82f).toInt()
-            if (cap <= 0) return@post
-            listOf(R.id.optionsScrollV, R.id.toolsScrollV).forEach { id ->
-                val sv = findViewById<android.view.ViewGroup>(id)
-                val child = sv.getChildAt(0) ?: return@forEach
-                child.measure(
-                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                )
-                val lp = sv.layoutParams
-                lp.height = if (child.measuredHeight > cap) cap
-                else android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-                sv.layoutParams = lp
+            if (root.height <= 0) return@post
+            if (smallDock) {
+                val cap = (root.height * 0.82f).toInt()
+                if (cap <= 0) return@post
+                listOf(R.id.optionsScrollV, R.id.toolsScrollV).forEach { capScrollHeight(it, cap) }
+            } else {
+                val dock = findViewById<android.widget.LinearLayout>(R.id.toolDock)
+                if (dock.width <= 0) return@post
+                capScrollWidth(R.id.optionsScrollH, dock.width)
             }
+        }
+    }
+
+    private fun capScrollHeight(id: Int, cap: Int) {
+        val sv = findViewById<android.view.ViewGroup>(id)
+        if (sv.visibility != View.VISIBLE) return
+        val child = sv.getChildAt(0) ?: return
+        child.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val lp = sv.layoutParams
+        val newHeight = if (child.measuredHeight > cap) cap
+        else android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+
+        if (lp.height != newHeight) {
+            lp.height = newHeight
+            sv.layoutParams = lp
+        }
+    }
+
+    private fun capScrollWidth(id: Int, dockWidth: Int) {
+        val sv = findViewById<android.view.ViewGroup>(id)
+        if (sv.visibility != View.VISIBLE) return
+        val child = sv.getChildAt(0) ?: return
+        child.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val lp = sv.layoutParams
+        val newWidth = if (child.measuredWidth > dockWidth) dockWidth
+        else android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        if (lp.width != newWidth) {
+            lp.width = newWidth
+            sv.layoutParams = lp
         }
     }
 
@@ -1517,10 +1792,12 @@ class DrawingActivity : AppCompatActivity() {
 
     private fun setDockCollapsed(collapsed: Boolean) {
         dockCollapsed = collapsed
+        penPrefs().edit().putBoolean("DOCK_COLLAPSED", collapsed).apply()
         findViewById<View>(R.id.toolsScrollV).visibility = if (collapsed) View.GONE else View.VISIBLE
-        showActiveToolOptions() // hides options when collapsed, restores the active one otherwise
+        showActiveToolOptions()
 
-        // Collapse also hides undo / redo / add-page.
+        if (!collapsed && smallDock) capDockScrolls()
+
         val v = if (collapsed) View.GONE else View.VISIBLE
         findViewById<View>(R.id.undoButton).visibility = v
         findViewById<View>(R.id.redoButton).visibility = v
@@ -1531,15 +1808,10 @@ class DrawingActivity : AppCompatActivity() {
         )
     }
 
-    /** Re-tapping the active tool hides/shows its options. */
     private fun toggleToolOptions() {
         toolOptionsHidden = !toolOptionsHidden
         showActiveToolOptions()
     }
-
-    // -------------------------------------------------------------------------
-    //  Horizontal pen dock: line style + 5 colours + 3 thickness presets
-    // -------------------------------------------------------------------------
 
     private fun penPrefs() = getSharedPreferences("OctopusNotesPrefs", MODE_PRIVATE)
 
@@ -1548,41 +1820,12 @@ class DrawingActivity : AppCompatActivity() {
         for (i in 0 until 5) dockColors[i] = prefs.getInt("DOCK_COLOR_$i", dockDefaultColors[i])
         dockActiveColorIndex = prefs.getInt("DOCK_COLOR_ACTIVE", 0).coerceIn(0, 4)
 
-        val swatches = listOf(
-            findViewById<View>(R.id.colorSwatch0),
-            findViewById<View>(R.id.colorSwatch1),
-            findViewById<View>(R.id.colorSwatch2),
-            findViewById<View>(R.id.colorSwatch3),
-            findViewById<View>(R.id.colorSwatch4)
-        )
-        fun refreshSwatches() {
-            swatches.forEachIndexed { i, v -> updateDockSwatch(v, dockColors[i], i == dockActiveColorIndex) }
-        }
-        swatches.forEachIndexed { i, v ->
-            v.setOnClickListener {
-                if (dockActiveColorIndex == i) {
-                    // Re-tap the active swatch → custom colour picker.
-                    openDockColorPicker(dockColors[i]) { picked ->
-                        dockColors[i] = picked
-                        prefs.edit().putInt("DOCK_COLOR_$i", picked).apply()
-                        applyDockColor(picked)
-                        refreshSwatches()
-                    }
-                } else {
-                    dockActiveColorIndex = i
-                    prefs.edit().putInt("DOCK_COLOR_ACTIVE", i).apply()
-                    applyDockColor(dockColors[i])
-                    refreshSwatches()
-                }
-            }
-        }
-        refreshSwatches()
+        setupDockSwatches()
 
-        // Thickness slots — tap to select, re-tap the active one to customize its size.
         for (i in 0 until 3) dockThickness[i] = prefs.getFloat("DOCK_THICK_$i", dockThicknessDefaults[i])
         dockActiveThicknessIndex = prefs.getInt("DOCK_THICK_ACTIVE", -1)
         if (dockActiveThicknessIndex !in 0..2) {
-            // Adopt the previously saved pen size into its nearest slot.
+
             val s = toolSettingsManager.lastPenSize
             val idx = (0..2).minByOrNull { kotlin.math.abs(dockThickness[it] - s) } ?: 2
             if (kotlin.math.abs(dockThickness[idx] - s) > 0.5f) {
@@ -1594,37 +1837,23 @@ class DrawingActivity : AppCompatActivity() {
         }
         toolSettingsManager.lastPenSize = dockThickness[dockActiveThicknessIndex]
 
-        val thicknessBtns = listOf(
-            findViewById<ImageButton>(R.id.thinButton),
-            findViewById<ImageButton>(R.id.mediumButton),
-            findViewById<ImageButton>(R.id.thickButton)
-        )
-        thicknessBtns.forEachIndexed { i, b ->
-            b.setOnClickListener {
-                if (dockActiveThicknessIndex == i) {
-                    showSizeSliderPopup(b, dockThickness[i], 1f, 40f) { v ->
-                        dockThickness[i] = v
-                        prefs.edit().putFloat("DOCK_THICK_$i", v).apply()
-                        applyDockThickness(v)
-                    }
-                } else {
-                    dockActiveThicknessIndex = i
-                    prefs.edit().putInt("DOCK_THICK_ACTIVE", i).apply()
-                    applyDockThickness(dockThickness[i])
-                    refreshThicknessHighlight()
-                }
-            }
-        }
-        refreshThicknessHighlight()
+        setupDockThickness()
 
-        val lineBtn = findViewById<ImageButton>(R.id.lineStyleButton)
         drawingView.setPenLineStyle(prefs.getString("DOCK_LINE_STYLE", PenLineStyle.SOLID) ?: PenLineStyle.SOLID)
-        updateLineStyleIcon(lineBtn)
+        val lineBtn = findViewById<ImageButton>(R.id.lineStyleButton)
         lineBtn.setOnClickListener { showLineStylePopup(lineBtn) }
+        val tableLineBtn = findViewById<ImageButton>(R.id.tableLineStyleButton)
+        tableLineBtn.setOnClickListener { showLineStylePopup(tableLineBtn) }
+        refreshDockLineStyleIcons()
 
-        // Restore the last-used tool (default to pen).
+        tableThickness = loadToolThickness("TABLE")
+        tableActiveThicknessIndex = prefs.getInt("TABLE_THICK_ACTIVE", -1)
+        tableLineStyle = prefs.getString("TABLE_LINE_STYLE", null)
+        laserThickness = loadToolThickness("LASER")
+        laserActiveThicknessIndex = prefs.getInt("LASER_THICK_ACTIVE", -1)
+
         toolSettingsManager.lastPenColorInt = dockColors[dockActiveColorIndex]
-        findViewById<ImageButton>(R.id.penButton).setColorFilter(dockColors[dockActiveColorIndex])
+        updatePenIcon(dockColors[dockActiveColorIndex])
         val lastTool = prefs.getString("LAST_ACTIVE_TOOL", "PEN") ?: "PEN"
         when (lastTool) {
             "ERASER" -> {
@@ -1640,9 +1869,33 @@ class DrawingActivity : AppCompatActivity() {
                 drawingView.setTool(DrawingView.Tool.LASSO)
                 drawingView.setDrawingMode(true)
             }
+            "SHAPE" -> {
+                setActiveTool(findViewById(R.id.shapeButton))
+                applyShapeSettings()
+            }
+            "TABLE" -> {
+                setActiveTool(findViewById(R.id.tableButton))
+                applyTableSettings()
+            }
+            "LASER" -> {
+                setActiveTool(findViewById(R.id.laserButton))
+                applyLaserSettings()
+            }
+            "TEXT" -> {
+                setActiveTool(findViewById(R.id.textButton))
+                applyTextSettings()
+            }
             "IMAGE" -> {
                 setActiveTool(findViewById(R.id.imageButton))
                 drawingView.setDrawingMode(false)
+            }
+            "MEASURE" -> {
+                setActiveTool(findViewById(R.id.measureButton))
+                applyMeasureSettings()
+            }
+            "TAPE" -> {
+                setActiveTool(findViewById(R.id.tapeButton))
+                applyTapeSettings()
             }
             else -> {
                 setActiveTool(findViewById(R.id.penButton))
@@ -1653,28 +1906,273 @@ class DrawingActivity : AppCompatActivity() {
 
     private fun applyDockColor(color: Int) {
         drawingView.setBrushColor(color)
+
         toolSettingsManager.lastPenColorInt = color
-        findViewById<ImageButton>(R.id.penButton).setColorFilter(color)
+        updatePenIcon(color)
+    }
+
+    private fun restoreActiveToolDockState() {
+        val prefs = penPrefs()
+        dockActiveColorIndex = prefs.getInt("DOCK_COLOR_ACTIVE", 0).coerceIn(0, 4)
+        dockActiveThicknessIndex = toolActiveThicknessIndex()
+        val style = when (activeToolButton?.id) {
+            R.id.tableButton -> tableLineStyle
+                ?: prefs.getString("DOCK_LINE_STYLE", PenLineStyle.SOLID)
+            else -> prefs.getString("DOCK_LINE_STYLE", PenLineStyle.SOLID)
+        }
+        drawingView.setPenLineStyle(style ?: PenLineStyle.SOLID)
+
+        drawingView.setTableLineStyle(style ?: PenLineStyle.SOLID, toolThicknessSize())
+        refreshDockSwatches()
+        refreshDockThicknessHighlight()
+        refreshDockLineStyleIcons()
+        updatePenIcon(dockColors[dockActiveColorIndex])
+    }
+
+    private fun toolThickness(): FloatArray = when (activeToolButton?.id) {
+        R.id.tableButton -> tableThickness ?: dockThickness
+        R.id.laserButton -> laserThickness ?: dockThickness
+        else -> dockThickness
+    }
+
+    private fun toolActiveThicknessIndex(): Int = when (activeToolButton?.id) {
+        R.id.tableButton -> if (tableThickness != null) tableActiveThicknessIndex
+        else penPrefs().getInt("DOCK_THICK_ACTIVE", 2).coerceIn(0, 2)
+        R.id.laserButton -> if (laserThickness != null) laserActiveThicknessIndex
+        else penPrefs().getInt("DOCK_THICK_ACTIVE", 2).coerceIn(0, 2)
+        else -> penPrefs().getInt("DOCK_THICK_ACTIVE", 2).coerceIn(0, 2)
+    }
+
+    private fun toolThicknessSize(): Float = toolThickness()[toolActiveThicknessIndex()]
+
+    private fun loadToolThickness(prefix: String): FloatArray? {
+        val p = penPrefs()
+        val t0 = p.getFloat("${prefix}_THICK_0", -1f)
+        if (t0 <= 0f) return null
+        return floatArrayOf(
+            t0,
+            p.getFloat("${prefix}_THICK_1", 7f),
+            p.getFloat("${prefix}_THICK_2", 10f)
+        )
+    }
+
+    private fun ensureToolSizesSetup() {
+        val isTable = activeToolButton?.id == R.id.tableButton
+        val isLaser = activeToolButton?.id == R.id.laserButton
+        if (!isTable && !isLaser) return
+        val existing = if (isTable) tableThickness else laserThickness
+        if (existing != null) return
+        val copy = floatArrayOf(dockThickness[0], dockThickness[1], dockThickness[2])
+        val active = dockActiveThicknessIndex.coerceIn(0, 2)
+        if (isTable) {
+            tableThickness = copy
+            tableActiveThicknessIndex = active
+        } else {
+            laserThickness = copy
+            laserActiveThicknessIndex = active
+        }
+        val prefix = if (isTable) "TABLE" else "LASER"
+        penPrefs().edit()
+            .putFloat("${prefix}_THICK_0", copy[0])
+            .putFloat("${prefix}_THICK_1", copy[1])
+            .putFloat("${prefix}_THICK_2", copy[2])
+            .putInt("${prefix}_THICK_ACTIVE", active)
+            .apply()
+    }
+
+    private fun selectToolThickness(i: Int) {
+        val prefs = penPrefs()
+        when (activeToolButton?.id) {
+            R.id.tableButton -> {
+                tableActiveThicknessIndex = i
+                prefs.edit().putInt("TABLE_THICK_ACTIVE", i).apply()
+            }
+            R.id.laserButton -> {
+                laserActiveThicknessIndex = i
+                prefs.edit().putInt("LASER_THICK_ACTIVE", i).apply()
+            }
+            else -> prefs.edit().putInt("DOCK_THICK_ACTIVE", i).apply()
+        }
+        dockActiveThicknessIndex = i
+    }
+
+    private fun saveToolThicknessSlot(i: Int, v: Float) {
+        val prefs = penPrefs()
+        when (activeToolButton?.id) {
+            R.id.tableButton -> prefs.edit().putFloat("TABLE_THICK_$i", v).apply()
+            R.id.laserButton -> prefs.edit().putFloat("LASER_THICK_$i", v).apply()
+            else -> prefs.edit().putFloat("DOCK_THICK_$i", v).apply()
+        }
+    }
+
+    private fun recordActiveLineStyle(style: String) {
+        if (activeToolButton?.id == R.id.tableButton) {
+            tableLineStyle = style
+            penPrefs().edit().putString("TABLE_LINE_STYLE", style).apply()
+        } else {
+            penPrefs().edit().putString("DOCK_LINE_STYLE", style).apply()
+        }
+    }
+
+    private fun updatePenIcon(color: Int) {
+        val btn = findViewById<ImageButton>(R.id.penButton)
+        val res = btn.resources
+        val theme = btn.context.theme
+        val outlineColor = com.google.android.material.color.MaterialColors.getColor(
+            btn, com.google.android.material.R.attr.colorOutline, Color.parseColor("#9E9E9E")
+        )
+        fun freshPen() =
+            res.getDrawable(R.drawable.ic_pen, theme).constantState!!.newDrawable(res, theme).mutate()
+        val outline = freshPen().apply {
+            setColorFilter(outlineColor, android.graphics.PorterDuff.Mode.SRC_IN)
+        }
+        val fill = freshPen().apply {
+            setColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN)
+        }
+        val rim = (2 * res.displayMetrics.density).toInt()
+        btn.setImageDrawable(
+            android.graphics.drawable.LayerDrawable(arrayOf(outline, fill)).apply {
+                setLayerInset(1, rim, rim, rim, rim)
+            }
+        )
     }
 
     private fun applyDockThickness(size: Float) {
         drawingView.setBrushSize(size)
-        toolSettingsManager.lastPenSize = size
-        penPrefs().edit().putFloat("PEN_SIZE", size).apply()
+
+        drawingView.setTableLineStyle(drawingView.penLineStyle, size)
+
+        if (activeToolButton?.id != R.id.tableButton && activeToolButton?.id != R.id.laserButton) {
+            toolSettingsManager.lastPenSize = size
+            penPrefs().edit().putFloat("PEN_SIZE", size).apply()
+        }
     }
 
-    private fun refreshThicknessHighlight() {
-        findViewById<ImageButton>(R.id.thinButton).isSelected = dockActiveThicknessIndex == 0
-        findViewById<ImageButton>(R.id.mediumButton).isSelected = dockActiveThicknessIndex == 1
-        findViewById<ImageButton>(R.id.thickButton).isSelected = dockActiveThicknessIndex == 2
+    private val dockThicknessButtons: List<ImageButton> by lazy {
+        listOf(
+            findViewById<ImageButton>(R.id.thinButton), findViewById<ImageButton>(R.id.mediumButton), findViewById<ImageButton>(R.id.thickButton),
+            findViewById<ImageButton>(R.id.tableThinButton), findViewById<ImageButton>(R.id.tableMediumButton), findViewById<ImageButton>(R.id.tableThickButton),
+            findViewById<ImageButton>(R.id.laserThinButton), findViewById<ImageButton>(R.id.laserMediumButton), findViewById<ImageButton>(R.id.laserThickButton)
+        )
+    }
+
+    private fun refreshDockThicknessHighlight() {
+        val arr = toolThickness()
+        val activeIdx = toolActiveThicknessIndex()
+        val max = maxOf(arr[0], arr[1], arr[2])
+        dockThicknessButtons.forEachIndexed { index, b ->
+            val i = index % 3
+            b.isSelected = activeIdx == i
+            applySizeIcon(b, arr[i], max)
+        }
+    }
+
+    private fun setupDockThickness() {
+        dockThicknessButtons.forEachIndexed { index, b ->
+            val i = index % 3
+            b.setOnClickListener {
+                if (toolActiveThicknessIndex() == i) {
+                    showSizeSliderPopup(b, toolThickness()[i], 1f, 40f) { v ->
+                        ensureToolSizesSetup()
+                        toolThickness()[i] = v
+                        saveToolThicknessSlot(i, v)
+                        applyDockThickness(v)
+                        refreshDockThicknessHighlight()
+                    }
+                } else {
+                    ensureToolSizesSetup()
+                    selectToolThickness(i)
+                    applyDockThickness(toolThickness()[i])
+                    refreshDockThicknessHighlight()
+                }
+            }
+        }
+        refreshDockThicknessHighlight()
+    }
+
+    private val dockSwatchViews: List<View> by lazy {
+        listOf(
+            findViewById<View>(R.id.colorSwatch0), findViewById<View>(R.id.colorSwatch1),
+            findViewById<View>(R.id.colorSwatch2), findViewById<View>(R.id.colorSwatch3),
+            findViewById<View>(R.id.colorSwatch4),
+            findViewById<View>(R.id.tableColorSwatch0), findViewById<View>(R.id.tableColorSwatch1),
+            findViewById<View>(R.id.tableColorSwatch2), findViewById<View>(R.id.tableColorSwatch3),
+            findViewById<View>(R.id.tableColorSwatch4),
+            findViewById<View>(R.id.laserColorSwatch0), findViewById<View>(R.id.laserColorSwatch1),
+            findViewById<View>(R.id.laserColorSwatch2), findViewById<View>(R.id.laserColorSwatch3),
+            findViewById<View>(R.id.laserColorSwatch4),
+            findViewById<View>(R.id.tapeColorSwatch0), findViewById<View>(R.id.tapeColorSwatch1),
+            findViewById<View>(R.id.tapeColorSwatch2), findViewById<View>(R.id.tapeColorSwatch3),
+            findViewById<View>(R.id.tapeColorSwatch4)
+        )
+    }
+
+    private fun refreshDockSwatches() {
+        dockSwatchViews.forEachIndexed { index, v ->
+            val i = index % 5
+            updateDockSwatch(v, dockColors[i], i == dockActiveColorIndex)
+        }
+    }
+
+    private fun setupDockSwatches() {
+        dockSwatchViews.forEachIndexed { index, v ->
+            val i = index % 5
+            v.setOnClickListener {
+                if (dockActiveColorIndex == i) {
+
+                    openDockColorPicker(dockColors[i]) { picked ->
+                        dockColors[i] = picked
+                        penPrefs().edit().putInt("DOCK_COLOR_$i", picked).apply()
+                        applyDockColor(picked)
+                        refreshDockSwatches()
+                    }
+                } else {
+                    dockActiveColorIndex = i
+                    penPrefs().edit().putInt("DOCK_COLOR_ACTIVE", i).apply()
+                    applyDockColor(dockColors[i])
+                    refreshDockSwatches()
+                }
+            }
+        }
+        refreshDockSwatches()
+    }
+
+    private fun refreshDockLineStyleIcons() {
+        updateLineStyleIcon(findViewById(R.id.lineStyleButton))
+        updateLineStyleIcon(findViewById(R.id.tableLineStyleButton))
+    }
+
+    private fun applySizeIcon(btn: ImageButton, size: Float, maxSize: Float) {
+        val density = resources.displayMetrics.density
+        val iconPx = (24 * density).toInt().coerceAtLeast(4)
+        val frac = if (maxSize > 0f) (size / maxSize).coerceIn(0f, 1f) else 1f
+
+        val diameter = maxOf(frac * iconPx * 0.9f, 3f)
+
+        val bmp = android.graphics.Bitmap.createBitmap(iconPx, iconPx, android.graphics.Bitmap.Config.ARGB_8888)
+        bmp.density = resources.displayMetrics.densityDpi
+        val c = android.graphics.Canvas(bmp)
+        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            style = android.graphics.Paint.Style.FILL
+        }
+        val radius = diameter / 2f
+        val h = iconPx.toFloat()
+        c.drawCircle(h / 2f, h / 2f, radius, p)
+        btn.setImageDrawable(android.graphics.drawable.BitmapDrawable(resources, bmp))
     }
 
     private fun updateDockSwatch(view: View, color: Int, selected: Boolean) {
         val bg = view.background as android.graphics.drawable.LayerDrawable
         (bg.findDrawableByLayerId(R.id.color_shape) as android.graphics.drawable.GradientDrawable).setColor(color)
-        val stroke = bg.getDrawable(1) as android.graphics.drawable.GradientDrawable
-        if (selected) stroke.setStroke(8, Color.parseColor("#2196F3"))
-        else stroke.setStroke(2, Color.parseColor("#BDBDBD"))
+        val stroke = bg.findDrawableByLayerId(R.id.swatch_border) as android.graphics.drawable.GradientDrawable
+        if (selected) {
+
+            val primary = com.google.android.material.color.MaterialColors.getColor(
+                view, com.google.android.material.R.attr.colorPrimary, Color.parseColor("#2196F3")
+            )
+            stroke.setStroke(8, androidx.core.graphics.ColorUtils.blendARGB(primary, Color.BLACK, 0.3f))
+        } else stroke.setStroke(2, Color.parseColor("#BDBDBD"))
     }
 
     private fun openDockColorPicker(initial: Int, onPicked: (Int) -> Unit) {
@@ -1701,15 +2199,16 @@ class DrawingActivity : AppCompatActivity() {
         popup.setBackgroundDrawable(null)
         fun choose(style: String) {
             drawingView.setPenLineStyle(style)
-            penPrefs().edit().putString("DOCK_LINE_STYLE", style).apply()
-            updateLineStyleIcon(anchor)
+            recordActiveLineStyle(style)
+
+            drawingView.setTableLineStyle(style, toolThicknessSize())
+            refreshDockLineStyleIcons()
             popup.dismiss()
         }
         view.findViewById<View>(R.id.styleSolid).setOnClickListener { choose(PenLineStyle.SOLID) }
         view.findViewById<View>(R.id.styleDotted).setOnClickListener { choose(PenLineStyle.DOTTED) }
         view.findViewById<View>(R.id.styleDashed).setOnClickListener { choose(PenLineStyle.DASHED) }
 
-        // Stroke stabilization lives here too (1–10).
         val slider = view.findViewById<com.google.android.material.slider.Slider>(R.id.stabilizationSlider)
         val valueText = view.findViewById<TextView>(R.id.stabilizationValue)
         val level = toolSettingsManager.lastStabilizationLevel.coerceIn(1, 10)
@@ -1723,11 +2222,9 @@ class DrawingActivity : AppCompatActivity() {
             valueText.text = "Level $lvl"
         }
 
-        // Dock is at the top, so the popup drops down below the button.
         popup.showAsDropDown(anchor, 0, 8)
     }
 
-    /** Reusable size-slider popup (pen thickness, eraser size, highlighter size). */
     private fun showSizeSliderPopup(
         anchor: View,
         initial: Float,
@@ -1763,10 +2260,6 @@ class DrawingActivity : AppCompatActivity() {
         }
         popup.showAsDropDown(anchor, 0, 8)
     }
-
-    // -------------------------------------------------------------------------
-    //  Eraser dock row: pixel/stroke + 3 size presets
-    // -------------------------------------------------------------------------
 
     private val eraserSizeDefaults = floatArrayOf(20f, 50f, 90f)
     private val eraserSizes = FloatArray(3)
@@ -1818,6 +2311,7 @@ class DrawingActivity : AppCompatActivity() {
                         eraserSizes[i] = v
                         prefs.edit().putFloat("DOCK_ERASER_SIZE_$i", v).apply()
                         applyEraserSize(v)
+                        refreshEraserSizeHighlight()
                     }
                 } else {
                     eraserActiveSizeIndex = i
@@ -1837,24 +2331,28 @@ class DrawingActivity : AppCompatActivity() {
     }
 
     private fun refreshEraserSizeHighlight() {
-        findViewById<ImageButton>(R.id.eraserSize0).isSelected = eraserActiveSizeIndex == 0
-        findViewById<ImageButton>(R.id.eraserSize1).isSelected = eraserActiveSizeIndex == 1
-        findViewById<ImageButton>(R.id.eraserSize2).isSelected = eraserActiveSizeIndex == 2
+        val max = maxOf(eraserSizes[0], eraserSizes[1], eraserSizes[2])
+        val btns = listOf(
+            findViewById<ImageButton>(R.id.eraserSize0),
+            findViewById<ImageButton>(R.id.eraserSize1),
+            findViewById<ImageButton>(R.id.eraserSize2)
+        )
+        btns.forEachIndexed { i, b ->
+            b.isSelected = eraserActiveSizeIndex == i
+            applySizeIcon(b, eraserSizes[i], max)
+        }
     }
-
-    // -------------------------------------------------------------------------
-    //  Highlighter dock row: shape/mode + 5 colours + 3 sizes
-    // -------------------------------------------------------------------------
 
     private val hlSizeDefaults = floatArrayOf(20f, 30f, 45f)
     private val hlSizes = FloatArray(3)
     private var hlActiveSizeIndex = 1
+
     private val hlDefaultColors = intArrayOf(
-        Color.parseColor("#FFEB00"), // yellow
-        Color.parseColor("#00E676"), // green
-        Color.parseColor("#FF4081"), // pink
-        Color.parseColor("#40C4FF"), // blue
-        Color.parseColor("#FF9100")  // orange
+        Color.parseColor("#66FFEB00"),
+        Color.parseColor("#6600E676"),
+        Color.parseColor("#66FF4081"),
+        Color.parseColor("#6640C4FF"),
+        Color.parseColor("#66FF9100")
     )
     private val hlColors = IntArray(5)
     private var hlActiveColorIndex = 0
@@ -1877,7 +2375,8 @@ class DrawingActivity : AppCompatActivity() {
         swatches.forEachIndexed { i, v ->
             v.setOnClickListener {
                 if (hlActiveColorIndex == i) {
-                    openDockColorPicker(hlColors[i]) { picked ->
+
+                    openDockColorPicker(toolSettingsManager.getHighlighterColor()) { picked ->
                         hlColors[i] = picked
                         prefs.edit().putInt("DOCK_HL_COLOR_$i", picked).apply()
                         toolSettingsManager.setHighlighterColorPref(picked)
@@ -1892,7 +2391,7 @@ class DrawingActivity : AppCompatActivity() {
             }
         }
         refreshSwatches()
-        // Sync the highlighter's active colour to the dock selection.
+
         toolSettingsManager.setHighlighterColorPref(hlColors[hlActiveColorIndex])
 
         for (i in 0 until 3) hlSizes[i] = prefs.getFloat("DOCK_HL_SIZE_$i", hlSizeDefaults[i])
@@ -1921,6 +2420,7 @@ class DrawingActivity : AppCompatActivity() {
                         hlSizes[i] = v
                         prefs.edit().putFloat("DOCK_HL_SIZE_$i", v).apply()
                         toolSettingsManager.setHighlighterSizePref(v)
+                        refreshHlSizeHighlight()
                     }
                 } else {
                     hlActiveSizeIndex = i
@@ -1938,9 +2438,16 @@ class DrawingActivity : AppCompatActivity() {
     }
 
     private fun refreshHlSizeHighlight() {
-        findViewById<ImageButton>(R.id.hlSize0).isSelected = hlActiveSizeIndex == 0
-        findViewById<ImageButton>(R.id.hlSize1).isSelected = hlActiveSizeIndex == 1
-        findViewById<ImageButton>(R.id.hlSize2).isSelected = hlActiveSizeIndex == 2
+        val max = maxOf(hlSizes[0], hlSizes[1], hlSizes[2])
+        val btns = listOf(
+            findViewById<ImageButton>(R.id.hlSize0),
+            findViewById<ImageButton>(R.id.hlSize1),
+            findViewById<ImageButton>(R.id.hlSize2)
+        )
+        btns.forEachIndexed { i, b ->
+            b.isSelected = hlActiveSizeIndex == i
+            applySizeIcon(b, hlSizes[i], max)
+        }
     }
 
     private fun updateHlShapeIcon(btn: ImageButton) {
@@ -1990,10 +2497,6 @@ class DrawingActivity : AppCompatActivity() {
         popup.showAsDropDown(anchor, 0, 8)
     }
 
-    // -------------------------------------------------------------------------
-    //  Lasso dock row: free / rectangular / circular selection
-    // -------------------------------------------------------------------------
-
     private fun setupLassoDock() {
         val saved = penPrefs().getString("DOCK_LASSO_SHAPE", LassoShape.FREE) ?: LassoShape.FREE
         drawingView.setLassoShape(saved)
@@ -2018,7 +2521,691 @@ class DrawingActivity : AppCompatActivity() {
         refresh()
     }
 
-    // --- OVERFLOW MENU ---
+    private fun setupShapeDock() {
+        val saved = penPrefs().getString("DOCK_SHAPE_TYPE", ShapeType.RECT) ?: ShapeType.RECT
+        drawingView.setShapeType(saved)
+
+        val rect = findViewById<ImageButton>(R.id.shapeRectButton)
+        val oval = findViewById<ImageButton>(R.id.shapeOvalButton)
+        val triangle = findViewById<ImageButton>(R.id.shapeTriangleButton)
+        val line = findViewById<ImageButton>(R.id.shapeLineButton)
+        val arrow = findViewById<ImageButton>(R.id.shapeArrowButton)
+        fun refresh() {
+            val s = drawingView.shapeType
+            rect.isSelected = s == ShapeType.RECT
+            oval.isSelected = s == ShapeType.OVAL
+            triangle.isSelected = s == ShapeType.TRIANGLE
+            line.isSelected = s == ShapeType.LINE
+            arrow.isSelected = s == ShapeType.ARROW
+        }
+        fun select(type: String) {
+            drawingView.setShapeType(type)
+            penPrefs().edit().putString("DOCK_SHAPE_TYPE", type).apply()
+            refresh()
+        }
+        rect.setOnClickListener { select(ShapeType.RECT) }
+        oval.setOnClickListener { select(ShapeType.OVAL) }
+        triangle.setOnClickListener { select(ShapeType.TRIANGLE) }
+        line.setOnClickListener { select(ShapeType.LINE) }
+        arrow.setOnClickListener { select(ShapeType.ARROW) }
+        findViewById<View>(R.id.shapeSizeButton).setOnClickListener { showShapeSizeDialog() }
+        refresh()
+    }
+
+    private fun applyShapeSettings() {
+        drawingView.setTool(DrawingView.Tool.SHAPE)
+        applyDockColor(dockColors[dockActiveColorIndex])
+        applyDockThickness(dockThickness[dockActiveThicknessIndex])
+        drawingView.setShapeType(
+            penPrefs().getString("DOCK_SHAPE_TYPE", ShapeType.RECT) ?: ShapeType.RECT
+        )
+        drawingView.setDrawingMode(true)
+    }
+
+    private fun applyTableSettings() {
+        drawingView.setTool(DrawingView.Tool.TABLE)
+        applyDockColor(dockColors[dockActiveColorIndex])
+        applyDockThickness(toolThicknessSize())
+        val (r, c) = contentTools.tableRowsColsPref()
+        drawingView.tableGridRows = r
+        drawingView.tableGridCols = c
+        drawingView.setDrawingMode(true)
+    }
+
+    private fun applyLaserSettings() {
+        drawingView.setTool(DrawingView.Tool.LASER)
+        applyDockColor(dockColors[dockActiveColorIndex])
+        applyDockThickness(toolThicknessSize())
+        drawingView.setDrawingMode(true)
+    }
+
+    private val TEXT_SIZES = floatArrayOf(18f, 26f, 36f)
+    private val TEXT_SIZE_IDS = intArrayOf(R.id.textSizeSmall, R.id.textSizeMedium, R.id.textSizeLarge)
+
+    private fun applyTextSettings() {
+        drawingView.setTool(DrawingView.Tool.TEXT)
+        applyDockColor(dockColors[dockActiveColorIndex])
+        drawingView.setDrawingMode(true)
+    }
+
+    private fun applyMeasureSettings() {
+        drawingView.setTool(DrawingView.Tool.MEASURE)
+        drawingView.setDrawingMode(true)
+
+        if (drawingView.isSelectionActive) {
+            strokeManager.cancelSelection()
+            drawingView.clearSelectionVisuals()
+            selectionPopup?.dismiss()
+        }
+    }
+
+    private fun applyTapeSettings() {
+        drawingView.setTool(DrawingView.Tool.TAPE)
+        applyDockColor(dockColors[dockActiveColorIndex])
+        drawingView.setDrawingMode(true)
+        contentTools.applyTapePrefs()
+    }
+
+    private fun setupTextDock() {
+        val pref = contentTools.textSizePref()
+        for (i in TEXT_SIZES.indices) {
+            val btn = findViewById<TextView>(TEXT_SIZE_IDS[i])
+            btn.isSelected = pref == TEXT_SIZES[i]
+            btn.setOnClickListener {
+                penPrefs().edit().putFloat("TEXT_SIZE", TEXT_SIZES[i]).apply()
+                for (j in TEXT_SIZES.indices) {
+                    findViewById<TextView>(TEXT_SIZE_IDS[j]).isSelected = i == j
+                }
+            }
+        }
+    }
+
+    private var structurePopup: android.widget.PopupWindow? = null
+    private var editingStructPage = -1
+    private var editingStructStroke: StrokeData? = null
+    private var editingStructRow = 0
+    private var editingStructCol = 0
+
+    private val TABLE_ROW_RESIZE_STEP = 10f
+    private val TABLE_COL_RESIZE_STEP = 10f
+    private val TABLE_MIN_CELL = 8f
+
+    private fun openTableStructurePopup(pageIndex: Int, table: StrokeData, row: Int, col: Int) {
+        structurePopup?.dismiss()
+        editingStructPage = pageIndex
+        editingStructStroke = table
+        editingStructRow = row
+        editingStructCol = col
+        val view = layoutInflater.inflate(R.layout.popup_table_structure, null)
+        val rowLabel = view.findViewById<TextView>(R.id.tableRowSizeLabel)
+        val colLabel = view.findViewById<TextView>(R.id.tableColSizeLabel)
+        val rowValue = view.findViewById<TextView>(R.id.tableRowSizeValue)
+        val colValue = view.findViewById<TextView>(R.id.tableColSizeValue)
+        val preview = view.findViewById<TableGridPreviewView>(R.id.tableStructurePreview)
+
+        fun refresh() {
+            val cur = editingStructStroke ?: return
+            val td = cur.tableData ?: return
+            val b = RectF()
+            cur.path.computeBounds(b, true)
+            val rows = td.rows.coerceAtLeast(1)
+            val cols = td.cols.coerceAtLeast(1)
+            val rowH = td.rowHeights(b.height())
+            val colW = td.colWidths(b.width())
+            val r = editingStructRow.coerceIn(0, rows - 1)
+            val c = editingStructCol.coerceIn(0, cols - 1)
+            rowLabel.text = getString(R.string.table_row_size, r + 1, rows)
+            colLabel.text = getString(R.string.table_col_size, c + 1, cols)
+            rowValue.text = getString(R.string.table_size_px, rowH[r].toInt())
+            colValue.text = getString(R.string.table_size_px, colW[c].toInt())
+            preview.setGrid(
+                rows, cols, td.headerRow, td.headerCol,
+                cur.lineStyle ?: PenLineStyle.SOLID, td.rowWeights, td.colWeights
+            )
+        }
+
+        view.findViewById<View>(R.id.tableRowMinus).setOnClickListener { resizeTableRow(-TABLE_ROW_RESIZE_STEP); refresh() }
+        view.findViewById<View>(R.id.tableRowPlus).setOnClickListener { resizeTableRow(TABLE_ROW_RESIZE_STEP); refresh() }
+        view.findViewById<View>(R.id.tableColMinus).setOnClickListener { resizeTableCol(-TABLE_COL_RESIZE_STEP); refresh() }
+        view.findViewById<View>(R.id.tableColPlus).setOnClickListener { resizeTableCol(TABLE_COL_RESIZE_STEP); refresh() }
+        view.findViewById<View>(R.id.tableAddRowAbove).setOnClickListener { insertTableRow(false); refresh() }
+        view.findViewById<View>(R.id.tableAddRowBelow).setOnClickListener { insertTableRow(true); refresh() }
+        view.findViewById<View>(R.id.tableAddColLeft).setOnClickListener { insertTableCol(false); refresh() }
+        view.findViewById<View>(R.id.tableAddColRight).setOnClickListener { insertTableCol(true); refresh() }
+        view.findViewById<View>(R.id.tableDeleteRow).setOnClickListener { deleteTableRow(); refresh() }
+        view.findViewById<View>(R.id.tableDeleteCol).setOnClickListener { deleteTableCol(); refresh() }
+        view.findViewById<View>(R.id.tableMergeRight).setOnClickListener { mergeTableCells(false); refresh() }
+        view.findViewById<View>(R.id.tableMergeDown).setOnClickListener { mergeTableCells(true); refresh() }
+        view.findViewById<View>(R.id.tableSplitCell).setOnClickListener { splitTableCell(); refresh() }
+
+        structurePopup = android.widget.PopupWindow(
+            view,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            true
+        ).apply {
+            isFocusable = true
+            isOutsideTouchable = true
+            elevation = 20f
+            setBackgroundDrawable(
+                androidx.core.content.ContextCompat.getDrawable(this@DrawingActivity, R.drawable.bg_popup_menu)
+            )
+            setOnDismissListener {
+                editingStructPage = -1
+                editingStructStroke = null
+            }
+        }
+
+        val rv = pdfRecyclerView
+        val zoom = rv.zoom
+        var ox = 0f
+        var oy = 0f
+        var found = false
+        for (i in 0 until rv.childCount) {
+            val c = rv.getChildAt(i) ?: continue
+            if (rv.getChildAdapterPosition(c) == pageIndex) { ox = c.left.toFloat(); oy = c.top.toFloat(); found = true; break }
+        }
+        if (!found) {
+            for (i in 0 until rv.childCount) {
+                val c = rv.getChildAt(i) ?: continue
+                if (rv.getChildAdapterPosition(c) >= 0) { ox = c.left.toFloat(); oy = c.top.toFloat(); found = true; break }
+            }
+        }
+        if (found) {
+            val b = RectF()
+            table.path.computeBounds(b, true)
+            val td = table.tableData ?: TableData(1, 1)
+            val rowY = td.rowBoundaries(b.height())
+            val colX = td.colBoundaries(b.width())
+            val span = td.merges["$row,$col"]
+            val c1 = if (span != null && span.size >= 2 && span[1] > 1) (col + span[1]).coerceAtMost(td.cols) else col + 1
+            val r1 = if (span != null && span.size >= 2 && span[0] > 1) (row + span[0]).coerceAtMost(td.rows) else row + 1
+            val cell = RectF(
+                b.left + colX[col], b.top + rowY[row],
+                b.left + colX[c1], b.top + rowY[r1]
+            )
+            val toScreen = Matrix().apply {
+                postTranslate(ox, oy)
+                postScale(zoom, zoom)
+                postTranslate(rv.transX, rv.transY)
+            }
+            val screen = RectF(cell)
+            toScreen.mapRect(screen)
+            view.measure(android.view.View.MeasureSpec.UNSPECIFIED, android.view.View.MeasureSpec.UNSPECIFIED)
+            val screenW = resources.displayMetrics.widthPixels
+            val x = (screen.centerX() - view.measuredWidth / 2f).toInt()
+                .coerceIn(8, (screenW - view.measuredWidth - 8).coerceAtLeast(8))
+            val y = (screen.top - view.measuredHeight - 12 * resources.displayMetrics.density).coerceAtLeast(8f).toInt()
+            structurePopup?.showAtLocation(rv, android.view.Gravity.NO_GRAVITY, x, y)
+        } else {
+            editingStructPage = -1
+            editingStructStroke = null
+            structurePopup?.dismiss()
+            return
+        }
+        refresh()
+    }
+
+    private fun commitTableStructure(newTd: TableData, newBounds: RectF) {
+        val page = editingStructPage
+        val table = editingStructStroke ?: return
+        if (page < 0) return
+        val newPath = Path().apply { addRect(newBounds, Path.Direction.CW) }
+        val newStroke = table.copy(path = newPath, tableData = newTd)
+        historyManager.execute(DrawingAction.ReplaceStrokes(page, listOf(table), listOf(newStroke)), strokeManager)
+        strokesDirty = true
+        invalidateInk()
+        updateUndoRedoButtons()
+        editingStructStroke = newStroke
+
+        if (strokeManager.activeSelectionPageIndex == page &&
+            strokeManager.activeSelectionStrokes.any { it.type == StrokeType.TABLE && it.id == table.id }
+        ) {
+            strokeManager.selectStrokes(page, listOf(newStroke))
+            drawingView.updateSelectionVisuals(strokeManager.activeSelectionStrokes)
+        }
+    }
+
+    private fun resizeTableRow(delta: Float) {
+        val table = editingStructStroke ?: return
+        val td = table.tableData ?: return
+        if (editingStructPage < 0 || td.rows < 1) return
+        val b = RectF().apply { table.path.computeBounds(this, true) }
+        val r = editingStructRow.coerceIn(0, td.rows - 1)
+        val rowH = td.rowHeights(b.height())
+        val newH = (rowH[r] + delta).coerceAtLeast(TABLE_MIN_CELL)
+        if (newH == rowH[r]) return
+        val newHeight = (b.height() + newH - rowH[r]).coerceAtLeast(TABLE_MIN_CELL * td.rows)
+        val weights = FloatArray(td.rows) { i -> (if (i == r) newH else rowH[i]) / newHeight }
+        commitTableStructure(td.copy(rowWeights = weights), RectF(b.left, b.top, b.right, b.top + newHeight))
+    }
+
+    private fun resizeTableCol(delta: Float) {
+        val table = editingStructStroke ?: return
+        val td = table.tableData ?: return
+        if (editingStructPage < 0 || td.cols < 1) return
+        val b = RectF().apply { table.path.computeBounds(this, true) }
+        val c = editingStructCol.coerceIn(0, td.cols - 1)
+        val colW = td.colWidths(b.width())
+        val newW = (colW[c] + delta).coerceAtLeast(TABLE_MIN_CELL)
+        if (newW == colW[c]) return
+        val newWidth = (b.width() + newW - colW[c]).coerceAtLeast(TABLE_MIN_CELL * td.cols)
+        val weights = FloatArray(td.cols) { i -> (if (i == c) newW else colW[i]) / newWidth }
+        commitTableStructure(td.copy(colWeights = weights), RectF(b.left, b.top, b.left + newWidth, b.bottom))
+    }
+
+    private fun insertTableRow(below: Boolean) {
+        val table = editingStructStroke ?: return
+        val td = table.tableData ?: return
+        if (editingStructPage < 0 || td.rows < 1) return
+        val b = RectF().apply { table.path.computeBounds(this, true) }
+        val r = editingStructRow.coerceIn(0, td.rows - 1)
+        val insertAt = if (below) r + 1 else r
+        val rowH = td.rowHeights(b.height())
+        val newRowH = rowH[r]
+        val newHeight = b.height() + newRowH
+        val weights = FloatArray(td.rows + 1) { i ->
+            when {
+                i < insertAt -> rowH[i] / newHeight
+                i == insertAt -> newRowH / newHeight
+                else -> rowH[i - 1] / newHeight
+            }
+        }
+        val newCells = shiftCells(td.cells, rowShift = { i -> if (i >= insertAt) i + 1 else i })
+        val newMerges = shiftMergesRow(td.merges, insertAt)
+        commitTableStructure(
+            td.copy(rows = td.rows + 1, rowWeights = weights, cells = newCells, merges = newMerges),
+            RectF(b.left, b.top, b.right, b.top + newHeight)
+        )
+
+        if (insertAt <= r) editingStructRow = r + 1
+    }
+
+    private fun insertTableCol(right: Boolean) {
+        val table = editingStructStroke ?: return
+        val td = table.tableData ?: return
+        if (editingStructPage < 0 || td.cols < 1) return
+        val b = RectF().apply { table.path.computeBounds(this, true) }
+        val c = editingStructCol.coerceIn(0, td.cols - 1)
+        val insertAt = if (right) c + 1 else c
+        val colW = td.colWidths(b.width())
+        val newColW = colW[c]
+        val newWidth = b.width() + newColW
+        val weights = FloatArray(td.cols + 1) { i ->
+            when {
+                i < insertAt -> colW[i] / newWidth
+                i == insertAt -> newColW / newWidth
+                else -> colW[i - 1] / newWidth
+            }
+        }
+        val newCells = shiftCells(td.cells, colShift = { i -> if (i >= insertAt) i + 1 else i })
+        val newMerges = shiftMergesCol(td.merges, insertAt)
+        commitTableStructure(
+            td.copy(cols = td.cols + 1, colWeights = weights, cells = newCells, merges = newMerges),
+            RectF(b.left, b.top, b.left + newWidth, b.bottom)
+        )
+        if (insertAt <= c) editingStructCol = c + 1
+    }
+
+    private fun deleteTableRow() {
+        val table = editingStructStroke ?: return
+        val td = table.tableData ?: return
+        if (editingStructPage < 0 || td.rows <= 1) return
+        val b = RectF().apply { table.path.computeBounds(this, true) }
+        val r = editingStructRow.coerceIn(0, td.rows - 1)
+        val rowH = td.rowHeights(b.height())
+        val newHeight = (b.height() - rowH[r]).coerceAtLeast(TABLE_MIN_CELL)
+        val weights = FloatArray(td.rows - 1) { i -> rowH[if (i < r) i else i + 1] / newHeight }
+
+        val orphanText = HashMap<String, String>()
+        for ((k, span) in td.merges) {
+            if (span.size < 2) continue
+            val parts = k.split(",")
+            val ar = parts.getOrNull(0)?.toIntOrNull() ?: continue
+            val ac = parts.getOrNull(1)?.toIntOrNull() ?: continue
+            val rs = span[0].coerceAtLeast(1)
+            if (ar == r && r in ar until ar + rs) {
+                td.cells[k]?.takeIf { it.isNotBlank() }?.let { orphanText["${r + 1},$ac"] = it }
+            }
+        }
+        val newCells = HashMap<String, String>()
+        for ((k, v) in td.cells) {
+            val parts = k.split(",")
+            val cr = parts.getOrNull(0)?.toIntOrNull() ?: continue
+            val cc = parts.getOrNull(1)?.toIntOrNull() ?: continue
+            if (cr == r) continue
+            newCells["${if (cr > r) cr - 1 else cr},$cc"] = v
+        }
+        for ((k, v) in orphanText) newCells[k] = v
+
+        val newMerges = HashMap<String, IntArray>()
+        for ((k, span) in td.merges) {
+            if (span.size < 2) continue
+            val parts = k.split(",")
+            val ar = parts.getOrNull(0)?.toIntOrNull() ?: continue
+            val ac = parts.getOrNull(1)?.toIntOrNull() ?: continue
+            val rs = span[0].coerceAtLeast(1)
+            val cs = span[1].coerceAtLeast(1)
+            if (r in ar until ar + rs) continue
+            newMerges["${if (ar > r) ar - 1 else ar},$ac"] = intArrayOf(rs, cs)
+        }
+        commitTableStructure(
+            td.copy(rows = td.rows - 1, rowWeights = weights, cells = newCells, merges = newMerges),
+            RectF(b.left, b.top, b.right, b.top + newHeight)
+        )
+        editingStructRow = if (r < editingStructRow) editingStructRow - 1 else editingStructRow.coerceAtMost(td.rows - 2)
+    }
+
+    private fun deleteTableCol() {
+        val table = editingStructStroke ?: return
+        val td = table.tableData ?: return
+        if (editingStructPage < 0 || td.cols <= 1) return
+        val b = RectF().apply { table.path.computeBounds(this, true) }
+        val c = editingStructCol.coerceIn(0, td.cols - 1)
+        val colW = td.colWidths(b.width())
+        val newWidth = (b.width() - colW[c]).coerceAtLeast(TABLE_MIN_CELL)
+        val weights = FloatArray(td.cols - 1) { i -> colW[if (i < c) i else i + 1] / newWidth }
+
+        val orphanText = HashMap<String, String>()
+        for ((k, span) in td.merges) {
+            if (span.size < 2) continue
+            val parts = k.split(",")
+            val ar = parts.getOrNull(0)?.toIntOrNull() ?: continue
+            val ac = parts.getOrNull(1)?.toIntOrNull() ?: continue
+            val cs = span[1].coerceAtLeast(1)
+            if (ac == c && c in ac until ac + cs) {
+                td.cells[k]?.takeIf { it.isNotBlank() }?.let { orphanText["$ar,${c + 1}"] = it }
+            }
+        }
+        val newCells = HashMap<String, String>()
+        for ((k, v) in td.cells) {
+            val parts = k.split(",")
+            val cr = parts.getOrNull(0)?.toIntOrNull() ?: continue
+            val cc = parts.getOrNull(1)?.toIntOrNull() ?: continue
+            if (cc == c) continue
+            newCells["$cr,${if (cc > c) cc - 1 else cc}"] = v
+        }
+        for ((k, v) in orphanText) newCells[k] = v
+
+        val newMerges = HashMap<String, IntArray>()
+        for ((k, span) in td.merges) {
+            if (span.size < 2) continue
+            val parts = k.split(",")
+            val ar = parts.getOrNull(0)?.toIntOrNull() ?: continue
+            val ac = parts.getOrNull(1)?.toIntOrNull() ?: continue
+            val rs = span[0].coerceAtLeast(1)
+            val cs = span[1].coerceAtLeast(1)
+            if (c in ac until ac + cs) continue
+            newMerges["$ar,${if (ac > c) ac - 1 else ac}"] = intArrayOf(rs, cs)
+        }
+        commitTableStructure(
+            td.copy(cols = td.cols - 1, colWeights = weights, cells = newCells, merges = newMerges),
+            RectF(b.left, b.top, b.left + newWidth, b.bottom)
+        )
+        editingStructCol = if (c < editingStructCol) editingStructCol - 1 else editingStructCol.coerceAtMost(td.cols - 2)
+    }
+
+    private fun mergeTableCells(vertical: Boolean) {
+        val table = editingStructStroke ?: return
+        val td = table.tableData ?: return
+        if (editingStructPage < 0) return
+        val b = RectF().apply { table.path.computeBounds(this, true) }
+        val r = editingStructRow.coerceIn(0, td.rows - 1)
+        val c = editingStructCol.coerceIn(0, td.cols - 1)
+        val merges = HashMap(td.merges)
+        val anchor = td.mergeAnchor(r, c)
+        val ar = anchor?.first ?: r
+        val ac = anchor?.second ?: c
+        val span = merges["$ar,$ac"] ?: intArrayOf(1, 1)
+        val rs = span[0].coerceAtLeast(1)
+        val cs = span[1].coerceAtLeast(1)
+        if (vertical) {
+            if (ar + rs >= td.rows) return
+            merges["$ar,$ac"] = intArrayOf(rs + 1, cs)
+            commitTableStructure(
+                td.copy(merges = merges, cells = absorbMergedText(td, ar, ac, rs + 1, cs)),
+                b
+            )
+        } else {
+            if (ac + cs >= td.cols) return
+            merges["$ar,$ac"] = intArrayOf(rs, cs + 1)
+            commitTableStructure(
+                td.copy(merges = merges, cells = absorbMergedText(td, ar, ac, rs, cs + 1)),
+                b
+            )
+        }
+    }
+
+    private fun splitTableCell() {
+        val table = editingStructStroke ?: return
+        val td = table.tableData ?: return
+        if (editingStructPage < 0) return
+        val b = RectF().apply { table.path.computeBounds(this, true) }
+        val r = editingStructRow.coerceIn(0, td.rows - 1)
+        val c = editingStructCol.coerceIn(0, td.cols - 1)
+        val anchor = td.mergeAnchor(r, c) ?: return
+        val merges = HashMap(td.merges)
+        merges.remove("${anchor.first},${anchor.second}")
+        commitTableStructure(td.copy(merges = merges), b)
+    }
+
+    private fun absorbMergedText(td: TableData, ar: Int, ac: Int, rs: Int, cs: Int): MutableMap<String, String> {
+        val anchorKey = "$ar,$ac"
+        val parts = mutableListOf<String>()
+        val keep = HashMap<String, String>()
+        for ((k, v) in td.cells) {
+            val ps = k.split(",")
+            val kr = ps.getOrNull(0)?.toIntOrNull() ?: continue
+            val kc = ps.getOrNull(1)?.toIntOrNull() ?: continue
+            if (kr in ar until ar + rs && kc in ac until ac + cs) {
+                if (v.isNotBlank()) parts += v
+            } else keep[k] = v
+        }
+        if (parts.isNotEmpty()) keep[anchorKey] = parts.joinToString("\n")
+        return keep
+    }
+
+    private fun shiftCells(
+        cells: Map<String, String>,
+        rowShift: (Int) -> Int = { it },
+        colShift: (Int) -> Int = { it }
+    ): HashMap<String, String> {
+        val out = HashMap<String, String>()
+        for ((k, v) in cells) {
+            val ps = k.split(",")
+            val r = ps.getOrNull(0)?.toIntOrNull() ?: continue
+            val c = ps.getOrNull(1)?.toIntOrNull() ?: continue
+            out["${rowShift(r)},${colShift(c)}"] = v
+        }
+        return out
+    }
+
+    private fun shiftMergesRow(merges: MutableMap<String, IntArray>, insertAt: Int): MutableMap<String, IntArray> {
+        val out = HashMap<String, IntArray>()
+        for ((k, span) in merges) {
+            if (span.size < 2) continue
+            val parts = k.split(",")
+            val ar = parts.getOrNull(0)?.toIntOrNull() ?: continue
+            val ac = parts.getOrNull(1)?.toIntOrNull() ?: continue
+            val rs = span[0].coerceAtLeast(1)
+            val cs = span[1].coerceAtLeast(1)
+            if (insertAt > ar && insertAt < ar + rs) {
+                out[k] = intArrayOf(rs + 1, cs)
+            } else {
+                out["${if (insertAt <= ar) ar + 1 else ar},$ac"] = intArrayOf(rs, cs)
+            }
+        }
+        return out
+    }
+
+    private fun shiftMergesCol(merges: MutableMap<String, IntArray>, insertAt: Int): MutableMap<String, IntArray> {
+        val out = HashMap<String, IntArray>()
+        for ((k, span) in merges) {
+            if (span.size < 2) continue
+            val parts = k.split(",")
+            val ar = parts.getOrNull(0)?.toIntOrNull() ?: continue
+            val ac = parts.getOrNull(1)?.toIntOrNull() ?: continue
+            val rs = span[0].coerceAtLeast(1)
+            val cs = span[1].coerceAtLeast(1)
+            if (insertAt > ac && insertAt < ac + cs) {
+                out[k] = intArrayOf(rs, cs + 1)
+            } else {
+                out["$ar,${if (insertAt <= ac) ac + 1 else ac}"] = intArrayOf(rs, cs)
+            }
+        }
+        return out
+    }
+
+    private fun currentPageChildForCenter(): Pair<Int, View>? {
+        val rv = pdfRecyclerView
+        val contentCenterY = (rv.height / 2f - rv.transY) / rv.zoom
+        for (i in 0 until rv.childCount) {
+            val c = rv.getChildAt(i) ?: continue
+            val pos = rv.getChildAdapterPosition(c)
+            if (pos < 0) continue
+            if (contentCenterY >= c.top && contentCenterY < c.bottom) return pos to c
+        }
+        for (i in 0 until rv.childCount) {
+            val c = rv.getChildAt(i) ?: continue
+            val pos = rv.getChildAdapterPosition(c)
+            if (pos >= 0) return pos to c
+        }
+        return null
+    }
+
+    private fun showShapeSizeDialog() {
+        val (_, child) = currentPageChildForCenter() ?: return
+        val maxW = child.width.coerceAtLeast(1)
+        val maxH = child.height.coerceAtLeast(1)
+        val density = resources.displayMetrics.density
+        val pad = (16 * density).toInt()
+        val onSurfaceVariant = com.google.android.material.color.MaterialColors.getColor(
+            this, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.GRAY
+        )
+
+        val caption = TextView(this).apply {
+            text = "Width × height on the page (px at 100% zoom).\nPage size: $maxW × $maxH px."
+            textSize = 12f
+            setTextColor(onSurfaceVariant)
+        }
+        fun field(hintText: String, initial: Int): android.widget.EditText = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            this.hint = hintText
+            setText(initial.toString())
+            selectAll()
+        }
+        val wInput = field("Width", maxW / 4)
+        val hInput = field("Height", maxH / 4)
+        val row = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            lp.topMargin = pad
+            layoutParams = lp
+            addView(
+                wInput,
+                android.widget.LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            )
+            addView(android.widget.Space(this@DrawingActivity), android.widget.LinearLayout.LayoutParams(pad, 1))
+            addView(
+                hInput,
+                android.widget.LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            )
+        }
+        val root = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(pad, 0, pad, 0)
+            addView(caption)
+            addView(row)
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Shape size")
+            .setView(root)
+            .setPositiveButton("Place") { _, _ ->
+                val w = (wInput.text.toString().toIntOrNull() ?: maxW / 4).coerceIn(8, maxW)
+                val h = (hInput.text.toString().toIntOrNull() ?: maxH / 4).coerceIn(8, maxH)
+                placeShapeOfExactSize(w.toFloat(), h.toFloat())
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun placeShapeOfExactSize(w: Float, h: Float) {
+        val (pageIndex, child) = currentPageChildForCenter() ?: return
+        val pageW = child.width.toFloat()
+        val pageH = child.height.toFloat()
+        val contentCenterY = (pdfRecyclerView.height / 2f - pdfRecyclerView.transY) / pdfRecyclerView.zoom
+        val cy = (contentCenterY - child.top.toFloat())
+            .coerceIn(h / 2f, (pageH - h / 2f).coerceAtLeast(h / 2f))
+        val cx = pageW / 2f
+        val l = cx - w / 2f
+        val t = cy - h / 2f
+        val r = cx + w / 2f
+        val b = cy + h / 2f
+
+        val path = when (drawingView.shapeType) {
+            ShapeType.OVAL -> Path().apply { addOval(RectF(l, t, r, b), Path.Direction.CW) }
+            ShapeType.TRIANGLE -> Path().apply {
+                moveTo(cx, t); lineTo(r, b); lineTo(l, b); close()
+            }
+            ShapeType.LINE -> Path().apply { moveTo(l, cy); lineTo(r, cy) }
+            ShapeType.ARROW -> Path().apply {
+                val head = (w * 0.28f).coerceIn(6f, 28f)
+                moveTo(l, cy); lineTo(r, cy)
+                lineTo(r - head, cy - head * 0.42f)
+                moveTo(r, cy); lineTo(r - head, cy + head * 0.42f)
+            }
+            else -> Path().apply { addRect(RectF(l, t, r, b), Path.Direction.CW) }
+        }
+        val strokeWidth = dockThickness[dockActiveThicknessIndex]
+        val paint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            strokeJoin = Paint.Join.ROUND
+            strokeCap = Paint.Cap.ROUND
+            this.strokeWidth = strokeWidth
+            color = dockColors[dockActiveColorIndex]
+            pathEffect = PenLineStyle.pathEffect(drawingView.penLineStyle, strokeWidth)
+        }
+        val stroke = StrokeData(
+            path = path,
+            paint = paint,
+            type = StrokeType.PEN,
+            lineStyle = drawingView.penLineStyle
+        )
+        historyManager.execute(DrawingAction.AddStroke(pageIndex, stroke), strokeManager)
+        strokesDirty = true
+        invalidateInk()
+        updateUndoRedoButtons()
+
+        val result = strokeManager.selectStrokes(pageIndex, listOf(stroke)) ?: return
+        presentSelection(child.left.toFloat(), child.top.toFloat(), result.second)
+    }
+
+    private fun selectShapeAfterDraw(pageIndex: Int, stroke: StrokeData) {
+        val result = strokeManager.selectStrokes(pageIndex, listOf(stroke)) ?: return
+        val origin = drawingView.pageOrigin(pageIndex)
+        presentSelection(origin?.x ?: 0f, origin?.y ?: 0f, result.second)
+
+        invalidateInk()
+    }
+
+    private fun repositionSelectionPopup() {
+        val popup = selectionPopup ?: return
+        val bounds = drawingView.currentSelectionScreenBounds() ?: return
+        val content = popup.contentView
+        val w = content.measuredWidth
+        val h = content.measuredHeight
+        if (w <= 0 || h <= 0) return
+        val density = resources.displayMetrics.density
+        val x = bounds.centerX().toInt() - w / 2
+        val y = (bounds.top.toInt() - h - (40 * density).toInt()).coerceAtLeast(100)
+        popup.update(x, y, -1, -1)
+    }
 
     private fun showOverflowMenu(anchor: View) {
         val view = layoutInflater.inflate(R.layout.popup_overflow, null)
@@ -2049,7 +3236,120 @@ class DrawingActivity : AppCompatActivity() {
             popup.dismiss()
             showExportDialog()
         }
+        view.findViewById<View>(R.id.overflowLinks).setOnClickListener {
+            popup.dismiss()
+            showLinksDialog()
+        }
+        view.findViewById<View>(R.id.overflowProperties).setOnClickListener {
+            popup.dismiss()
+            showPdfPropertiesDialog()
+        }
         popup.showAsDropDown(anchor, 0, 8)
+    }
+
+    private fun showLinksDialog() {
+        val path = pdfFilePath ?: run {
+            Toast.makeText(this, "No PDF to read links from", Toast.LENGTH_SHORT).show(); return
+        }
+        val busy = showBusyDialog("Reading links…")
+        busy.show()
+        lifecycleScope.launch {
+            val links = withContext(Dispatchers.IO) {
+                try { PdfLinkReader.read(File(path).readBytes()) } catch (e: Exception) { emptyList() }
+            }
+            busy.dismiss()
+            if (isFinishing || isDestroyed) return@launch
+            if (links.isEmpty()) {
+                Toast.makeText(this@DrawingActivity, "No links in this PDF", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val view = layoutInflater.inflate(R.layout.popup_links, null)
+            val container = view.findViewById<android.widget.LinearLayout>(R.id.linksContainer)
+            val dialog = MaterialAlertDialogBuilder(this@DrawingActivity)
+                .setTitle("Links (${links.size})")
+                .setView(view)
+                .setNegativeButton("Close", null)
+                .create()
+
+            links.forEachIndexed { index, link ->
+                val row = layoutInflater.inflate(R.layout.item_link, container, false)
+                val target = link.uri ?: "Page ${link.destPage + 1}"
+                row.findViewById<TextView>(R.id.linkLabel).text = target
+                row.findViewById<TextView>(R.id.linkPage).text = "PAGE ${link.pageIndex + 1}"
+                row.setOnClickListener {
+                    dialog.dismiss()
+                    if (link.uri != null) openLinkUri(link.uri)
+                    else jumpToPage(link.destPage)
+                }
+                container.addView(row)
+            }
+            dialog.show()
+        }
+    }
+
+    private fun openLinkUri(uri: String) {
+        try {
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri))
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "No app can open this link", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showPdfPropertiesDialog() {
+        val path = pdfFilePath ?: run {
+            Toast.makeText(this, "No PDF to inspect", Toast.LENGTH_SHORT).show(); return
+        }
+        val busy = showBusyDialog("Reading properties…")
+        busy.show()
+        lifecycleScope.launch {
+            val props = withContext(Dispatchers.IO) {
+                try {
+                    val editor = IncrementalPdfEditor.open(File(path))
+                    val sizes = (0 until editor.pageCount).map { editor.pageSize(it) }
+                    val counts = sizes.groupingBy { it }.eachCount()
+                    val sb = StringBuilder("Pages: ${editor.pageCount}\n")
+                    for ((size, count) in counts) {
+                        sb.append("\n").append(formatPageSize(size)).append(": $count page")
+                        if (count > 1) sb.append("s")
+                    }
+                    sb.toString()
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            busy.dismiss()
+            if (isFinishing || isDestroyed) return@launch
+            if (props == null) {
+                Toast.makeText(this@DrawingActivity, "Couldn't read PDF properties", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            MaterialAlertDialogBuilder(this@DrawingActivity)
+                .setTitle("PDF properties")
+                .setMessage(props)
+                .setPositiveButton("OK", null)
+                .show()
+        }
+    }
+
+    private fun formatPageSize(size: Pair<Float, Float>): String {
+        val ptW = size.first.toInt().coerceAtLeast(1)
+        val ptH = size.second.toInt().coerceAtLeast(1)
+
+        val standard = listOf(
+            "A3" to (297f to 420f), "A4" to (210f to 297f), "A5" to (148f to 210f), "A6" to (105f to 148f),
+            "Letter" to (216f to 279f), "Legal" to (216f to 356f)
+        )
+        val mmW = ptW * 25.4f / 72f
+        val mmH = ptH * 25.4f / 72f
+        val sorted = listOf(minOf(mmW, mmH), maxOf(mmW, mmH))
+        val name = standard.firstOrNull { (_, d) ->
+            val s = listOf(minOf(d.first, d.second), maxOf(d.first, d.second))
+            abs(sorted[0] - s[0]) <= 2f && abs(sorted[1] - s[1]) <= 2f
+        }?.first
+        return if (name != null) "$name (${mmW.roundToInt()} × ${mmH.roundToInt()} mm)"
+        else "Custom (${ptW} × ${ptH} pt)"
     }
 
     private fun invalidateTextIndex() {
@@ -2059,8 +3359,6 @@ class DrawingActivity : AppCompatActivity() {
         outlineCacheValue = null
         outlineCacheFile().delete()
     }
-
-    // --- Export (PDF / images / image zip) ---
 
     private fun showExportDialog() {
         val view = layoutInflater.inflate(R.layout.dialog_export, null)
@@ -2105,7 +3403,7 @@ class DrawingActivity : AppCompatActivity() {
             try {
                 val result = withContext(Dispatchers.IO) {
                     when {
-                        // Single page → one PNG; multiple pages → a ZIP of PNGs.
+
                         format == "img" && pages.size == 1 ->
                             Pair(exporter.exportImages(pages, base, onProgress, cancel), "image/png")
                         format == "img" ->
@@ -2117,7 +3415,7 @@ class DrawingActivity : AppCompatActivity() {
                 progress.dismiss()
                 shareExport(result.first, result.second)
             } catch (c: kotlinx.coroutines.CancellationException) {
-                progress.dismiss() // user cancelled — no error
+                progress.dismiss()
             } catch (t: Throwable) {
                 t.printStackTrace()
                 progress.dismiss()
@@ -2151,8 +3449,6 @@ class DrawingActivity : AppCompatActivity() {
         startActivity(android.content.Intent.createChooser(intent, "Export / Share"))
     }
 
-    // --- LASSO / SELECTION ---
-
     private fun handleLassoSelection(lassoScreenPath: Path) {
         val rv = pdfRecyclerView
         val zoom = rv.zoom
@@ -2162,7 +3458,6 @@ class DrawingActivity : AppCompatActivity() {
         lassoScreenPath.computeBounds(bounds, true)
         val contentCenterY = (bounds.centerY() - ty) / zoom
 
-        // Find the page child under the lasso centre (content space).
         var pageIndex = -1
         var childLeft = 0f
         var childTop = 0f
@@ -2179,7 +3474,6 @@ class DrawingActivity : AppCompatActivity() {
         }
         if (pageIndex == -1) return
 
-        // screen → page-space: page = (screen - trans) / zoom - childOrigin
         val toPage = Matrix().apply {
             postTranslate(-tx, -ty)
             postScale(1 / zoom, 1 / zoom)
@@ -2188,21 +3482,37 @@ class DrawingActivity : AppCompatActivity() {
         val lassoPagePath = Path()
         lassoScreenPath.transform(toPage, lassoPagePath)
 
-        val result = strokeManager.selectStrokesInPath(pageIndex, lassoPagePath) ?: return
-        invalidateInk()
-        presentSelection(childLeft, childTop, result.second)
+        val snapshot = strokeManager.snapshotPageStrokes(pageIndex) ?: return
+        val lassoCopy = Path(lassoPagePath)
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.Default) {
+                strokeManager.computeSelectionInPath(lassoCopy, snapshot)
+            } ?: return@launch
+            if (isDestroyed || isFinishing) return@launch
+
+            strokeManager.beginSelection(pageIndex, result.first)
+            invalidateInk()
+            presentSelectionForPage(pageIndex, result.second)
+        }
     }
 
-    /**
-     * Puts the StrokeManager's active selection on screen: builds screen-space visuals
-     * (paths + image bitmaps), starts the DrawingView transform overlay and shows the
-     * floating selection popup. Shared by lasso select and image insertion.
-     */
+    private fun presentSelectionForPage(pageIndex: Int, pdfUnionBounds: RectF) {
+        val rv = pdfRecyclerView
+        for (i in 0 until rv.childCount) {
+            val child = rv.getChildAt(i) ?: continue
+            if (rv.getChildAdapterPosition(child) == pageIndex) {
+                presentSelection(child.left.toFloat(), child.top.toFloat(), pdfUnionBounds)
+                return
+            }
+        }
+        strokeManager.cancelSelection()
+        invalidateInk()
+    }
+
     private fun presentSelection(childLeft: Float, childTop: Float, pdfUnionBounds: RectF) {
         val rv = pdfRecyclerView
         val zoom = rv.zoom
 
-        // page → screen: screen = (page + childOrigin) * zoom + trans
         val toScreen = Matrix().apply {
             postTranslate(childLeft, childTop)
             postScale(zoom, zoom)
@@ -2215,42 +3525,38 @@ class DrawingActivity : AppCompatActivity() {
         val screenBounds = RectF()
         toScreen.mapRect(screenBounds, pdfUnionBounds)
 
-        // Selection visuals appear instantly (paths only — image slots draw a frame outline
-        // until their bitmap arrives). The bitmaps are decoded on the IO dispatcher: decoding
-        // a large photo takes 100-300ms, and doing it here was janking the frame that opens
-        // the selection (adding several images stuttered, and so did lassoing them).
-        drawingView.startSelection(screenPaths, paints, screenBounds, childTop, emptyList(), rotations, selectedStrokes)
+        drawingView.startSelection(
+            screenPaths, paints, screenBounds, childTop,
+            strokeManager.activeSelectionPageIndex, emptyList(), rotations, selectedStrokes
+        )
         showSelectionPopup(screenBounds)
 
         val selectionRef = strokeManager.activeSelectionStrokes
-        // Only images need decoding — skip the dispatch entirely for ink-only selections.
+
         if (selectionRef.any { it.type == StrokeType.IMAGE }) {
             lifecycleScope.launch {
                 withContext(Dispatchers.IO) { selectionRef.forEach { strokeManager.bitmapFor(it) } }
-                // Skip if the selection was cleared or replaced while decoding.
+
                 if (isDestroyed || strokeManager.activeSelectionStrokes !== selectionRef || selectionRef.isEmpty()) return@launch
-                // Cache hits now — swaps the outline placeholders for the real pictures.
+
                 drawingView.updateSelectionVisuals(selectionRef)
             }
         }
     }
 
-    /**
-     * Works out which page a committed selection has been dragged onto, and how far its
-     * coordinates must shift to be expressed in that page's space. Returns the source
-     * page and zero offsets when the selection hasn't left its page.
-     */
     private fun resolveSelectionTarget(
         pdfDx: Float,
         pdfDy: Float,
-        scale: Float
+        transform: DrawingView.SelectionTransform
     ): Triple<Int, Float, Float> {
         val sourcePage = strokeManager.activeSelectionPageIndex
         val unchanged = Triple(sourcePage, 0f, 0f)
-        val bounds = strokeManager.selectionBoundsAfter(pdfDx, pdfDy, scale) ?: return unchanged
+        val bounds = strokeManager.selectionBoundsAfter(
+            pdfDx, pdfDy, transform.scaleX, transform.scaleY,
+            transform.pivotXFrac, transform.pivotYFrac
+        ) ?: return unchanged
         val sourceOrigin = drawingView.pageOrigin(sourcePage) ?: return unchanged
 
-        // The selection's centre decides which page it belongs to.
         val contentX = sourceOrigin.x + bounds.centerX()
         val contentY = sourceOrigin.y + bounds.centerY()
         val targetPage = drawingView.pageAtContent(contentX, contentY) ?: return unchanged
@@ -2260,16 +3566,42 @@ class DrawingActivity : AppCompatActivity() {
         return Triple(targetPage, sourceOrigin.x - targetOrigin.x, sourceOrigin.y - targetOrigin.y)
     }
 
-    private fun handleSelectionCommit(screenDx: Float, screenDy: Float, scale: Float = 1f) {
-        val pdfDx = screenDx / pdfRecyclerView.zoom
-        val pdfDy = screenDy / pdfRecyclerView.zoom
-        val (targetPage, rebaseDx, rebaseDy) = resolveSelectionTarget(pdfDx, pdfDy, scale)
-        val result = strokeManager.commitSelection(pdfDx, pdfDy, scale, targetPage, rebaseDx, rebaseDy)
-        if (result != null) {
-            historyManager.execute(result.action, strokeManager)
-            strokesDirty = true
+    private fun handleSelectionCommit(transform: DrawingView.SelectionTransform) {
+        val zoom = pdfRecyclerView.zoom
+
+        val (scrollDx, scrollDy) = drawingView.selectionScreenOffset
+        val pdfDx = (transform.dx - scrollDx) / zoom
+        val pdfDy = (transform.dy - scrollDy) / zoom
+        val moved = kotlin.math.abs(pdfDx) > 0.1f ||
+            kotlin.math.abs(pdfDy) > 0.1f ||
+            transform.scaleX != 1f || transform.scaleY != 1f
+        if (moved) {
+
+            val (targetPage, rebaseDx, rebaseDy) = resolveSelectionTarget(pdfDx, pdfDy, transform)
+            val result = strokeManager.commitSelection(
+                pdfDx, pdfDy, transform.scaleX, transform.scaleY,
+                transform.pivotXFrac, transform.pivotYFrac,
+                targetPage, rebaseDx, rebaseDy
+            )
+            if (result != null) {
+                historyManager.execute(result.action, strokeManager)
+                strokesDirty = true
+                invalidateInk()
+                updateUndoRedoButtons()
+            }
+        } else if (strokeManager.selectionMutated) {
+
+            val result = strokeManager.commitSelection(0f, 0f)
+            if (result != null) {
+                historyManager.execute(result.action, strokeManager)
+                strokesDirty = true
+                invalidateInk()
+                updateUndoRedoButtons()
+            }
+        } else {
+
+            strokeManager.cancelSelection()
             invalidateInk()
-            updateUndoRedoButtons()
         }
         selectionTotalDx = 0f
         selectionTotalDy = 0f
@@ -2280,6 +3612,12 @@ class DrawingActivity : AppCompatActivity() {
     private fun showSelectionPopup(screenBounds: RectF) {
         selectionPopup?.dismiss()
         val view = layoutInflater.inflate(R.layout.popup_selection, null)
+
+        val singleTable = strokeManager.activeSelectionStrokes.size == 1 &&
+            strokeManager.activeSelectionStrokes.firstOrNull()?.type == StrokeType.TABLE
+        view.findViewById<View>(R.id.selTableRow).visibility =
+            if (singleTable) View.VISIBLE else View.GONE
+
         view.measure(android.view.View.MeasureSpec.UNSPECIFIED, android.view.View.MeasureSpec.UNSPECIFIED)
 
         selectionPopup = android.widget.PopupWindow(view, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, false)
@@ -2287,21 +3625,226 @@ class DrawingActivity : AppCompatActivity() {
         selectionPopup?.setBackgroundDrawable(null)
 
         val colorBtn = view.findViewById<android.view.View>(R.id.selColorBtn)
-        val currentShape = colorBtn.background as? android.graphics.drawable.GradientDrawable
-        currentShape?.setColor(strokeManager.activeSelectionStrokes.firstOrNull()?.paint?.color ?: android.graphics.Color.BLACK)
+        val actionsRow = view.findViewById<android.view.View>(R.id.selActionsRow)
+        val colorsRow = view.findViewById<android.view.View>(R.id.selColorsRow)
 
-        colorBtn.setOnClickListener {
+        fun refreshSelectionSwatch() {
+            val bg = colorBtn.background as? android.graphics.drawable.LayerDrawable
+            (bg?.findDrawableByLayerId(R.id.color_shape) as? android.graphics.drawable.GradientDrawable)
+                ?.setColor(strokeManager.activeSelectionStrokes.firstOrNull()?.paint?.color ?: android.graphics.Color.BLACK)
+        }
+        refreshSelectionSwatch()
+
+        fun applySelectionColor(color: Int) {
+            strokeManager.activeSelectionStrokes.forEach { it.paint.color = color }
+            strokeManager.selectionMutated = true
+            strokesDirty = true
+            drawingView.updateSelectionVisuals(strokeManager.activeSelectionStrokes)
+            refreshSelectionSwatch()
+        }
+
+        fun relayoutSelectionPopup() {
+
+            view.measure(
+                android.view.View.MeasureSpec.UNSPECIFIED,
+                android.view.View.MeasureSpec.UNSPECIFIED
+            )
+            val popup = selectionPopup ?: return
+            if (!popup.isShowing) return
+
+            val loc = IntArray(2)
+            view.getLocationOnScreen(loc)
+            val cx = loc[0] + view.width / 2
+            val screenW = resources.displayMetrics.widthPixels
+            val nx = (cx - view.measuredWidth / 2)
+                .coerceIn(8, (screenW - view.measuredWidth - 8).coerceAtLeast(8))
+            popup.update(nx, loc[1], view.measuredWidth, view.measuredHeight)
+        }
+
+        fun showSelectionActions() {
+            actionsRow.visibility = View.VISIBLE
+            colorsRow.visibility = View.GONE
+            relayoutSelectionPopup()
+        }
+
+        fun showSelectionColors() {
+            val circleIds = intArrayOf(
+                R.id.selQuickColor0, R.id.selQuickColor1, R.id.selQuickColor2,
+                R.id.selQuickColor3, R.id.selQuickColor4
+            )
+            dockColors.forEachIndexed { i, c ->
+                val circle = view.findViewById<View>(circleIds[i])
+                val bg = circle.background as? android.graphics.drawable.LayerDrawable
+                (bg?.findDrawableByLayerId(R.id.color_shape) as? android.graphics.drawable.GradientDrawable)
+                    ?.setColor(c)
+                circle.setOnClickListener { applySelectionColor(c) }
+            }
+            actionsRow.visibility = View.GONE
+            colorsRow.visibility = View.VISIBLE
+            relayoutSelectionPopup()
+        }
+
+        colorBtn.setOnClickListener { showSelectionColors() }
+        view.findViewById<android.view.View>(R.id.selColorCloseBtn).setOnClickListener { showSelectionActions() }
+        view.findViewById<android.view.View>(R.id.selColorMoreBtn).setOnClickListener {
             val initialColor = strokeManager.activeSelectionStrokes.firstOrNull()?.paint?.color ?: android.graphics.Color.BLACK
             ColorPickerDialog.show(this, initialColor, allowEyedropper = true) { color ->
-                strokeManager.activeSelectionStrokes.forEach { it.paint.color = color }
-                strokesDirty = true
-                drawingView.updateSelectionVisuals(strokeManager.activeSelectionStrokes)
-                currentShape?.setColor(color)
+                applySelectionColor(color)
             }
         }
 
+        val selectionHasTable = strokeManager.activeSelectionStrokes.any {
+            it.type == StrokeType.TABLE || it.type == StrokeType.TEXT
+        }
+        view.findViewById<android.view.View>(R.id.selAngleBtn).visibility =
+            if (selectionHasTable) android.view.View.GONE else android.view.View.VISIBLE
+
         view.findViewById<android.view.View>(R.id.selAngleBtn).setOnClickListener {
             showAnglePopup(it)
+        }
+
+        if (singleTable) {
+            val rowsValue = view.findViewById<TextView>(R.id.selTableRowsValue)
+            val colsValue = view.findViewById<TextView>(R.id.selTableColsValue)
+            val headerBtn = view.findViewById<TextView>(R.id.selTableHeaderBtn)
+            val colHeaderBtn = view.findViewById<TextView>(R.id.selTableColHeaderBtn)
+            val headerColorBtn = view.findViewById<View>(R.id.selTableHeaderColorBtn)
+            val colColorBtn = view.findViewById<View>(R.id.selTableColColorBtn)
+            val radiusValue = view.findViewById<TextView>(R.id.selTableRadiusValue)
+            val primary = com.google.android.material.color.MaterialColors.getColor(
+                this, com.google.android.material.R.attr.colorPrimary, Color.BLACK
+            )
+            val onSurfaceVariant = com.google.android.material.color.MaterialColors.getColor(
+                this, com.google.android.material.R.attr.colorOnSurfaceVariant, Color.GRAY
+            )
+
+            fun setColorDot(btn: View, color: Int) {
+                val bg = btn.background as? android.graphics.drawable.LayerDrawable
+                (bg?.findDrawableByLayerId(R.id.color_shape) as? android.graphics.drawable.GradientDrawable)
+                    ?.setColor(color)
+            }
+
+            fun refreshTableRow() {
+                val live = strokeManager.activeSelectionStrokes.firstOrNull() ?: return
+                val t = live.tableData ?: return
+                rowsValue.text = t.rows.toString()
+                colsValue.text = t.cols.toString()
+                headerBtn.text = getString(if (t.headerRow) R.string.table_header_on else R.string.table_header_off)
+                headerBtn.setTextColor(if (t.headerRow) primary else onSurfaceVariant)
+                colHeaderBtn.text = getString(if (t.headerCol) R.string.table_col_header_on else R.string.table_col_header_off)
+                colHeaderBtn.setTextColor(if (t.headerCol) primary else onSurfaceVariant)
+                setColorDot(headerColorBtn, t.headerColor ?: live.paint.color)
+                setColorDot(colColorBtn, t.headerColColor ?: live.paint.color)
+                radiusValue.text = t.borderRadius.roundToInt().toString()
+            }
+
+            fun applyTableEdit(
+                newRows: Int? = null,
+                newCols: Int? = null,
+                newHeader: Boolean? = null,
+                newHeaderCol: Boolean? = null,
+                newHeaderColor: Int? = null,
+                newHeaderColColor: Int? = null,
+                clearHeaderColor: Boolean = false,
+                clearHeaderColColor: Boolean = false,
+                newRadius: Float? = null
+            ) {
+                val live = strokeManager.activeSelectionStrokes.firstOrNull() ?: return
+                val page = strokeManager.activeSelectionPageIndex
+                val original = strokeManager.knownStrokesForPage(page)
+                    .firstOrNull { it.id == live.id && it.type == StrokeType.TABLE } ?: return
+                val td = original.tableData ?: return
+                val rows = newRows ?: td.rows
+                val cols = newCols ?: td.cols
+                val header = newHeader ?: td.headerRow
+                val headerCol = newHeaderCol ?: td.headerCol
+                val headerColor = if (clearHeaderColor) null else (newHeaderColor ?: td.headerColor)
+                val headerColColor = if (clearHeaderColColor) null else (newHeaderColColor ?: td.headerColColor)
+                val radius = newRadius ?: td.borderRadius
+
+                val newCells = mutableMapOf<String, String>()
+                for ((k, v) in td.cells) {
+                    val p = k.split(",")
+                    val r = p.getOrNull(0)?.toIntOrNull()
+                    val c = p.getOrNull(1)?.toIntOrNull()
+                    if (r != null && c != null && r < rows && c < cols) newCells[k] = v
+                }
+                val newTd = td.copy(
+                    rows = rows, cols = cols,
+                    headerRow = header, headerCol = headerCol,
+                    headerColor = headerColor, headerColColor = headerColColor,
+                    borderRadius = radius, cells = newCells
+                )
+                val newStroke = original.copy(tableData = newTd)
+                historyManager.execute(
+                    DrawingAction.ReplaceStrokes(page, listOf(original), listOf(newStroke)),
+                    strokeManager
+                )
+
+                strokeManager.selectStrokes(page, listOf(newStroke))
+                drawingView.updateSelectionVisuals(strokeManager.activeSelectionStrokes)
+                strokesDirty = true
+                invalidateInk()
+                updateUndoRedoButtons()
+                refreshTableRow()
+            }
+
+            view.findViewById<View>(R.id.selTableRowsMinus).setOnClickListener {
+                val t = strokeManager.activeSelectionStrokes.firstOrNull()?.tableData ?: return@setOnClickListener
+                applyTableEdit(newRows = (t.rows - 1).coerceAtLeast(1))
+            }
+            view.findViewById<View>(R.id.selTableRowsPlus).setOnClickListener {
+                val t = strokeManager.activeSelectionStrokes.firstOrNull()?.tableData ?: return@setOnClickListener
+                applyTableEdit(newRows = (t.rows + 1).coerceAtMost(10))
+            }
+            view.findViewById<View>(R.id.selTableColsMinus).setOnClickListener {
+                val t = strokeManager.activeSelectionStrokes.firstOrNull()?.tableData ?: return@setOnClickListener
+                applyTableEdit(newCols = (t.cols - 1).coerceAtLeast(1))
+            }
+            view.findViewById<View>(R.id.selTableColsPlus).setOnClickListener {
+                val t = strokeManager.activeSelectionStrokes.firstOrNull()?.tableData ?: return@setOnClickListener
+                applyTableEdit(newCols = (t.cols + 1).coerceAtMost(8))
+            }
+            headerBtn.setOnClickListener {
+                val t = strokeManager.activeSelectionStrokes.firstOrNull()?.tableData ?: return@setOnClickListener
+                applyTableEdit(newHeader = !t.headerRow)
+            }
+            colHeaderBtn.setOnClickListener {
+                val t = strokeManager.activeSelectionStrokes.firstOrNull()?.tableData ?: return@setOnClickListener
+                applyTableEdit(newHeaderCol = !t.headerCol)
+            }
+            headerColorBtn.setOnClickListener {
+                val live = strokeManager.activeSelectionStrokes.firstOrNull() ?: return@setOnClickListener
+                val t = live.tableData ?: return@setOnClickListener
+                ColorPickerDialog.show(
+                    this, t.headerColor ?: live.paint.color, allowEyedropper = true
+                ) { color -> applyTableEdit(newHeaderColor = color) }
+            }
+
+            headerColorBtn.setOnLongClickListener {
+                applyTableEdit(clearHeaderColor = true)
+                true
+            }
+            colColorBtn.setOnClickListener {
+                val live = strokeManager.activeSelectionStrokes.firstOrNull() ?: return@setOnClickListener
+                val t = live.tableData ?: return@setOnClickListener
+                ColorPickerDialog.show(
+                    this, t.headerColColor ?: live.paint.color, allowEyedropper = true
+                ) { color -> applyTableEdit(newHeaderColColor = color) }
+            }
+            colColorBtn.setOnLongClickListener {
+                applyTableEdit(clearHeaderColColor = true)
+                true
+            }
+            view.findViewById<View>(R.id.selTableRadiusMinus).setOnClickListener {
+                val t = strokeManager.activeSelectionStrokes.firstOrNull()?.tableData ?: return@setOnClickListener
+                applyTableEdit(newRadius = (t.borderRadius - 4).coerceAtLeast(0f))
+            }
+            view.findViewById<View>(R.id.selTableRadiusPlus).setOnClickListener {
+                val t = strokeManager.activeSelectionStrokes.firstOrNull()?.tableData ?: return@setOnClickListener
+                applyTableEdit(newRadius = (t.borderRadius + 4).coerceAtMost(40f))
+            }
+            refreshTableRow()
         }
 
         view.findViewById<android.view.View>(R.id.selDelBtn).setOnClickListener {
@@ -2317,26 +3860,39 @@ class DrawingActivity : AppCompatActivity() {
         }
 
         view.findViewById<android.view.View>(R.id.selDupBtn).setOnClickListener {
-            val pdfDx = selectionTotalDx / pdfRecyclerView.zoom
-            val pdfDy = selectionTotalDy / pdfRecyclerView.zoom
-            val (targetPage, rebaseDx, rebaseDy) = resolveSelectionTarget(pdfDx, pdfDy, selectionTotalScale)
+
+            val live = drawingView.currentSelectionTransform()
+
+            val (scrollDx, scrollDy) = drawingView.selectionScreenOffset
+            val pdfDx = (live.dx - scrollDx) / pdfRecyclerView.zoom
+            val pdfDy = (live.dy - scrollDy) / pdfRecyclerView.zoom
+            val (targetPage, rebaseDx, rebaseDy) = resolveSelectionTarget(pdfDx, pdfDy, live)
             val commit = strokeManager.commitSelection(
-                pdfDx, pdfDy, selectionTotalScale, targetPage, rebaseDx, rebaseDy
+                pdfDx, pdfDy, live.scaleX, live.scaleY,
+                live.pivotXFrac, live.pivotYFrac, targetPage, rebaseDx, rebaseDy
             )
             if (commit != null) {
                 historyManager.execute(commit.action, strokeManager)
-                // Offset duplicates slightly
+
                 val dupStrokes = commit.newStrokes.map { s ->
                     val p = Path(s.path)
                     p.transform(Matrix().apply { postTranslate(30f, 30f) })
                     s.copy(path = p, id = java.util.UUID.randomUUID().toString())
                 }
-                // Onto the page the selection actually landed on, which isn't necessarily
-                // the page being displayed.
+
                 historyManager.execute(
                     DrawingAction.BatchAction(dupStrokes.map { DrawingAction.AddStroke(commit.pageIndex, it) }),
                     strokeManager
                 )
+
+                val dupResult = strokeManager.selectStrokes(commit.pageIndex, dupStrokes)
+                if (dupResult != null) {
+                    val origin = drawingView.pageOrigin(commit.pageIndex)
+                    presentSelection(origin?.x ?: 0f, origin?.y ?: 0f, dupResult.second)
+                    invalidateInk()
+                    updateUndoRedoButtons()
+                    return@setOnClickListener
+                }
             }
             drawingView.clearSelectionVisuals()
             invalidateInk()
@@ -2344,12 +3900,11 @@ class DrawingActivity : AppCompatActivity() {
             updateUndoRedoButtons()
         }
 
-        // Track the drag locally so the popup can use it for duplication bounds.
-        drawingView.onSelectionMovedListener = { dx, dy, scale ->
-            selectionTotalDx = dx
-            selectionTotalDy = dy
-            selectionTotalScale = scale
-            handleSelectionCommit(dx, dy, scale)
+        drawingView.onSelectionMovedListener = { transform ->
+            selectionTotalDx = transform.dx
+            selectionTotalDy = transform.dy
+            selectionTotalScale = transform.scaleX
+            handleSelectionCommit(transform)
         }
 
         val x = screenBounds.centerX().toInt() - (view.measuredWidth / 2)
@@ -2388,6 +3943,14 @@ class DrawingActivity : AppCompatActivity() {
         popup.elevation = 20f
         popup.setBackgroundDrawable(null)
 
+        val flipPopupHasTable = strokeManager.activeSelectionStrokes.any {
+            it.type == StrokeType.TABLE || it.type == StrokeType.TEXT
+        }
+        if (flipPopupHasTable) {
+            view.findViewById<android.view.View>(R.id.btnFlipH).visibility = android.view.View.GONE
+            view.findViewById<android.view.View>(R.id.btnFlipV).visibility = android.view.View.GONE
+        }
+
         view.findViewById<android.view.View>(R.id.btnFlipH).setOnClickListener {
             strokeManager.flipSelection(horizontal = true, vertical = false)
             strokesDirty = true
@@ -2421,6 +3984,8 @@ class DrawingActivity : AppCompatActivity() {
             val clip = strokeManager.clipboardStrokes ?: return@setOnClickListener
             val actions = clip.map { DrawingAction.AddStroke(currentPage, it.copy(id = java.util.UUID.randomUUID().toString())) }
             historyManager.execute(DrawingAction.BatchAction(actions), strokeManager)
+
+            strokeManager.cancelSelection()
             drawingView.clearSelectionVisuals()
             invalidateInk()
             popup.dismiss()
@@ -2432,10 +3997,6 @@ class DrawingActivity : AppCompatActivity() {
 
     private var pastePopup: android.widget.PopupWindow? = null
 
-    /**
-     * Finger long press on the page: offers to paste the copied strokes right there.
-     * Silent when the clipboard is empty — an empty menu is worse than no menu.
-     */
     private fun showPastePopup(viewX: Float, viewY: Float) {
         if (strokeManager.clipboardStrokes.isNullOrEmpty()) return
         pastePopup?.dismiss()
@@ -2457,7 +4018,6 @@ class DrawingActivity : AppCompatActivity() {
             popup.dismiss()
         }
 
-        // Sit the pill above the finger, and keep it on screen near the edges.
         view.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -2472,7 +4032,6 @@ class DrawingActivity : AppCompatActivity() {
         popup.showAtLocation(drawingView, android.view.Gravity.NO_GRAVITY, x, y)
     }
 
-    /** Pastes the clipboard centred on the page point under [viewX]/[viewY]. */
     private fun pasteClipboardAt(viewX: Float, viewY: Float) {
         val clip = strokeManager.clipboardStrokes?.takeIf { it.isNotEmpty() } ?: return
         val hit = drawingView.locatePage(viewX, viewY) ?: return
@@ -2488,7 +4047,7 @@ class DrawingActivity : AppCompatActivity() {
             setTranslate(hit.pageX - bounds.centerX(), hit.pageY - bounds.centerY())
         }
         val actions = clip.map { s ->
-            // copy() clears savedContours, so the moved geometry is what gets saved.
+
             val moved = android.graphics.Path(s.path).apply { transform(move) }
             DrawingAction.AddStroke(
                 hit.pageIndex,
@@ -2503,176 +4062,6 @@ class DrawingActivity : AppCompatActivity() {
         strokesDirty = true
         invalidateInk()
     }
-
-    // --- IMAGE TOOL ---
-
-    private fun imagesPermission(): String =
-        if (android.os.Build.VERSION.SDK_INT >= 33) android.Manifest.permission.READ_MEDIA_IMAGES
-        else android.Manifest.permission.READ_EXTERNAL_STORAGE
-
-    private fun imagePermissionGranted(): Boolean =
-        checkSelfPermission(imagesPermission()) == android.content.pm.PackageManager.PERMISSION_GRANTED
-
-    /** Syncs the image tool's option strip with the current permission state. */
-    private fun refreshImageToolStrip() {
-        val granted = imagePermissionGranted()
-        findViewById<View>(R.id.imagePermissionGroup).visibility = if (granted) View.GONE else View.VISIBLE
-        findViewById<View>(R.id.imagePickButton).visibility = if (granted) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.imageStripDivider).visibility = if (granted) View.VISIBLE else View.GONE
-        val recentsRow = findViewById<android.widget.LinearLayout>(R.id.imageRecentsRow)
-        recentsRow.visibility = if (granted) View.VISIBLE else View.GONE
-        // On the narrow phone dock the strip is a vertical column — stack previews too.
-        if (smallDock) {
-            recentsRow.orientation = android.widget.LinearLayout.VERTICAL
-            findViewById<android.widget.LinearLayout>(R.id.imagePermissionGroup).orientation =
-                android.widget.LinearLayout.VERTICAL
-        }
-        if (granted) loadRecentImagePreviews(recentsRow)
-    }
-
-    /** Fills the strip with small previews of the most recently added device images. */
-    private fun loadRecentImagePreviews(row: android.widget.LinearLayout) {
-        lifecycleScope.launch {
-            val thumbs = withContext(Dispatchers.IO) {
-                val list = mutableListOf<Pair<android.net.Uri, android.graphics.Bitmap>>()
-                try {
-                    contentResolver.query(
-                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        arrayOf(android.provider.MediaStore.Images.Media._ID),
-                        null, null,
-                        "${android.provider.MediaStore.Images.Media.DATE_ADDED} DESC"
-                    )?.use { c ->
-                        while (c.moveToNext() && list.size < 8) {
-                            val uri = android.content.ContentUris.withAppendedId(
-                                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, c.getLong(0)
-                            )
-                            val bmp = loadPreviewThumb(uri) ?: continue
-                            list.add(uri to bmp)
-                        }
-                    }
-                } catch (_: Exception) {}
-                list
-            }
-            row.removeAllViews()
-            val density = resources.displayMetrics.density
-            val size = (40 * density).toInt()
-            val margin = (3 * density).toInt()
-            val corner = 6 * density
-            for ((uri, bmp) in thumbs) {
-                val iv = android.widget.ImageView(this@DrawingActivity).apply {
-                    layoutParams = android.widget.LinearLayout.LayoutParams(size, size).apply {
-                        marginStart = margin; marginEnd = margin
-                    }
-                    scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-                    clipToOutline = true
-                    outlineProvider = object : android.view.ViewOutlineProvider() {
-                        override fun getOutline(v: View, outline: android.graphics.Outline) {
-                            outline.setRoundRect(0, 0, v.width, v.height, corner)
-                        }
-                    }
-                    setImageBitmap(bmp)
-                    setOnClickListener { insertImageFromUri(uri) }
-                }
-                row.addView(iv)
-            }
-        }
-    }
-
-    private fun loadPreviewThumb(uri: android.net.Uri): android.graphics.Bitmap? = try {
-        if (android.os.Build.VERSION.SDK_INT >= 29) {
-            contentResolver.loadThumbnail(uri, android.util.Size(128, 128), null)
-        } else {
-            val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, o) }
-            var sample = 1
-            while (o.outWidth / sample > 256 || o.outHeight / sample > 256) sample *= 2
-            contentResolver.openInputStream(uri)?.use {
-                android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
-            }
-        }
-    } catch (e: Exception) { null }
-
-    /**
-     * Copies the picked image into app storage (picker URIs are transient), then places
-     * it on the currently visible page and opens it in selection mode for move/resize.
-     */
-    private fun insertImageFromUri(uri: android.net.Uri) {
-        lifecycleScope.launch {
-            val prepared = withContext(Dispatchers.IO) {
-                try {
-                    val dir = strokeManager.imagesDir ?: return@withContext null
-                    val name = "img_${java.util.UUID.randomUUID()}"
-                    val f = java.io.File(dir, name)
-                    contentResolver.openInputStream(uri)?.use { inp ->
-                        f.outputStream().use { inp.copyTo(it) }
-                    } ?: return@withContext null
-                    val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    android.graphics.BitmapFactory.decodeFile(f.absolutePath, o)
-                    if (o.outWidth <= 0 || o.outHeight <= 0) { f.delete(); null }
-                    else {
-                        // Decode once here (off the main thread) so the auto-select that follows
-                        // and any later selection draw the cached bitmap instead of janking.
-                        strokeManager.preloadBitmap(name)
-                        Triple(name, o.outWidth, o.outHeight)
-                    }
-                } catch (e: Exception) { null }
-            }
-            if (prepared == null) {
-                Toast.makeText(this@DrawingActivity, "Couldn't load that image", Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-            placeImageOnPage(prepared.first, prepared.second, prepared.third)
-        }
-    }
-
-    private fun placeImageOnPage(imageFile: String, imgW: Int, imgH: Int) {
-        val rv = pdfRecyclerView
-        // Viewport centre in content space → find the page under it.
-        val contentCenterY = (rv.height / 2f - rv.transY) / rv.zoom
-        var pageIndex = -1
-        var child: View? = null
-        for (i in 0 until rv.childCount) {
-            val c = rv.getChildAt(i) ?: continue
-            val pos = rv.getChildAdapterPosition(c)
-            if (pos < 0) continue
-            if (contentCenterY >= c.top && contentCenterY < c.bottom) { pageIndex = pos; child = c; break }
-        }
-        if (child == null) {
-            // Fallback: first laid-out page.
-            for (i in 0 until rv.childCount) {
-                val c = rv.getChildAt(i) ?: continue
-                val pos = rv.getChildAdapterPosition(c)
-                if (pos >= 0) { pageIndex = pos; child = c; break }
-            }
-        }
-        val pageChild = child ?: return
-
-        val pageW = pageChild.width.toFloat()
-        val pageH = pageChild.height.toFloat()
-
-        // Initial size: 50% of the page width, capped at 60% of the page height.
-        var w = pageW * 0.5f
-        var h = w * imgH / imgW
-        if (h > pageH * 0.6f) { h = pageH * 0.6f; w = h * imgW / imgH }
-
-        val cx = pageW / 2f
-        val cy = (contentCenterY - pageChild.top).coerceIn(h / 2f, (pageH - h / 2f).coerceAtLeast(h / 2f))
-        val rect = RectF(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
-
-        val path = Path().apply { addRect(rect, Path.Direction.CW) }
-        val paint = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL }
-        val stroke = StrokeData(path = path, paint = paint, type = StrokeType.IMAGE, imageFile = imageFile)
-
-        historyManager.execute(DrawingAction.AddStroke(pageIndex, stroke), strokeManager)
-        invalidateInk()
-        updateUndoRedoButtons()
-
-        // Open the fresh image in selection mode so it can be dragged/resized right away.
-        val result = strokeManager.selectStrokes(pageIndex, listOf(stroke)) ?: return
-        presentSelection(pageChild.left.toFloat(), pageChild.top.toFloat(), result.second)
-    }
-
-    // --- PAGE GRID / SAVE / LOAD ---
 
     private fun showPageGrid() {
         lifecycleScope.launch {
@@ -2697,9 +4086,7 @@ class DrawingActivity : AppCompatActivity() {
             val tw = resources.displayMetrics.widthPixels / cols
 
             val renderer = PdfThumbnailRenderer(file, strokeManager, strokePageSizes())
-            // Dialog-scoped work: cancelled on dismiss so queued thumbnail renders can never
-            // run against a closed renderer (the old code used lifecycleScope and a render that
-            // started before close() would crash with "Document already closed" on the next bind).
+
             val gridScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
             val dialog = android.app.Dialog(this@DrawingActivity, R.style.Theme_OctopusNotes)
             gridDialog = dialog
@@ -2709,7 +4096,7 @@ class DrawingActivity : AppCompatActivity() {
             var currentTab = R.id.tabAll
             var adapter: PageGridAdapter? = null
             var touchHelper: androidx.recyclerview.widget.ItemTouchHelper? = null
-            // Set when selection mode is switched on, so the caller can seed a selection.
+
             var setSelectionMode: (Boolean, Int?) -> Unit = { _, _ -> }
 
             fun pagesForTab(tab: Int): List<Int> = when (tab) {
@@ -2739,20 +4126,19 @@ class DrawingActivity : AppCompatActivity() {
                 },
                 onLongPress = { page, holder ->
                     if (!gridSelectionMode) {
-                        // First long press: same as tapping Select, with this page picked.
+
                         setSelectionMode(true, page)
                     } else if (currentTab == R.id.tabAll) {
-                        // Already selecting: a second long press starts a reorder drag.
+
                         touchHelper?.startDrag(holder)
                     }
                 }
             )
             recycler.adapter = adapter
-            // Open the grid scrolled to (and highlighting) the page you're currently on.
+
             (recycler.layoutManager as? androidx.recyclerview.widget.GridLayoutManager)
                 ?.scrollToPositionWithOffset(currentPage.coerceIn(0, (totalPages - 1).coerceAtLeast(0)), 0)
 
-            // --- Grid scroll pill (same coalesced/capped drag pattern as the PDF scroll pill) ---
             val pillTrack = view.findViewById<View>(R.id.gridPillTrack)
             val pillThumb = view.findViewById<ImageView>(R.id.gridPillThumb)
 
@@ -2799,7 +4185,6 @@ class DrawingActivity : AppCompatActivity() {
                 pillFadeHandler.postDelayed(pillFadeRunnable, 1500)
             }
 
-            /** Mirrors the PDF scroll-pill thumb: reflect the grid's current scroll fraction. */
             fun updateGridPillPosition() {
                 if ((adapter?.itemCount ?: 0) <= 1) {
                     pillThumb.alpha = 0f
@@ -2866,8 +4251,7 @@ class DrawingActivity : AppCompatActivity() {
                             pillFramePosted = false
                         }
                         if (pillMoved) {
-                            // Land on the finger's target: scrollToPosition anchors straight at
-                            // the destination item without binding/measuring every row between.
+
                             val count = adapter?.itemCount ?: 0
                             val target = (pillPendingFraction * count).toInt()
                                 .coerceIn(0, (count - 1).coerceAtLeast(0))
@@ -2895,10 +4279,10 @@ class DrawingActivity : AppCompatActivity() {
 
             fun showTab(tab: Int) {
                 currentTab = tab
-                // Only the All tab keeps the button; elsewhere selection is long-press only.
+
                 selectButton.visibility = if (tab == R.id.tabAll) View.VISIBLE else View.GONE
                 reloadButton.visibility = if (tab == R.id.tabOutline) View.VISIBLE else View.GONE
-                // Leaving a tab shouldn't strand the selection bar over a different list.
+
                 if (gridSelectionMode) setSelectionMode(false, null)
                 if (tab == R.id.tabOutline) {
                     recycler.visibility = View.GONE
@@ -2912,8 +4296,7 @@ class DrawingActivity : AppCompatActivity() {
                     recycler.visibility = if (list.isEmpty()) View.GONE else View.VISIBLE
                     emptyText.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
                     emptyText.text = if (tab == R.id.tabBookmark) "No bookmarked pages" else ""
-                    // Only the page grids (All / Bookmark) get the scroll pill — the outline
-                    // list is a separate RecyclerView and scrolls normally.
+
                     showGridPill(list.size > 1)
                 }
             }
@@ -2942,8 +4325,6 @@ class DrawingActivity : AppCompatActivity() {
             }
             selectButton.setOnClickListener { setSelectionMode(!gridSelectionMode, null) }
 
-            // Drag to reorder. Long press is handled by the adapter so the first one can
-            // open selection mode instead of immediately starting a drag.
             val dragCallback = object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
                 androidx.recyclerview.widget.ItemTouchHelper.UP or
                         androidx.recyclerview.widget.ItemTouchHelper.DOWN or
@@ -2976,8 +4357,7 @@ class DrawingActivity : AppCompatActivity() {
                     val to = vh.adapterPosition
                     dragFrom = -1
                     if (from < 0 || to < 0 || from == to) return
-                    // On the All tab position == page index, which is what makes a
-                    // straight position-to-page move valid here.
+
                     movePage(from, to) {
                         renderer.reload(strokePageSizes())
                         setSelectionMode(false, null)
@@ -3009,12 +4389,11 @@ class DrawingActivity : AppCompatActivity() {
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT
             )
-            // The dialog opens on the All tab without a tab-change event — show the pill now.
+
             showGridPill(true)
             dialog.setOnDismissListener {
                 gridScope.cancel()
-                // Drop the pill's coalesced drag frame + fade so nothing fires against a
-                // torn-down RecyclerView after the dialog is gone.
+
                 if (pillFramePosted) {
                     Choreographer.getInstance().removeFrameCallback(pillFrameCallback)
                     pillFramePosted = false
@@ -3081,14 +4460,6 @@ class DrawingActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Reads the PDF's embedded outline as a tree via pdfbox.
-     *
-     * Destination resolution is layered because publishers use different mechanisms:
-     * page-object destinations, GoTo actions, named destinations, and page-*number*
-     * destinations (where [com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem.findDestinationPage]
-     * returns null but the number is retrievable).
-     */
     private var outlineCacheValue: List<OutlineUiEntry>? = null
     private var outlineLoadJob: kotlinx.coroutines.Job? = null
 
@@ -3180,87 +4551,22 @@ class DrawingActivity : AppCompatActivity() {
     }
 
     private fun readEmbeddedOutlineUncached(file: File): List<OutlineUiEntry> {
-        try {
-            // Mixed memory setting: parse buffers stay in RAM (up to 32 MB) instead of
-            // spooling every read to temp files — much faster for outline-only access.
-            val mem = com.tom_roush.pdfbox.io.MemoryUsageSetting.setupMixed(32L * 1024 * 1024)
-                .setTempDir(cacheDir)
-            PDDocument.load(file, mem).use { doc ->
-                val outline = doc.documentCatalog.documentOutline ?: return emptyList()
-
-                // O(1) page lookups: map each page's COS dictionary to its index ONCE,
-                // instead of an O(n) page-tree walk per outline item.
-                val pageIndexOf = HashMap<com.tom_roush.pdfbox.cos.COSDictionary, Int>(doc.numberOfPages * 2)
-                for ((i, page) in doc.pages.withIndex()) pageIndexOf[page.cosObject] = i
-
-                fun indexOfPage(pg: com.tom_roush.pdfbox.pdmodel.PDPage?): Int =
-                    pg?.let { pageIndexOf[it.cosObject] } ?: -1
-
-                fun resolvePage(item: com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem): Int {
-                    // 1) Standard resolver (page objects, GoTo actions, named destinations).
-                    try {
-                        val i = indexOfPage(item.findDestinationPage(doc))
-                        if (i >= 0) return i
-                    } catch (_: Exception) {}
-                    // 2) Destinations that carry a page *number* instead of a page object.
-                    try {
-                        var dest: com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.destination.PDDestination? =
-                            item.destination
-                        if (dest == null) {
-                            val action = item.action
-                            if (action is com.tom_roush.pdfbox.pdmodel.interactive.action.PDActionGoTo) {
-                                dest = action.destination
-                            }
-                        }
-                        if (dest is com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.destination.PDNamedDestination) {
-                            // Resolve through the catalog's name tree (or the legacy /Dests dict).
-                            val name = dest.namedDestination
-                            val resolved =
-                                try { doc.documentCatalog.names?.dests?.getValue(name) } catch (_: Exception) { null }
-                                    ?: try {
-                                        doc.documentCatalog.dests?.getDestination(name)
-                                            as? com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageDestination
-                                    } catch (_: Exception) { null }
-                            if (resolved != null) dest = resolved
-                        }
-                        if (dest is com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageDestination) {
-                            val i = indexOfPage(dest.page)
-                            if (i >= 0) return i
-                            val n = dest.retrievePageNumber()
-                            if (n >= 0) return n
-                        }
-                    } catch (_: Exception) {}
-                    return -1
-                }
-
-                fun walk(
-                    start: com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem?,
-                    depth: Int
-                ): List<OutlineUiEntry> {
-                    val siblings = mutableListOf<OutlineUiEntry>()
-                    var cur = start
-                    var guard = 0
-                    while (cur != null && guard++ < 5000) {
-                        val title = cur.title ?: ""
-                        val page = resolvePage(cur)
-                        val children = walk(cur.firstChild, depth + 1)
-                        // Keep entries even without a resolvable page if they have children
-                        // (section headers), so the tree structure survives.
-                        if (page >= 0 || children.isNotEmpty()) {
-                            siblings.add(OutlineUiEntry(title, page, isUser = false, depth = depth, children = children))
-                        }
-                        cur = cur.nextSibling
-                    }
-                    return siblings
-                }
-
-                return walk(outline.firstChild, 0)
-            }
+        return try {
+            PdfOutlineReader.read(file.readBytes()).map { toOutlineUi(it) }
         } catch (e: Exception) {
             android.util.Log.w("OctopusNotes", "Failed to read PDF outline", e)
+            emptyList()
         }
-        return emptyList()
     }
+
+    private fun toOutlineUi(item: PdfOutlineReader.Item): OutlineUiEntry =
+        OutlineUiEntry(
+            title = item.title,
+            page = item.pageIndex,
+            isUser = false,
+            depth = item.depth,
+            children = item.children.map(::toOutlineUi)
+        )
 
     private fun showPageActionsPopup(anchor: View, pageIndex: Int) {
         val view = layoutInflater.inflate(R.layout.popup_page_actions, null)
@@ -3303,12 +4609,13 @@ class DrawingActivity : AppCompatActivity() {
             Toast.makeText(this, "Can't rotate this page", Toast.LENGTH_SHORT).show()
             return
         }
-        // The ink turns with the page, so capture the page's pre-rotation stroke-space size
-        // while the old geometry is still what the engine reports.
+
         val sizeBefore = strokePageSize(pageIndex)
-        // Undo entries hold paths in the pre-rotation coordinate space.
+
         historyManager.clear()
         selectionPopup?.dismiss()
+
+        strokeManager.cancelSelection()
         drawingView.clearSelectionVisuals()
         val busy = showBusyDialog("Rotating page…")
         busy.show()
@@ -3318,7 +4625,7 @@ class DrawingActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 busy.dismiss()
-                Toast.makeText(this@DrawingActivity, "Couldn't rotate the page — please try again", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@DrawingActivity, editErrorText(e, "Couldn't rotate the page. Please try again"), Toast.LENGTH_LONG).show()
                 return@launch
             }
             if (sizeBefore != null) {
@@ -3334,7 +4641,6 @@ class DrawingActivity : AppCompatActivity() {
         }
     }
 
-    /** One page's stroke-space size: the laid-out page width, at that page's own aspect. */
     private fun strokePageSize(pageIndex: Int): Pair<Float, Float>? {
         val engine = pdfEngine ?: return null
         val w = currentInkWidth()
@@ -3347,16 +4653,9 @@ class DrawingActivity : AppCompatActivity() {
     }
 
     private fun rotatePageInPdf(file: File, pageIndex: Int, deltaDeg: Int) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        loadPdfLowMemory(file).use { doc ->
-            val page = doc.getPage(pageIndex)
-            page.rotation = (((page.rotation + deltaDeg) % 360) + 360) % 360
-            doc.save(tmp)
-        }
-        swapPdfIntoPlace(tmp, file)
+        editPdfSafely(file) { it.rotatePage(pageIndex, deltaDeg) }
     }
 
-    /** Deletes several pages at once (indices must be in descending order). */
     private fun deletePages(pagesDesc: List<Int>) {
         if (totalPages - pagesDesc.size < 1) {
             Toast.makeText(this, "Can't delete all pages", Toast.LENGTH_SHORT).show()
@@ -3367,22 +4666,23 @@ class DrawingActivity : AppCompatActivity() {
         val busy = showBusyDialog("Deleting pages…")
         busy.show()
         lifecycleScope.launch {
-            try {
-                for (p in pagesDesc) {
-                    if (path != null) withContext(Dispatchers.IO) { removePageFromPdf(File(path), p) }
-                    strokeManager.removePage(p, totalPages)
-                    strokesDirty = true
-                    pageMeta.onPageRemoved(p)
-                    totalPages -= 1
-                    if (p < currentPage) currentPage--
-                }
+
+            val deleted = try {
+                if (path != null) withContext(Dispatchers.IO) { removePagesFromPdf(File(path), pagesDesc) }
+                else pagesDesc
             } catch (e: Exception) {
                 e.printStackTrace()
                 busy.dismiss()
-                Toast.makeText(this@DrawingActivity, "Couldn't save the PDF — please try again", Toast.LENGTH_LONG).show()
-                // The PDF may have been partially modified mid-loop — resync the view.
-                loadPdf()
+                Toast.makeText(this@DrawingActivity, editErrorText(e, "Couldn't save the PDF. Please try again"), Toast.LENGTH_LONG).show()
                 return@launch
+            }
+
+            for (p in deleted) {
+                strokeManager.removePage(p, totalPages)
+                strokesDirty = true
+                pageMeta.onPageRemoved(p)
+                totalPages -= 1
+                if (p < currentPage) currentPage--
             }
             currentPage = currentPage.coerceIn(0, totalPages - 1)
             statePrefs.edit().putInt("page_count_$notebookId", totalPages).apply()
@@ -3395,16 +4695,12 @@ class DrawingActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Commits a page drag: rewrites the PDF, renumbers ink and page metadata, then calls
-     * [onDone] so the grid can refresh itself without being torn down.
-     */
     private fun movePage(from: Int, to: Int, onDone: () -> Unit) {
         if (from == to || from !in 0 until totalPages || to !in 0 until totalPages) {
             onDone()
             return
         }
-        // Undo history is indexed by page and can't survive a renumber.
+
         historyManager.clear()
         val path = pdfFilePath
         val busy = showBusyDialog("Moving page…")
@@ -3415,7 +4711,7 @@ class DrawingActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 busy.dismiss()
-                Toast.makeText(this@DrawingActivity, "Couldn't move the page — please try again", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@DrawingActivity, editErrorText(e, "Couldn't move the page. Please try again"), Toast.LENGTH_LONG).show()
                 return@launch
             }
             strokeManager.movePage(from, to)
@@ -3475,7 +4771,7 @@ class DrawingActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 busy.dismiss()
-                Toast.makeText(this@DrawingActivity, "Couldn't delete the page — please try again", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@DrawingActivity, "Couldn't delete the page. Please try again", Toast.LENGTH_LONG).show()
                 return@launch
             }
             strokeManager.removePage(pageIndex, totalPages)
@@ -3493,18 +4789,11 @@ class DrawingActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * The per-page coordinate space the strokes live in — PDFView's fitted page size (device/view
-     * dependent), which is what strokes were authored against. Renderers need this, not the PDF
-     * point size, to scale ink correctly.
-     */
     private fun strokePageSizes(): List<Pair<Float, Float>> {
         val engine = pdfEngine ?: return emptyList()
         val w = pdfRecyclerView.width.takeIf { it > 0 }?.toFloat()
             ?: resources.displayMetrics.widthPixels.toFloat()
-        // Only query the (few) pages that actually have ink — opening every page of a large
-        // PDF on the main thread would hang. Pages without strokes get a harmless default;
-        // their size is never used (there's nothing to scale).
+
         val pagesWithInk = strokeManager.allPagesWithData()
         val defaultSize = Pair(w, w * 1.414f)
         return (0 until engine.pageCount).map { i ->
@@ -3528,7 +4817,7 @@ class DrawingActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 busy.dismiss()
-                Toast.makeText(this@DrawingActivity, "Couldn't duplicate the page — please try again", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@DrawingActivity, editErrorText(e, "Couldn't duplicate the page. Please try again"), Toast.LENGTH_LONG).show()
                 return@launch
             }
             strokeManager.duplicatePage(pageIndex, totalPages)
@@ -3546,112 +4835,129 @@ class DrawingActivity : AppCompatActivity() {
     }
 
     private fun removePageFromPdf(file: File, index: Int) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        loadPdfLowMemory(file).use { doc ->
-            if (doc.numberOfPages > 1 && index in 0 until doc.numberOfPages) {
-                doc.removePage(index)
+        editPdfSafely(file) { editor ->
+            if (editor.pageCount > 1 && index in 0 until editor.pageCount) {
+                editor.deletePages(listOf(index))
             }
-            doc.save(tmp)
         }
-        swapPdfIntoPlace(tmp, file)
+    }
+
+    private fun removePagesFromPdf(file: File, indicesDesc: List<Int>): List<Int> {
+        var removed = emptyList<Int>()
+        editPdfSafely(file) { editor ->
+            val valid = indicesDesc.filter { it in 0 until editor.pageCount }
+            if (valid.isNotEmpty() && editor.pageCount - valid.size >= 1) {
+                editor.deletePages(valid)
+                removed = valid
+            }
+        }
+        return removed
     }
 
     private fun movePageInPdf(file: File, from: Int, to: Int) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        loadPdfLowMemory(file).use { doc ->
-            val n = doc.numberOfPages
-            if (from in 0 until n && to in 0 until n && from != to) {
-                val moving = doc.getPage(from)
-                doc.removePage(from)
-                // Indices below shift down once the page is pulled out, so anchor on the
-                // neighbour in the *remaining* list rather than the original one.
-                if (to > from) doc.pages.insertAfter(moving, doc.getPage(to - 1))
-                else doc.pages.insertBefore(moving, doc.getPage(to))
-            }
-            doc.save(tmp)
-        }
-        swapPdfIntoPlace(tmp, file)
+        editPdfSafely(file) { it.movePage(from, to) }
     }
 
     private fun duplicatePageInPdf(file: File, index: Int) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        loadPdfLowMemory(file).use { doc ->
-            if (index in 0 until doc.numberOfPages) {
-                val source = doc.getPage(index)
-
-                // Shallow copy: references existing heavy resources instead of duplicating them
-                val pageDict = COSDictionary(source.cosObject)
-                pageDict.removeItem(COSName.PARENT)
-
-                val copy = PDPage(pageDict)
-                doc.pages.insertAfter(copy, source)
-            }
-            doc.save(tmp)
+        editPdfSafely(file) { editor ->
+            if (index in 0 until editor.pageCount) editor.duplicatePage(index)
         }
-        swapPdfIntoPlace(tmp, file)
     }
 
-    // --- SAVE / LOAD STROKES ---
-
-    /**
-     * The width strokes are authored against: the laid-out page width, which is the full
-     * window width (the page view is edge-to-edge) and therefore differs between portrait
-     * and landscape. Matches [PdfPageAdapter]'s own fallback so both agree before layout.
-     */
     private fun currentInkWidth(): Float =
         pdfRecyclerView.width.takeIf { it > 0 }?.toFloat()
             ?: resources.displayMetrics.widthPixels.toFloat()
 
-    /**
-     * Assumed authoring width for notebooks saved before the width was recorded. Those were
-     * almost always drawn in portrait, i.e. at the display's short side — assuming that (rather
-     * than "whatever width we happen to have now") is what lets an old portrait notebook open
-     * correctly in landscape.
-     */
     private fun legacyInkWidth(): Float {
         val dm = resources.displayMetrics
         return minOf(dm.widthPixels, dm.heightPixels).toFloat()
     }
 
-    /**
-     * The page view got wider or narrower (window resize, fold/unfold, or a rotation the
-     * activity survived). Stroke coordinates are in the *old* width's px, so rescale them
-     * to the new one — otherwise ink drawn in portrait bunches into the middle in landscape,
-     * and ink drawn in landscape spills off the right edge in portrait.
-     */
-    private fun onInkWidthChanged() {
+    private fun onInkWidthChanged(newWidth: Float) {
         if (!strokesLoaded) return
-        val newWidth = currentInkWidth()
         val old = inkBaseWidth
         if (old <= 0f || newWidth <= 0f || newWidth == old) return
+        val factor = newWidth / old
         inkBaseWidth = newWidth
-        strokeManager.rescaleAll(newWidth / old) // drops the selection — its transform is stale
+
+        strokeManager.rescaleAll(factor, historyManager.allReferencedStrokes())
+
+        scaleToolSizes(factor, newWidth)
         drawingView.clearSelectionVisuals()
         selectionPopup?.dismiss()
-        // Undo entries hold paths in the old coordinate space; replaying them would put
-        // ink back at the wrong size.
-        historyManager.clear()
+
+        contentTools.dismissPopups()
         updateUndoRedoButtons()
         strokesDirty = true
         invalidateInk()
+
+        pdfAdapter?.refreshForWidthChange(newWidth.toInt())
+    }
+
+    private fun scaleToolSizes(factor: Float, newBaseWidth: Float) {
+        if (factor == 1f || factor <= 0f) {
+            toolSettingsManager.scaleToolSizes(1f, newBaseWidth)
+            return
+        }
+
+        toolSettingsManager.scaleToolSizes(factor, newBaseWidth)
+        drawingView.setHighlighterSize(toolSettingsManager.getHighlighterSize())
+
+        for (i in dockThickness.indices) {
+            dockThickness[i] *= factor
+            penPrefs().edit().putFloat("DOCK_THICK_$i", dockThickness[i]).apply()
+        }
+
+        listOf("TABLE" to tableThickness, "LASER" to laserThickness).forEach { (prefix, arr) ->
+            if (arr != null) {
+                for (i in arr.indices) {
+                    arr[i] *= factor
+                    penPrefs().edit().putFloat("${prefix}_THICK_$i", arr[i]).apply()
+                }
+            }
+        }
+
+        applyDockThickness(toolThicknessSize())
+
+        penPrefs().edit().putFloat("TEXT_SIZE", contentTools.textSizePref() * factor).apply()
+
+        when (activeToolButton?.id) {
+            R.id.eraserButton -> toolSettingsManager.applyEraserSettings()
+            R.id.highlighterButton -> toolSettingsManager.applyHighlighterSettings()
+            else -> {}
+        }
     }
 
     private fun loadSavedDrawing() {
-        // Must not run before the page view is measured: the decode scales the ink to the
-        // width it is about to be drawn at, and a width of 0 would fall back to a guess.
+
         pdfRecyclerView.doOnLayout { loadSavedDrawingNow() }
     }
 
     private fun loadSavedDrawingNow() {
+
+        val pending = lastSaveJob
         val targetWidth = currentInkWidth()
         val fallbackBaseWidth = legacyInkWidth()
         inkBaseWidth = targetWidth
+
+        val toolBase = toolSettingsManager.toolSizeBaseWidth()
+        if (toolBase > 0f) {
+            if (toolBase != targetWidth) {
+                scaleToolSizes(targetWidth / toolBase, targetWidth)
+            }
+        } else {
+
+            toolSettingsManager.scaleToolSizes(1f, targetWidth)
+        }
         lifecycleScope.launch {
-            // Pages are installed as they decode so ink appears progressively instead of
-            // only after the whole notebook has been parsed.
+
+            if (pending != null && pending.isActive) {
+                withContext(Dispatchers.IO) { pending.join() }
+            }
+
             val shown = mutableSetOf<Int>()
             val result = withContext(Dispatchers.IO) {
-                drawingRepository.load(notebookId, targetWidth, fallbackBaseWidth) { pageIndex, page ->
+                drawingRepository.load(notebookId, targetWidth, fallbackBaseWidth, priorityPage = currentPage) { pageIndex, page ->
                     launch(Dispatchers.Main) {
                         strokeManager.applyLoadedPage(pageIndex, page)
                         shown.add(pageIndex)
@@ -3659,12 +4965,23 @@ class DrawingActivity : AppCompatActivity() {
                     }
                 }
             }
-            // Authoritative pass for anything not delivered above (e.g. a backup fallback,
-            // which decodes without streaming). Pages already shown are left alone.
+
+            if (toolBase <= 0f && result.baseWidth != targetWidth) {
+                val base = if (result.baseWidth > 0f) result.baseWidth else fallbackBaseWidth
+                if (base > 0f && base != targetWidth) {
+                    scaleToolSizes(targetWidth / base, targetWidth)
+                }
+            }
+
             for ((p, page) in result.pages) {
                 if (p !in shown) strokeManager.applyLoadedPage(p, page)
             }
             strokesLoaded = true
+
+            val currentWidth = currentInkWidth()
+            if (currentWidth > 0f && currentWidth != inkBaseWidth) {
+                onInkWidthChanged(currentWidth)
+            }
             invalidateInk()
             if (result.mainFileCorrupt) {
                 MaterialAlertDialogBuilder(this@DrawingActivity)
@@ -3703,13 +5020,14 @@ class DrawingActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // The home thumbnail is not written here — MainActivity regenerates it when the
-        // user comes back to the home screen, which is the only place it is shown.
+
+        contentTools.dismissPopups()
+
         saveDrawing()
     }
 
-    // Periodic autosave: guards against process death that skips onPause (force-stop,
-    // crash, system kill). Only writes when something actually changed.
+    private var saveGeneration = 0
+
     private val AUTOSAVE_INTERVAL_MS = 30_000L
     private val autosaveHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val autosaveRunnable = object : Runnable {
@@ -3722,6 +5040,7 @@ class DrawingActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         autosaveHandler.postDelayed(autosaveRunnable, AUTOSAVE_INTERVAL_MS)
+        tabsController?.refresh()
     }
 
     override fun onStop() {
@@ -3731,66 +5050,59 @@ class DrawingActivity : AppCompatActivity() {
 
     private fun saveDrawing() {
         if (notebookId < 0) return
-        // Never write before the saved strokes are decoded — the StrokeManager is still
-        // empty and the save would replace the notebook file with an empty document.
+
         if (!strokesLoaded) return
         if (!strokesDirty) return
         strokesDirty = false
         val pages = strokeManager.allPagesWithData()
         val known = pages.associateWith { strokeManager.knownStrokesForPage(it).toList() }
         val unknown = pages.associateWith { strokeManager.unknownStrokesForPage(it).toList() }
-        // The page width these stroke coordinates mean, recorded so the next open can
-        // rescale them if it happens at a different width (i.e. the other orientation).
+
         val baseWidth = inkBaseWidth.takeIf { it > 0f } ?: currentInkWidth()
-        lastSaveJob = lifecycleScope.launch(Dispatchers.IO + NonCancellable) {
+
+        val gen = ++saveGeneration
+        lastSaveJob?.cancel()
+        lastSaveJob = appSaveScope.launch(NonCancellable) {
             try {
                 drawingRepository.save(
                     notebookId,
                     pages,
                     knownProvider = { known[it] ?: emptyList() },
                     unknownProvider = { unknown[it] ?: emptyList() },
-                    baseWidth = baseWidth
+                    baseWidth = baseWidth,
+                    generation = gen
                 )
             } catch (e: Exception) {
-                strokesDirty = true // failed — retry on the next pause/autosave tick
+                strokesDirty = true
                 return@launch
             }
             dataManager.touchModified(notebookId)
+
+            SyncFolderManager.mirrorNotebook(this@DrawingActivity, notebookId, dataManager.getNotebook(notebookId))
         }
     }
 
     companion object {
-        /**
-         * The most recent stroke save, which outlives this activity (it runs NonCancellable).
-         * MainActivity waits on it before re-rendering the home thumbnail, so the thumbnail is
-         * never drawn from ink that hasn't reached disk yet.
-         */
+
         @Volatile
         var lastSaveJob: kotlinx.coroutines.Job? = null
-    }
 
-    // --- PAGE STATE ---
+        private val appSaveScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    }
 
     private fun onPageChanged(page: Int, pageCount: Int) {
         if (pageRestorePending) return
         currentPage = page
         updatePageNumberView()
-        // The persisted last_page_$notebookId write is delayed until scroll-state IDLE
-        // (see setupScrollPill's onScrollStateChanged listener). Writing it here, on every
-        // page-border crossing during a fast scroll-pill drag, fired dozens of SharedPreferences
-        // apply() calls per gesture, contributing to the main-thread ANR.
+
     }
     private fun updatePageNumberView() { pageNumberTextView.text = "${currentPage + 1} / $totalPages" }
 
-    /** Persists the current page so the notebook re-opens at the same spot next time. */
     private fun persistLastPage() {
         if (notebookId < 0 || pageRestorePending) return
         statePrefs.edit().putInt("last_page_$notebookId", currentPage).apply()
     }
 
-    // --- ZOOM INDICATOR ---
-
-    /** Updates the persistent "NNN%" zoom pill above the page indicator. */
     private fun showZoomIndicator(zoom: Float) {
         val pill = findViewById<TextView>(R.id.zoomIndicator)
         pill.text = "${(zoom * 100).toInt()}%"
@@ -3835,14 +5147,11 @@ class DrawingActivity : AppCompatActivity() {
             .show()
     }
 
-    // --- SCROLL PILL ---
-
     @SuppressLint("ClickableViewAccessibility")
     private fun setupScrollPill() {
         scrollPillTrack = findViewById(R.id.scrollPillTrack)
         scrollPillThumb = findViewById(R.id.scrollPillThumb)
 
-        // Move thumb to reflect current scroll position
         pdfRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
                 if (scrollPillDragging) return
@@ -3850,8 +5159,6 @@ class DrawingActivity : AppCompatActivity() {
             }
         })
 
-        // Persist last_page only when scrolling actually stops, once per drag — never per
-        // page-crossing. Also reposition the pill once scrolling settles.
         pdfRecyclerView.onScrollStateChanged = { newState ->
             if (newState == RecyclerView.SCROLL_STATE_IDLE) {
                 persistLastPage()
@@ -3859,7 +5166,6 @@ class DrawingActivity : AppCompatActivity() {
             }
         }
 
-        // Drag-to-scroll on the thumb
         scrollPillThumb.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
@@ -3867,10 +5173,7 @@ class DrawingActivity : AppCompatActivity() {
                     dragMoved = false
                     scrollPillFadeHandler.removeCallbacks(scrollPillFadeRunnable)
                     scrollPillThumb.animate().alpha(1f).setDuration(100).start()
-                    // Tell the engine & recycler: this is a fast-scroll drag. The single
-                    // render thread should serve only the visible-page base renders the
-                    // drag will issue; the size-prefetch sweep and the zoomed-in hi-res
-                    // tile renderer must stand down.
+
                     pdfEngine?.renderPausedForDrag = true
                     pdfRecyclerView.dragInProgress = true
                     pdfRecyclerView.cancelHiResForDrag()
@@ -3880,21 +5183,15 @@ class DrawingActivity : AppCompatActivity() {
                     val trackTop = scrollPillTrack.top.toFloat()
                     val trackHeight = scrollPillTrack.height.toFloat() - scrollPillThumb.height
                     if (trackHeight > 0 && totalPages > 1) {
-                        // event.rawY is in screen coords; convert to parent-relative
+
                         val loc = IntArray(2)
                         (scrollPillTrack.parent as View).getLocationOnScreen(loc)
                         val relativeY = event.rawY - loc[1] - trackTop - scrollPillThumb.height / 2f
                         val fraction = (relativeY / trackHeight).coerceIn(0f, 1f)
 
-                        // Manually position thumb immediately for smooth visual feedback,
-                        // independent of the coalesced scrollBy (which runs once per frame).
                         scrollPillThumb.translationY =
                             trackTop + fraction * trackHeight - scrollPillThumb.top
 
-                        // Coalesce: many ACTION_MOVEs per frame collapse into a single
-                        // capped scrollBy consumed once per Choreographer FrameCallback.
-                        // Doing one big scrollBy + bind churn per move event (the old code)
-                        // on a fast fling overshot the 5s input-dispatch window → ANR.
                         dragMoved = true
                         dragPendingFraction = fraction
                         if (!dragFramePosted) {
@@ -3906,36 +5203,28 @@ class DrawingActivity : AppCompatActivity() {
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     scrollPillDragging = false
-                    // Stop the per-frame catch-up loop.
+
                     if (dragFramePosted) {
                         Choreographer.getInstance().removeFrameCallback(dragFrameCallback)
                         dragFramePosted = false
                     }
                     if (dragMoved) {
-                        // Land exactly on the finger's target page. A single giant scrollBy
-                        // would bind + measure every page it traversed (seconds of work on a
-                        // 4000-page PDF); scrollToPositionWithOffset anchors straight at the
-                        // destination and only lays out the pages around it, so the final
-                        // jump is instant regardless of distance.
+
                         val targetPage = (dragPendingFraction * totalPages).toInt()
                             .coerceIn(0, (totalPages - 1).coerceAtLeast(0))
                         jumpToPage(targetPage)
                     }
-                    // Let the render thread serve prefetch again and resume the size sweep.
+
                     pdfRecyclerView.dragInProgress = false
                     pdfEngine?.renderPausedForDrag = false
-                    // If the size-prefetch sweep was interrupted by the drag, restart it
-                    // so the cache warm-up completes in the background once scrolling settles.
+
                     pdfEngine?.let { eng ->
                         lifecycleScope.launch { eng.prefetchSizes() }
                     }
                     scheduleScrollPillFade()
-                    // Persist the page we ended on (covers the case where the idle-state
-                    // listener doesn't fire because no onScrolled moved us after the final
-                    // coalesced warp — e.g. landing mid-page on a long PDF).
+
                     persistLastPage()
-                    // Re-arm hi-res tile rendering now that the drag has ended and zoom may
-                    // still be > 1.15, so sharp text shows up where it's settled.
+
                     pdfRecyclerView.scheduleHiResPublic()
                     true
                 }
@@ -3943,27 +5232,10 @@ class DrawingActivity : AppCompatActivity() {
             }
         }
 
-        // NOTE: the track intentionally has NO touch listener. It used to consume the whole
-        // right edge (tap-to-jump), which both hijacked the Android back-swipe gesture and let
-        // any side tap scroll the PDF. Dragging is now only possible by pressing the pill itself.
-
-        // Start hidden (INVISIBLE so it can't intercept touches near the edge until shown).
         scrollPillThumb.alpha = 0f
         scrollPillThumb.visibility = View.INVISIBLE
     }
 
-    /**
-     * Applies a drag fraction as a single CAPPED scrollBy — called once per frame.
-     *
-     * The per-frame step is limited to a few viewport heights, so even the fastest pull
-     * through a long PDF only binds a handful of pages per frame on the main thread (the
-     * old code scrolled the full remaining distance every frame, binding every page it
-     * traversed — the ANR trigger on 4000-page documents). The thumb is glued to the
-     * finger by the touch handler, so the list simply catches up over the next few frames.
-     *
-     * Returns true while the list still has distance to cover, so the caller keeps posting
-     * frame callbacks until it catches up (the finger may be paused mid-drag).
-     */
     private fun applyDragFraction(fraction: Float): Boolean {
         if (totalPages <= 1) return false
         val maxScroll = pdfRecyclerView.computeVerticalScrollRange() -
@@ -3979,7 +5251,6 @@ class DrawingActivity : AppCompatActivity() {
         return true
     }
 
-    /** Position the scroll pill thumb to reflect the current scroll offset. */
     private fun updateScrollPillPosition() {
         if (totalPages <= 1) {
             scrollPillThumb.alpha = 0f
@@ -3988,21 +5259,17 @@ class DrawingActivity : AppCompatActivity() {
         scrollPillThumb.post {
             val trackHeight = scrollPillTrack.height.toFloat() - scrollPillThumb.height
             if (trackHeight <= 0) return@post
-            
+
             val maxScroll = pdfRecyclerView.computeVerticalScrollRange() - pdfRecyclerView.computeVerticalScrollExtent()
             val fraction = if (maxScroll > 0) {
                 (pdfRecyclerView.computeVerticalScrollOffset().toFloat() / maxScroll).coerceIn(0f, 1f)
             } else {
                 0f
             }
-            
+
             val trackTop = scrollPillTrack.top.toFloat()
             scrollPillThumb.translationY = trackTop + fraction * trackHeight - scrollPillThumb.top
 
-            // Show the pill (briefly) then schedule fade. onScrolled fires many times per
-            // second during a scroll, so only kick the fade-in when the thumb isn't already
-            // fully visible — restarting the alpha animation on every scroll event was pure
-            // main-thread churn during long PDFs.
             if (scrollPillThumb.alpha < 1f) {
                 scrollPillThumb.visibility = View.VISIBLE
                 scrollPillThumb.animate().alpha(1f).setDuration(150).start()
@@ -4016,8 +5283,6 @@ class DrawingActivity : AppCompatActivity() {
         scrollPillFadeHandler.postDelayed(scrollPillFadeRunnable, 1500)
     }
 
-    // --- EDGE TO EDGE ---
-
     private fun setupEdgeToEdge() {
         val rootLayout: View = findViewById(R.id.drawingRootLayout)
         val topBarStart: View = findViewById(R.id.topBarStart)
@@ -4028,8 +5293,11 @@ class DrawingActivity : AppCompatActivity() {
         val searchProgress: View = findViewById(R.id.searchProgressPill)
         val scrollTrack: View = findViewById(R.id.scrollPillTrack)
         val scrollThumb: View = findViewById(R.id.scrollPillThumb)
+        val tabStrip: View = findViewById(R.id.tabStripRow)
 
         val gap = (8 * resources.displayMetrics.density).toInt()
+
+        val tabGap = (4 * resources.displayMetrics.density).toInt()
         val isWideScreen = resources.configuration.screenWidthDp >= 600
 
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { _, insets ->
@@ -4037,30 +5305,35 @@ class DrawingActivity : AppCompatActivity() {
                 androidx.core.view.WindowInsetsCompat.Type.systemBars() or
                         androidx.core.view.WindowInsetsCompat.Type.displayCutout()
             )
-            // When the keyboard is up, bottom-anchored UI should float above it.
+
             val imeInsets = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())
             val bottomFloat = maxOf(safeInsets.bottom, imeInsets.bottom)
 
+            (tabStrip.layoutParams as android.view.ViewGroup.MarginLayoutParams).apply {
+                topMargin = safeInsets.top + tabGap
+            }
+
             (topBarStart.layoutParams as android.view.ViewGroup.MarginLayoutParams).apply {
-                topMargin = safeInsets.top + gap
+                topMargin = safeInsets.top + tabGap
                 leftMargin = safeInsets.left + gap
             }
             (topBarEnd.layoutParams as android.view.ViewGroup.MarginLayoutParams).apply {
-                topMargin = safeInsets.top + gap
+                topMargin = safeInsets.top + tabGap
                 rightMargin = safeInsets.right + gap
             }
-            // Large screens: top-centre dock below the status bar.
-            // Small screens: dock on the left edge, vertically centred.
+
             (toolDock.layoutParams as android.view.ViewGroup.MarginLayoutParams).apply {
                 if (isWideScreen) {
-                    topMargin = safeInsets.top + gap
-                    leftMargin = 0
+
+                    topMargin = safeInsets.top + tabGap
+                    leftMargin = gap
+                    rightMargin = gap
                 } else {
                     topMargin = 0
                     leftMargin = safeInsets.left + gap
                 }
             }
-            // Search bar floats just below the (top-anchored) dock, so only a small gap here.
+
             (searchBar.layoutParams as android.view.ViewGroup.MarginLayoutParams).apply {
                 topMargin = gap
                 rightMargin = safeInsets.right + gap
@@ -4090,6 +5363,7 @@ class DrawingActivity : AppCompatActivity() {
             searchProgress.requestLayout()
             scrollTrack.requestLayout()
             scrollThumb.requestLayout()
+            tabStrip.requestLayout()
             insets
         }
     }

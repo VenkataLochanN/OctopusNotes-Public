@@ -8,7 +8,6 @@
     android:focusable="true"
     android:paddingHorizontal="16dp"
     android:paddingVertical="10dp">
-
     <TextView
         android:id="@+id/resultPage"
         android:layout_width="wrap_content"

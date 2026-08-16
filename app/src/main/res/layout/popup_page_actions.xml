@@ -6,7 +6,6 @@
     android:background="@drawable/bg_toolbar_pill"
     android:elevation="20dp"
     android:paddingVertical="6dp">
-
     <TextView
         android:id="@+id/actionAddOutline"
         style="@style/PageActionRow"
@@ -17,7 +16,7 @@
         android:id="@+id/actionDuplicate"
         style="@style/PageActionRow"
         android:text="Duplicate"
-        android:drawableStart="@drawable/ic_content_copy" />
+        android:drawableStart="@drawable/ic_duplicate" />
 
     <TextView
         android:id="@+id/actionRotateLeft"

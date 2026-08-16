@@ -8,17 +8,16 @@
     android:paddingHorizontal="24dp"
     android:paddingTop="16dp">
 
-    <!-- Title row: eyedropper sits opposite a spacer so the title stays optically centred. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical">
-
         <ImageButton
             android:id="@+id/eyedropperButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:elevation="4dp"
             android:padding="8dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_eyedropper"
@@ -36,7 +35,6 @@
             android:textSize="20sp"
             android:textStyle="normal" />
 
-        <!-- Balances the eyedropper's width. -->
         <Space
             android:layout_width="40dp"
             android:layout_height="1dp" />
@@ -50,7 +48,6 @@
         android:layout_marginTop="12dp"
         app:singleSelection="true"
         app:selectionRequired="true">
-
         <com.google.android.material.button.MaterialButton
             android:id="@+id/tabGrid"
             style="?attr/materialButtonOutlinedStyle"
@@ -68,13 +65,11 @@
             android:text="Spectrum" />
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
-    <!-- Both panes live in the same frame so switching tabs never resizes the dialog. -->
     <FrameLayout
         android:id="@+id/paneContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp">
-
         <com.lochan.octopusnotes.ColorPaletteGridView
             android:id="@+id/paletteGrid"
             android:layout_width="match_parent"
@@ -87,7 +82,6 @@
             android:orientation="vertical"
             android:visibility="gone"
             tools:visibility="visible">
-
             <com.lochan.octopusnotes.SaturationValueView
                 android:id="@+id/saturationValue"
                 android:layout_width="match_parent"
@@ -101,14 +95,47 @@
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Preview + numeric entry -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Opacity"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/alphaSlider"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="12dp"
+            android:valueFrom="0"
+            android:valueTo="100"
+            android:stepSize="1"
+            android:contentDescription="Colour opacity" />
+
+        <TextView
+            android:id="@+id/alphaValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="40dp"
+            android:gravity="end"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+            tools:text="100%" />
+    </LinearLayout>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:orientation="horizontal"
         android:gravity="center_vertical">
-
         <View
             android:id="@+id/colorPreview"
             android:layout_width="40dp"
@@ -122,7 +149,6 @@
             android:layout_weight="2.1"
             android:orientation="vertical"
             android:layout_marginEnd="8dp">
-
             <TextView
                 style="@style/ColorFieldLabel"
                 android:text="Hex" />
@@ -131,7 +157,7 @@
                 android:id="@+id/hexField"
                 style="@style/ColorFieldInput"
                 android:inputType="textCapCharacters"
-                android:maxLength="7"
+                android:maxLength="9"
                 android:importantForAutofill="no"
                 android:contentDescription="Hex colour value"
                 tools:text="#FEC800" />
@@ -143,7 +169,6 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:layout_marginEnd="8dp">
-
             <TextView
                 style="@style/ColorFieldLabel"
                 android:text="R" />
@@ -164,7 +189,6 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:layout_marginEnd="8dp">
-
             <TextView
                 style="@style/ColorFieldLabel"
                 android:text="G" />
@@ -184,7 +208,6 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical">
-
             <TextView
                 style="@style/ColorFieldLabel"
                 android:text="B" />

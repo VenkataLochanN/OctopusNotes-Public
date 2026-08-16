@@ -14,31 +14,23 @@ import java.io.FileOutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/**
- * Renders notebook pages (PDF background + ink overlay) and exports them as a PDF,
- * a set of PNG images, or a ZIP of PNGs. All methods are blocking — call off the UI thread.
- * PdfRenderer is not thread-safe, so a single exporter instance must not be used concurrently.
- */
 class PdfExporter(
     private val context: Context,
     private val pdfFile: File?,
     private val strokeManager: StrokeManager,
-    // Per-page coordinate space the strokes were authored in (PDFView's fitted getPageSize).
-    // Strokes must be scaled by this, not the PDF point size, or they overflow the page.
+
     private val strokePageSizes: List<Pair<Float, Float>> = emptyList()
 ) {
-    // Background raster scale. Ink is drawn as vectors in the PDF path, so this only
-    // governs the PDF background; PNG/ZIP export rasterizes everything and needs more.
+
     private val renderScale = 2f
     private val imageRenderScale = 4f
-    // Guard against OOM on very large pages: cap the longest raster edge.
+
     private val maxRasterEdge = 4500
     private val exportDir: File get() = File(context.cacheDir, "exports").apply { mkdirs() }
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
 
     private class Rendered(val bmp: Bitmap, val ptW: Int, val ptH: Int)
 
-    /** Largest scale <= [desired] that keeps both raster edges within [maxRasterEdge]. */
     private fun clampScale(desired: Float, ptW: Float, ptH: Float): Float {
         val longest = maxOf(ptW, ptH).coerceAtLeast(1f)
         return minOf(desired, maxRasterEdge / longest).coerceAtLeast(1f)
@@ -54,11 +46,6 @@ class PdfExporter(
         }
     }
 
-    /**
-     * Renders one page (0-based) to a bitmap together with its point size.
-     * [withStrokes] bakes the ink into the raster — leave it off when the caller can
-     * draw the ink as vectors instead (PDF export), which keeps fine strokes sharp.
-     */
     private fun renderPage(
         renderer: PdfRenderer?,
         pageIndex: Int,
@@ -80,9 +67,7 @@ class PdfExporter(
                 bmp.eraseColor(Color.WHITE)
                 page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
             } finally {
-                // Always release the page. If createBitmap/render throws (e.g. OOM on a
-                // 4500px raster), a leaked page would make renderer.close() below throw
-                // IllegalStateException ("Current page not closed") and mask the real error.
+
                 try { page.close() } catch (_: Exception) {}
             }
         } else {
@@ -100,7 +85,6 @@ class PdfExporter(
         return Rendered(bmp, ptW.toInt().coerceAtLeast(1), ptH.toInt().coerceAtLeast(1))
     }
 
-    /** Draws the page's ink onto [canvas], mapping the authoring space onto [targetW] x [targetH]. */
     private fun drawStrokes(
         pageIndex: Int,
         canvas: Canvas,
@@ -111,14 +95,13 @@ class PdfExporter(
     ) {
         val strokeW = strokePageSizes.getOrNull(pageIndex)?.first ?: ptW
         val strokeH = strokePageSizes.getOrNull(pageIndex)?.second ?: ptH
-        strokeManager.drawPageStrokes(pageIndex, canvas, targetW / strokeW, targetH / strokeH)
+        strokeManager.drawPageStrokes(pageIndex, canvas, targetW / strokeW, targetH / strokeH, ghostSelected = false)
     }
 
     private fun clearExportDir() {
         exportDir.listFiles()?.forEach { it.delete() }
     }
 
-    /** [pages] are 0-based indices. Returns the written PDF file. */
     fun exportPdf(
         pages: List<Int>,
         baseName: String,
@@ -136,8 +119,7 @@ class PdfExporter(
                 val info = PdfDocument.PageInfo.Builder(r.ptW, r.ptH, i + 1).create()
                 val pdfPage = doc.startPage(info)
                 pdfPage.canvas.drawBitmap(r.bmp, null, Rect(0, 0, r.ptW, r.ptH), bitmapPaint)
-                // Ink goes on as vector paths, so it stays sharp at any viewer zoom
-                // instead of inheriting the background raster's resolution.
+
                 drawStrokes(
                     pageIndex, pdfPage.canvas,
                     r.ptW.toFloat(), r.ptH.toFloat(),
@@ -155,7 +137,6 @@ class PdfExporter(
         return out
     }
 
-    /** Returns one PNG file per page. */
     fun exportImages(
         pages: List<Int>,
         baseName: String,
@@ -181,7 +162,6 @@ class PdfExporter(
         return files
     }
 
-    /** Writes all pages as PNGs into a single ZIP and returns it. */
     fun exportZip(
         pages: List<Int>,
         baseName: String,

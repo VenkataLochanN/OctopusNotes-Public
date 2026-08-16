@@ -17,17 +17,10 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.TextView
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
-/**
- * The app's colour picker: a fixed palette ("Grid"), a hue/saturation/value area
- * ("Spectrum"), hex + RGB entry, and an eyedropper that samples the page underneath.
- *
- * Colour is held as HSV for the lifetime of the dialog. Round-tripping through a packed
- * sRGB int on every drag quantises the value and makes the selector creep, most visibly
- * in the dark and desaturated corners of the spectrum.
- */
 class ColorPickerDialog private constructor(
     private val activity: Activity,
     initialColor: Int,
@@ -38,7 +31,8 @@ class ColorPickerDialog private constructor(
 
     private val hsv = FloatArray(3).also { Color.colorToHSV(initialColor, it) }
 
-    /** Set while syncing widgets, so their listeners don't feed the change back in. */
+    private var alpha: Int = Color.alpha(initialColor)
+
     private var syncing = false
 
     private lateinit var root: View
@@ -47,12 +41,14 @@ class ColorPickerDialog private constructor(
     private lateinit var spectrumPane: LinearLayout
     private lateinit var satVal: SaturationValueView
     private lateinit var hueBar: HueBarView
+    private lateinit var alphaSlider: com.google.android.material.slider.Slider
+    private lateinit var alphaValue: TextView
     private lateinit var hexField: EditText
     private lateinit var redField: EditText
     private lateinit var greenField: EditText
     private lateinit var blueField: EditText
 
-    private val color: Int get() = Color.HSVToColor(hsv)
+    private val color: Int get() = Color.HSVToColor(alpha, hsv)
 
     private fun build() {
         root = activity.layoutInflater.inflate(R.layout.dialog_color_picker, null)
@@ -61,6 +57,8 @@ class ColorPickerDialog private constructor(
         spectrumPane = root.findViewById(R.id.spectrumPane)
         satVal = root.findViewById(R.id.saturationValue)
         hueBar = root.findViewById(R.id.hueBar)
+        alphaSlider = root.findViewById(R.id.alphaSlider)
+        alphaValue = root.findViewById(R.id.alphaValue)
         hexField = root.findViewById(R.id.hexField)
         redField = root.findViewById(R.id.redField)
         greenField = root.findViewById(R.id.greenField)
@@ -87,6 +85,16 @@ class ColorPickerDialog private constructor(
             syncWidgets(exclude = hueBar)
         }
 
+        alphaSlider.valueFrom = 0f
+        alphaSlider.valueTo = 100f
+        alphaSlider.value = (alpha * 100 / 255).toFloat()
+        alphaSlider.addOnChangeListener { _, v, _ ->
+            if (!syncing) {
+                alpha = (v / 100f * 255f).toInt().coerceIn(0, 255)
+                syncWidgets(exclude = alphaSlider)
+            }
+        }
+
         watchHex()
         watchRgb()
 
@@ -100,11 +108,13 @@ class ColorPickerDialog private constructor(
             .create()
 
         eyedropper.setOnClickListener {
-            // Hand off to the overlay; the picker comes back with whatever was sampled.
+
             dialog.dismiss()
             startEyedropper(activity, color) { sampled ->
+
+                val next = sampled?.let { (alpha shl 24) or (it and 0xFFFFFF) } ?: color
                 ColorPickerDialog(
-                    activity, sampled ?: color, allowEyedropper,
+                    activity, next, allowEyedropper,
                     startOnSpectrum = spectrumPane.visibility == View.VISIBLE,
                     onPicked = onPicked
                 ).build()
@@ -124,35 +134,36 @@ class ColorPickerDialog private constructor(
         spectrumPane.isVisible(spectrum)
     }
 
-    /**
-     * Adopts [c]. Greys carry no meaningful hue, so with [keepHueWhenGrey] the hue bar
-     * stays where the user left it instead of snapping back to red.
-     */
     private fun setColor(c: Int, keepHueWhenGrey: Boolean) {
         val previousHue = hsv[0]
         Color.colorToHSV(c, hsv)
         if (keepHueWhenGrey && hsv[1] == 0f) hsv[0] = previousHue
     }
 
-    /** Pushes the current HSV out to every widget except the one that just changed. */
     private fun syncWidgets(exclude: View?) {
         syncing = true
         val c = color
 
         (preview.background as? GradientDrawable)?.setColor(c)
-        // The spectrum area is tinted by hue, so it tracks the bar even while the bar is
-        // the thing being dragged; only its own selector position is left alone.
+
         satVal.setHue(hsv[0])
         if (exclude !== satVal) satVal.setSaturationValue(hsv[1], hsv[2])
         if (exclude !== hueBar) hueBar.setHue(hsv[0])
         grid.setSelectedColor(c)
 
         if (exclude !== hexField) {
-            hexField.setText(String.format("#%06X", c and 0xFFFFFF))
+
+            hexField.setText(
+                if (alpha == 255) String.format("#%06X", c and 0xFFFFFF)
+                else String.format("#%08X", c)
+            )
         }
         if (exclude !== redField) redField.setText(Color.red(c).toString())
         if (exclude !== greenField) greenField.setText(Color.green(c).toString())
         if (exclude !== blueField) blueField.setText(Color.blue(c).toString())
+
+        if (exclude !== alphaSlider) alphaSlider.value = (alpha * 100 / 255).toFloat()
+        alphaValue.text = "${alpha * 100 / 255}%"
 
         syncing = false
     }
@@ -160,10 +171,17 @@ class ColorPickerDialog private constructor(
     private fun watchHex() {
         hexField.addTextChangedListener(afterChanged {
             val text = hexField.text.toString().trim().removePrefix("#")
-            if (text.length != 6) return@afterChanged
-            val parsed = text.toIntOrNull(16) ?: return@afterChanged
-            setColor(parsed or 0xFF000000.toInt(), keepHueWhenGrey = true)
-            syncWidgets(exclude = hexField)
+            if (text.length == 8) {
+
+                val parsed = text.toIntOrNull(16) ?: return@afterChanged
+                alpha = parsed ushr 24
+                setColor(parsed or 0xFF000000.toInt(), keepHueWhenGrey = true)
+                syncWidgets(exclude = hexField)
+            } else if (text.length == 6) {
+                val parsed = text.toIntOrNull(16) ?: return@afterChanged
+                setColor(parsed or 0xFF000000.toInt(), keepHueWhenGrey = true)
+                syncWidgets(exclude = hexField)
+            }
         })
     }
 
@@ -182,7 +200,6 @@ class ColorPickerDialog private constructor(
     private fun EditText.value(): Int =
         text.toString().toIntOrNull()?.coerceIn(0, 255) ?: 0
 
-    /** TextWatcher that ignores edits we made ourselves. */
     private fun afterChanged(action: () -> Unit) = object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
         override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
@@ -192,13 +209,7 @@ class ColorPickerDialog private constructor(
     }
 
     companion object {
-        /**
-         * Shows the picker. [onPicked] fires only on OK.
-         *
-         * [allowEyedropper] must be false where there is no page to sample — the overlay
-         * reads the activity's own window, so outside the drawing screen it would only
-         * ever return the colour of the UI behind the dialog.
-         */
+
         fun show(
             activity: Activity,
             initialColor: Int,
@@ -211,11 +222,6 @@ class ColorPickerDialog private constructor(
             ).build()
         }
 
-        /**
-         * Covers the activity with a sampling overlay. [onResult] gets null if the user
-         * backs out. The snapshot is taken from the activity window only, so the picker's
-         * own dialog (a separate window) is never in frame.
-         */
         private fun startEyedropper(
             activity: Activity,
             currentColor: Int,
@@ -232,10 +238,7 @@ class ColorPickerDialog private constructor(
                 overlay.onPicked = null
                 overlay.onCancelled = null
                 overlay.setOnKeyListener(null)
-                // finish() is reached from inside the overlay's own touch/key dispatch.
-                // Detaching a view while its parent is dispatching to it leaves
-                // removeFromArray() with a null mParent, so hand the teardown to the
-                // next loop iteration instead.
+
                 overlay.post {
                     (overlay.parent as? ViewGroup)?.removeView(overlay)
                     overlay.release()
@@ -243,7 +246,6 @@ class ColorPickerDialog private constructor(
                 }
             }
 
-            // Post so the dismissed dialog is off-screen before the snapshot is taken.
             decor.post {
                 val w = decor.width
                 val h = decor.height
@@ -253,9 +255,7 @@ class ColorPickerDialog private constructor(
 
                 PixelCopy.request(
                     activity.window,
-                    // Whole surface: a source rect would be in window space, which only
-                    // coincides with the screen space we sample in when the activity is
-                    // fullscreen at the origin.
+
                     null,
                     bmp,
                     { result ->
@@ -274,7 +274,7 @@ class ColorPickerDialog private constructor(
                                 ViewGroup.LayoutParams.MATCH_PARENT
                             )
                         )
-                        // Let the back key abandon the pick rather than trapping the user.
+
                         overlay.isFocusableInTouchMode = true
                         overlay.requestFocus()
                         overlay.setOnKeyListener { _, keyCode, event ->

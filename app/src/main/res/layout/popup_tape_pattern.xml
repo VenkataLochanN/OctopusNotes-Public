@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_toolbar_pill"
+    android:elevation="20dp"
+    android:orientation="vertical"
+    android:padding="10dp">
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="4dp"
+        android:text="Pattern"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="2dp">
+        <ImageButton
+            android:id="@+id/tapePopupSolid"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:elevation="4dp"
+            android:padding="12dp" android:scaleType="fitCenter"
+            android:src="@drawable/ic_tape_solid"
+            android:contentDescription="@string/tape_pattern_solid"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="@drawable/selectable_tool_background" />
+        <ImageButton
+            android:id="@+id/tapePopupStripes"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:elevation="4dp"
+            android:layout_marginStart="4dp"
+            android:padding="12dp" android:scaleType="fitCenter"
+            android:src="@drawable/ic_tape_stripes"
+            android:contentDescription="@string/tape_pattern_stripes"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="@drawable/selectable_tool_background" />
+        <ImageButton
+            android:id="@+id/tapePopupDots"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:elevation="4dp"
+            android:layout_marginStart="4dp"
+            android:padding="12dp" android:scaleType="fitCenter"
+            android:src="@drawable/ic_tape_dots"
+            android:contentDescription="@string/tape_pattern_dots"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="@drawable/selectable_tool_background" />
+        <ImageButton
+            android:id="@+id/tapePopupGrid"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:elevation="4dp"
+            android:layout_marginStart="4dp"
+            android:padding="12dp" android:scaleType="fitCenter"
+            android:src="@drawable/ic_tape_grid"
+            android:contentDescription="@string/tape_pattern_grid"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="@drawable/selectable_tool_background" />
+        <ImageButton
+            android:id="@+id/tapePopupChecks"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:elevation="4dp"
+            android:layout_marginStart="4dp"
+            android:padding="12dp" android:scaleType="fitCenter"
+            android:src="@drawable/ic_tape_checks"
+            android:contentDescription="@string/tape_pattern_checks"
+            android:tint="?attr/colorOnSurfaceVariant"
+            android:background="@drawable/selectable_tool_background" />
+    </LinearLayout>
+</LinearLayout>

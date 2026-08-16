@@ -7,11 +7,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.max
 
-/**
- * A custom RecyclerView that automatically calculates the number of columns
- * to fit based on a specified column width. Supports switching to a single-column
- * list mode via [setListMode].
- */
 class AutofitRecyclerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -21,16 +16,14 @@ class AutofitRecyclerView @JvmOverloads constructor(
     private val gridManager = GridLayoutManager(getContext(), 2)
     private val linearManager = LinearLayoutManager(getContext())
     private var columnWidth = -1
-    private var columnOverride = 0 // 0 = auto-fit
+    private var columnOverride = 0
     private var listMode = false
 
-    /** Force a fixed column count (>=2), or 0 to auto-fit by width. */
     fun setColumnOverride(count: Int) {
         columnOverride = if (count in 2..8) count else 0
         requestLayout()
     }
 
-    /** Switch between single-column list layout and grid layout. */
     fun setListMode(enabled: Boolean) {
         if (listMode == enabled) return
         listMode = enabled
@@ -40,6 +33,7 @@ class AutofitRecyclerView @JvmOverloads constructor(
     fun isListMode(): Boolean = listMode
 
     init {
+
         if (attrs != null) {
             val attrsArray = context.obtainStyledAttributes(attrs, R.styleable.AutofitRecyclerView)
             columnWidth = attrsArray.getDimensionPixelSize(R.styleable.AutofitRecyclerView_columnWidth, -1)
@@ -51,10 +45,10 @@ class AutofitRecyclerView @JvmOverloads constructor(
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         super.onMeasure(widthSpec, heightSpec)
-        if (listMode) return // LinearLayoutManager handles its own layout
+        if (listMode) return
         gridManager.spanCount = when {
             columnOverride >= 2 -> columnOverride
-            columnWidth > 0 -> max(2, measuredWidth / columnWidth) // never fewer than 2 per row
+            columnWidth > 0 -> max(2, measuredWidth / columnWidth)
             else -> 2
         }
     }

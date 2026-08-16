@@ -3,7 +3,6 @@
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:background="@drawable/popup_background"
     android:orientation="vertical" android:padding="16dp">
-
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Angle" android:textColor="?attr/colorOnSurface"/>
         <TextView android:id="@+id/angleValueText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0°" android:textColor="?attr/colorOnSurfaceVariant"/>

@@ -14,11 +14,11 @@
         android:gravity="center_vertical"
         android:paddingHorizontal="16dp"
         android:paddingVertical="6dp">
-
         <ImageButton
             android:id="@+id/sortDesc"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:elevation="4dp"
             android:padding="8dp"
             android:src="@drawable/ic_arrow_downward"
             android:contentDescription="Descending"
@@ -28,6 +28,7 @@
             android:id="@+id/sortAsc"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:elevation="4dp"
             android:layout_marginStart="10dp"
             android:padding="8dp"
             android:src="@drawable/ic_arrow_upward"

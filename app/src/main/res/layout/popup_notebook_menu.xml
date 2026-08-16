@@ -2,35 +2,102 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:minWidth="220dp"
+    android:minWidth="216dp"
     android:orientation="vertical"
     android:background="@android:color/transparent"
-    android:paddingTop="8dp"
-    android:paddingBottom="8dp">
+    android:paddingTop="4dp"
+    android:paddingBottom="6dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginHorizontal="6dp"
+        android:background="@drawable/bg_popup_header"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp">
+        <FrameLayout
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_popup_icon"
+            android:padding="8dp">
+            <ImageView
+                android:id="@+id/popupHeaderIcon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_notes"
+                android:tint="?attr/colorPrimary" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/popupTitle"
+                style="@style/PopupMenuTitle" />
+
+            <TextView
+                android:id="@+id/popupMeta"
+                style="@style/PopupMenuMeta"
+                android:text="Your notes" />
+        </LinearLayout>
+    </LinearLayout>
 
     <TextView
-        android:id="@+id/popupTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="20dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="8dp"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="13sp"
-        android:textStyle="bold"
-        android:singleLine="true"
-        android:ellipsize="end" />
+        style="@style/PopupMenuSectionLabel"
+        android:text="MANAGE" />
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginBottom="4dp"
-        android:background="?attr/colorOutlineVariant" />
+    <TextView
+        android:id="@+id/bsRename"
+        style="@style/PopupMenuRow"
+        android:drawableStart="@drawable/ic_pen"
+        android:text="Rename" />
 
-    <TextView android:id="@+id/bsRename" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="20dp" android:paddingVertical="14dp" android:text="Rename" android:drawablePadding="16dp" android:drawableStart="@drawable/ic_pen"/>
-    <TextView android:id="@+id/bsLock" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="20dp" android:paddingVertical="14dp" android:text="Lock Note" android:drawablePadding="16dp" android:drawableStart="@drawable/ic_close"/>
-    <TextView android:id="@+id/bsFav" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="20dp" android:paddingVertical="14dp" android:text="Add to Favorites" android:drawablePadding="16dp" android:drawableStart="@drawable/ic_color"/>
-    <TextView android:id="@+id/bsMove" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="20dp" android:paddingVertical="14dp" android:text="Move to" android:drawablePadding="16dp" android:drawableStart="@drawable/ic_folder"/>
-    <TextView android:id="@+id/bsDuplicate" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="20dp" android:paddingVertical="14dp" android:text="Duplicate" android:drawablePadding="16dp" android:drawableStart="@drawable/ic_duplicate"/>
-    <TextView android:id="@+id/bsDelete" style="@style/AddPageRowTitle" android:layout_width="match_parent" android:gravity="center_vertical" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:paddingHorizontal="20dp" android:paddingVertical="14dp" android:text="Delete" android:textColor="#F44336" android:drawablePadding="16dp" android:drawableStart="@drawable/ic_eraser"/>
+    <TextView
+        android:id="@+id/bsLock"
+        style="@style/PopupMenuRow"
+        android:drawableStart="@drawable/ic_lock"
+        android:text="Lock Note" />
+
+    <TextView
+        style="@style/PopupMenuSectionLabel"
+        android:text="ORGANIZE" />
+
+    <TextView
+        android:id="@+id/bsFav"
+        style="@style/PopupMenuRow"
+        android:drawableStart="@drawable/ic_star"
+        android:text="Add to Favorites" />
+
+    <TextView
+        android:id="@+id/bsTag"
+        style="@style/PopupMenuRow"
+        android:drawableStart="@drawable/ic_tag"
+        android:text="Add Tag" />
+
+    <TextView
+        android:id="@+id/bsMove"
+        style="@style/PopupMenuRow"
+        android:drawableStart="@drawable/ic_folder"
+        android:text="Move to" />
+
+    <View style="@style/PopupMenuDivider" />
+
+    <TextView
+        android:id="@+id/bsDuplicate"
+        style="@style/PopupMenuRow"
+        android:drawableStart="@drawable/ic_duplicate"
+        android:text="Duplicate" />
+
+    <View style="@style/PopupMenuDivider" />
+
+    <TextView
+        android:id="@+id/bsDelete"
+        style="@style/PopupMenuRowDestructive"
+        android:drawableStart="@drawable/ic_delete"
+        android:text="Delete" />
 </LinearLayout>
