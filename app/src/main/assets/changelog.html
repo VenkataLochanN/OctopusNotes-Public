@@ -1,323 +1,1161 @@
+<h3>v2026.9.1.r</h3>
+<ul>
+    <li>Improved performance and optimised math of Whiteboard.</li>
+    <li>Fixed a bug where template cannot be changed in duplicated notebooks.</li>
+    <li>Added a Remove zoom restrictions setting in Developer options</li>
+    <li>Fixed scribble to erase on the whiteboard</li>
+    <li>You can now change the app's language in Settings</li>
+    <li>New Sticky note tool, with standard and minimisable notes</li>
+    <li><b>Multiplatform sync</b>: turn it on in Settings → Sync folder, pick a notebook, PDF or
+        image, and it is mirrored there as a plain, readable file you can open or restore on any
+        device. Watch the folder from your other devices to access your notes there too. (U need to
+        open the html file present in the sync folder in a browser.)
+    </li>
+    <li>New Ruler tool</li>
+    <li>Fixed a bug where the whiteboard's tools could not be scrolled</li>
+    <li>Advanced template now shows thickness and density in mm too</li>
+    <li>Added Pirate and Brazilian Portuguese languages. Translations are still not finished</li>
+    <li>You can now pan the notebook canvas left and right with two fingers. A center page button
+        appears beside the zoom level so you can return the canvas to the middle
+    </li>
+    <li>Fixed restored copies of notebooks being opened without their PDF: a duplicated notebook's
+        PDF was saved under a temp name the sync folder and restore did not recognise, so a copied
+        note that was synced, deleted and restored came back with a blank plain sheet and a Change
+        template that said No PDF page to change. Copies now keep the id based PDF name, and restore
+        rebuilds the template PDF when one is missing
+    </li>
+</ul>
+
+<h3>v2026.8.19.r</h3>
+<ul>
+    <li><b>Xiaomi Pen Pro support</b>: the pen now works, but only on custom ROMs, since we don't
+        have an enterprise key to support that pen
+    </li>
+    <li><b>Low latency rendering engine</b>: a new experimental engine you can enable in Settings.
+        It's highly unstable right now, so expect a few glitches
+    </li>
+    <li>Removed the read media permission, which was causing issues with Play production</li>
+    <li>Added many more keyboard shortcuts. If your device gestures aren't supported, you can use a
+        keymapper with these shortcuts until proper support is added
+    </li>
+</ul>
+
+<h3>v2026.8.18</h3>
+<ul>
+    <li><b>Xiaomi Focus Pen Pro gestures</b>: double tap the pen's grip to switch tools (the eraser
+        by default), and slide up or down on the grip to change the pen size, up for larger. All pen
+        gestures, including the hover swipe, are configurable in Stylus &amp; finger: flip pages,
+        undo or redo, change size, or switch to another tool
+    </li>
+    <li>Added pencil and brush tools</li>
+    <li>Added translations to Hindi, Japanese, Simplified Chinese, Portugese, Spanish, German,
+        French and Italian
+    </li>
+    <li>New grid and snapping settings.</li>
+    <li>Tools can now be configured in settings</li>
+    <li>Redesigned finger and stylus popup. Added many more options.</li>
+    <li>Added an in-app browser to search for images or do a quick search, and fixed it showing a
+        no-internet error even when the network was fine
+    </li>
+    <li><b>Tab shortcuts</b>: Ctrl+W closes the focused tab, Ctrl+Shift+T reopens the last closed
+        tab (keep pressing to step back through history), Ctrl+Tab and Ctrl+Shift+Tab cycle through
+        tabs, and Ctrl+1 to 8 jump to the first tabs, with Ctrl+9 for the last
+    </li>
+    <li><b>Undo for closed tabs</b>: closing a tab from the ✕, the long-press menu, or Ctrl+W now
+        offers an Undo snackbar, so an accidental close is one tap from being restored
+    </li>
+    <li><b>Recently closed tabs</b>: long-press the + button to see and reopen recently closed tabs.
+        The list survives restarts and has a Clear recently closed option
+    </li>
+    <li><b>Long-press tab menu tidied up</b>: options are grouped under labeled Pin and Close
+        sections, with new Close tabs to the left and Close tabs to the right actions
+    </li>
+    <li><b>Ctrl+Z and Ctrl+Y</b>: undo and redo now work in the editors and inside the text and
+        table cell popup editors
+    </li>
+    <li><b>Keyboard shortcuts screen</b>: Settings now lists every active shortcut, so you don't
+        have to memorise them
+    </li>
+    <li><b>Snackbars can be swiped away</b></li>
+    <li><b>Crop screen opens uncropped</b>: your photo now starts selected edge to edge instead of
+        pre-cropped, and the Done button no longer hides behind the navigation bar with 3-button
+        navigation
+    </li>
+    <li><b>Fixed popups hiding behind the navigation bar</b>: canvas popups and the onboarding
+        tooltip now stay above it on Android 15
+    </li>
+    <li><b>Grid opacity slider</b>: Grid &amp; snapping now has an Opacity slider for the grid
+        overlay, so you can make the lines as strong or as faint as you like
+    </li>
+    <li><b>Table options popup decluttered</b>: bigger touch targets, labeled Resize, Insert, Delete
+        and Merge sections, and subtle dividers between buttons
+    </li>
+    <li><b>Dragging a selection now gathers the tiles at your finger</b>: select several notebooks
+        or folders, drag one, and the selected tiles stack into a small cluster with a count badge
+        instead of only the one you grabbed. Let go and they slide back to their places.
+    </li>
+    <li><b>The grid scrolls as you drag</b>: hold a selection near the top or bottom edge and the
+        grid auto-scrolls, with a soft glow and arrow showing which way it is moving.
+    </li>
+    <li><b>Undo a drop into a folder</b>: moving items into a folder now shows an Undo snackbar, so
+        a wrong drop is one tap from being reversed.
+    </li>
+    <li>Redesigned the rename dialogs for notebooks, folders and tags to match Material 3, and an
+        empty name now shows a warning instead of being saved
+    </li>
+    <li>Selecting Curve in the shape tool now shows a hint telling you to draw the curve and hold
+        the pen to bend it
+    </li>
+    <li>Tapping with the shape tool now draws a visible shape about a quarter of the screen wide
+        instead of a tiny dot
+    </li>
+    <li>Pinning or unpinning a tab from the long-press menu now uses the same animation as the pin
+        button
+    </li>
+    <li>Widened the cell editor and other tool popups to a consistent width</li>
+    <li>Double tap on the page with the pen now switches to any tool you pick (eraser by default),
+        and a two-finger double tap can do the same. Both only count when the taps land in the same
+        spot
+    </li>
+    <li>Advanced Template now has Portrait and Landscape options. Landscape swaps the width and
+        height, and custom sizes get a small button to swap them too
+    </li>
+    <li>New Folder and Advanced Template now open the color picker for custom colours instead of a
+        hex text box
+    </li>
+    <li>The laser now glows white in the middle with the pen colour on the edges, like a real laser
+        pointer
+    </li>
+    <li>Fixed crashes when a slider was given a value it can't accept: a saved template with an odd
+        density, brightness or thickness value, or a pen, eraser or highlighter size left fractional
+        after opening a notebook at a different page width. The sliders now snap to safe values, and
+        the grid opacity slider got the same fix
+    </li>
+</ul>
+
 <h3>v2026.8.16</h3>
 <ul>
-<li><b>New Tabs feature</b>: enable it in Settings</li>
-<li><b>New Tape tool</b></li>
-<li>Redesigned the tags menu. Tags can now be renamed</li>
-<li>Removed the Insert button from the table popup. Clicking anywhere else now adds the text</li>
-<li>Fixed highlighter colours shifting between light and dark themes</li>
-<li>Added dynamic tool size indicators to the whiteboard</li>
-<li>Redesigned the Clear all button in the Bin</li>
-<li>You can now long-press to select items in the Bin</li>
-<li>Fixed ticks re-animating when other items are selected</li>
-<li>Fixed a bug where the laser could not be resized in the whiteboard</li>
-<li>Shrunk the tool and tool options pills</li>
-<li>Long-pressing the stylus now turns it into the eraser until you lift. Enable it in Settings → Editing → Long-press pen to erase.</li>
-<li>Added a transparency slider to the color picker. Strokes, highlighters, tables and tape can now be semi-transparent, and the transparency is saved with the color</li>
-<li>Tape patterns now open from a single pattern button in the tape options</li>
-<li>Fixed the selection border stretching while resizing. It now adds or removes dots dynamically to keep them evenly spaced</li>
+    <li><b>New Tabs feature</b>: enable it in Settings</li>
+    <li><b>New Tape tool</b></li>
+    <li>Redesigned the tags menu. Tags can now be renamed</li>
+    <li>Removed the Insert button from the table popup. Clicking anywhere else now adds the text
+    </li>
+    <li>Fixed highlighter colours shifting between light and dark themes</li>
+    <li>Added dynamic tool size indicators to the whiteboard</li>
+    <li>Redesigned the Clear all button in the Bin</li>
+    <li>You can now long-press to select items in the Bin</li>
+    <li>Fixed ticks re-animating when other items are selected</li>
+    <li>Fixed a bug where the laser could not be resized in the whiteboard</li>
+    <li>Shrunk the tool and tool options pills</li>
+    <li>Long-pressing the stylus now turns it into the eraser until you lift. Enable it in Settings
+        → Editing → Long-press pen to erase.
+    </li>
+    <li>Added a transparency slider to the color picker. Strokes, highlighters, tables and tape can
+        now be semi-transparent, and the transparency is saved with the color
+    </li>
+    <li>Tape patterns now open from a single pattern button in the tape options</li>
+    <li>Fixed the selection border stretching while resizing. It now adds or removes dots
+        dynamically to keep them evenly spaced
+    </li>
 </ul>
 
 <h3>v2026.8.14</h3>
 <ul>
-<li>Redesigned Stylus and finger dialog</li>
-<li>Fixed a bug where the Tags chip icon kept the filter color after you cleared it, instead of returning to your theme's color</li>
-<li>Redesigned the home screen's notebook and folder tiles with a fresh cover-and-pill look</li>
-<li>Folders can now be tagged too</li>
-<li>Changed the tool pill's background ripple from the legacy square ripple to a circular one, matching the design of the left and right pills</li>
-<li>Added Developer options to Settings, revealed by tapping the version number five times</li>
-<li>Added an Input monitoring section under Developer options, useful for monitoring different stylus inputs and other pen events</li>
-<li>Fixed a bug that made loading strokes slow when opening notebooks, a regression introduced during the recent tool additions</li>
-<li>Fixed a bug where List view could crash the app</li>
-<li>Marquee optimisations.</li>
-<li>Redesigned notebook and folder popups.</li>
-<li>Redesigned create new dialog.</li>
+    <li>Redesigned Stylus and finger dialog</li>
+    <li>Fixed a bug where the Tags chip icon kept the filter color after you cleared it, instead of
+        returning to your theme's color
+    </li>
+    <li>Redesigned the home screen's notebook and folder tiles with a fresh cover-and-pill look</li>
+    <li>Folders can now be tagged too</li>
+    <li>Changed the tool pill's background ripple from the legacy square ripple to a circular one,
+        matching the design of the left and right pills
+    </li>
+    <li>Added Developer options to Settings, revealed by tapping the version number five times</li>
+    <li>Added an Input monitoring section under Developer options, useful for monitoring different
+        stylus inputs and other pen events
+    </li>
+    <li>Fixed a bug that made loading strokes slow when opening notebooks, a regression introduced
+        during the recent tool additions
+    </li>
+    <li>Fixed a bug where List view could crash the app</li>
+    <li>Marquee optimisations.</li>
+    <li>Redesigned notebook and folder popups.</li>
+    <li>Redesigned create new dialog.</li>
 </ul>
 
 <h3>v2026.8.13</h3>
 <ul>
-<li>Fixed a bug where Hold to draw was not recognizing Triangles</li>
-<li>Added support for styluses of other companies such as Xiaomi, Huawei, etc (beta)</li>
-<li>New Whiteboard note: has an unlimited unbounded canvas (beta)</li>
-<li><b>Tiny selections get a proper movement box</b>: selecting a very small object (a dot, a short scribble, a thin sliver of a line) used to leave you stuck resizing it forever. The corner handle and the side pills were crowded into the same few pixels, so they overlapped and the only thing you could grab was the resize corner, so moving the thing meant hunting for the exact few pixels of the shape itself. Now, whenever the selection is too small for its handles to fit, a faint ghost box appears around it, big enough that the corner dot and all four side pills sit comfortably apart. The object itself stays exactly its real size (the normal dashed box still hugs it, and the mm/cm ruler still measures the true dimensions). The whole ghost is the movement box, so you can grab anywhere inside it, or on the shape itself, and drag it wherever you want, while the pills and corner dot still resize as usual. And it looks after itself as you grow the object: the ghost holds its size while the selection expands toward it, so it quietly melts into the normal box and disappears the moment your object is big enough to handle on its own.</li>
-<li><b>The selection box shows the object's real size in mm/cm</b>: select anything and a small pill appears under the box reporting its physical size, not its on-screen pixel size. The app knows the page's true dimensions, so it converts screen distance to real-world millimetres at whatever zoom you're at, on whatever screen you're on: 12.5 cm means 12.5 cm on the paper, whether you're zoomed right into a corner or looking at the whole page, and on a phone or a tablet. The numbers update live as you drag or resize the box.</li>
-<li><b>The readout always shows width and height, and length too for straight lines</b>: every selection reports its W (horizontal extent) and H (vertical extent). A straight line (a shape-tool line, a snapped or straight pen stroke, a straight highlighter, or an arrow measured by its shaft) additionally shows its true length L and its angle: <code>W 12.5 cm · H 0 · L 12.5 cm · 0°</code>. A horizontal line reads H 0 and 0°, a vertical one reads W 0 and ±90°, and the three numbers always agree with each other. The units adapt as well: whole millimetres above 10 mm, one decimal below, centimetres past 100 mm, and both dimensions always share a unit so you never see a mixed "21 cm × 3 mm".</li>
-<li><b>Arrows are measured by their shaft, not their head</b>: a selected arrow used to fall back to its box's width × height, which the arrowhead's wings inflated, and it lost its length and angle entirely once it got long. Arrows are now recognised by their geometry (the head retraces the tip), so they're measured tail→tip exactly like a line, even after being moved, resized, saved and reloaded. A horizontal arrow reads W · H 0 · L · 0° just like a line, and the head's size never skews the numbers.</li>
-<li><b>You see the measurement while you're still drawing</b>: the same pill appears live under a line or arrow as you drag it out with the shape tool, before you even lift the pen, and it keeps updating while a held stroke is being positioned, so you can aim at an exact length or angle and watch it count up before committing. Rectangles, ovals and triangles get their W · H while being drawn too.</li>
-<li><b>Draw a line, hold it, aim it, then lift</b>: draw a line with the pen, highlighter, or shape tool and keep the pen still for about half a second. The line freezes and a small haptic tick plus a tinted overlay tell you it's in positioning mode. Your first point stays exactly where you drew it and the far end follows the pen, so you can swing the line to the angle you want and stretch it to the length you want, watching the live measurement pill count up as you go. Lift the pen and the line commits where you aimed it, as a normal undoable stroke. Arrows do the same, with the tail pinned and the arrowhead following the pen. A pen scribble still snaps to a perfect shape on hold first, and complete shapes such as rectangles, ovals and triangles glide as one piece so their geometry never gets bent out of shape.</li>
-<li><b>Table options: resize, merge, insert, delete</b>: tap a cell of an existing table with the table tool and the cell editor now has an Options button that opens a Table options popup with a live preview of the grid. Resize just the tapped row or column with −/+ steppers (the sizes are shown in pixels), and the table grows or shrinks around that single line while every other row and column keeps its exact size. Merge right and Merge down combine cells, and you can merge repeatedly to build bigger regions such as a header that spans three columns; Split cell undoes a merge. Merged cells render as one clean cell, with the interior grid lines clipped, the header shading flowing across the region, and the text of the merged cells pulled together on the anchor cell. Row and column sizes are stored as proportions, so when you resize the whole table from the selection corner or a side handle, your custom widths and heights survive instead of snapping back to equal cells. Inserting a row above or below, or a column to the left or right, grows the table itself and leaves every existing cell untouched, while Delete row and Delete column shrink it back down, splitting any merge that crosses the removed line and re-homing its text.</li>
-<li><b>Clear all in the Bin</b>: the Bin screen now has a bold <b>Clear all</b> button right beside the heading (it hides when the bin is empty). Tapping it asks for confirmation with the item count ("Permanently delete all N items from the bin? This can't be undone."), then empties every binned folder and notebook, their whole subtrees and files included, in one go, with a "Bin cleared" toast.</li>
-<li><b>New Measure tool</b>: a dedicated ruler in the toolbar. Tap two points anywhere on the page, or tap the first and drag to the second, and a line with white endpoint markers appears between them, with a pill at the midpoint showing the distance and angle (<code>12.5 cm · 32°</code>, horizontal reads 0°). It's a pure on-screen ruler: nothing is drawn, saved or undoable, and it works completely independently of selection: entering the tool drops any live selection so the ruler never fights it. Both points are pinned to the page, so scrolling or zooming keeps the ruler exactly where you placed it, and because the distance is computed from the page's real size it's the true physical length at any zoom.</li>
-<li><b>Sync your notes to a folder you choose</b>: Settings gained a Sync folder section for keeping a backup in a normal, accessible folder, the way you'd manage an Obsidian vault. Tap Choose folder, pick a folder in the system picker, and that pick is the permission: the app gets access to exactly that folder and keeps it across restarts. From then on it mirrors your data there in human-readable files you can open or copy on any computer: every notebook's ink in notebooks/notebook_&lt;id&gt;.json, imported PDFs and templates in pdfs/, and inserted photos in images/, with a README.txt inside the folder explaining the layout. The mirror updates after every edit, when the app starts, each time you return to the home screen, and from the Sync now button, and it skips files that haven't changed so saves stay quick. Your internal storage stays the source of truth, so the folder is a safe live copy rather than the only copy.</li>
-<li><b>Restore brings back everything now, not just the ink</b>: a restore used to return your strokes, PDFs and images but quietly leave the rest behind. It now rebuilds your folder structure too (names, colours, nesting, and which folders were sitting in the bin, from a folders.json the mirror keeps), and drops each restored notebook back into the folder it lived in, with its favourite star and tag colour intact. Tool settings come back as well: pen, eraser and highlighter sizes and colours, the single-finger action, your view mode, and per-note state like the page you last had open, all applied before the notes themselves so restored notebooks reopen the way you left them. Notebooks that were in the bin on the old device come back in the bin with their real titles instead of showing up as generic "restored notebooks". Custom page-background images you'd picked for notebooks are mirrored and restored too, so a notebook's custom template still renders after a restore. The whole thing stays read-only: nothing in the folder is deleted, and notes already in the app are left untouched.</li>
-<li><b>Restore from a different folder</b>: with a sync folder already set, tapping Restore from folder now offers two choices: the usual restore from the current sync folder, or "Restore from a different folder…", which opens the folder picker. Restoring from a different folder clears the old one completely (its permission is released and syncing is switched off), then asks whether the new folder should become your sync folder. "Yes, sync here" restores from it and immediately mirrors the merged library back to it; "No, just restore" keeps syncing off and only reads from that folder this once.</li>
-<li><b>Stylus &amp; finger settings redesigned</b>: the dialog now opens with a proper header (an icon tile, a title and a one-line subtitle) over two tonal cards for the finger and stylus sections. Single finger is a three-way segmented button (Scroll / Draw / Ignored) instead of the old radio list, the two side buttons are rounded exposed dropdown menus with leading icons that never summon the keyboard, and long-hold-to-erase is a simple on/off switch with its explanation right under the label. The colours follow Material You, and a tonal tip at the bottom warns that the S Pen can misbehave when the primary button and the long-hold eraser are both switched on at the same time.</li>
+    <li>Fixed a bug where Hold to draw was not recognizing Triangles</li>
+    <li>Added support for styluses of other companies such as Xiaomi, Huawei, etc (beta)</li>
+    <li>New Whiteboard note: has an unlimited unbounded canvas (beta)</li>
+    <li><b>Tiny selections get a proper movement box</b>: selecting a very small object (a dot, a
+        short scribble, a thin sliver of a line) used to leave you stuck resizing it forever. The
+        corner handle and the side pills were crowded into the same few pixels, so they overlapped
+        and the only thing you could grab was the resize corner, so moving the thing meant hunting
+        for the exact few pixels of the shape itself. Now, whenever the selection is too small for
+        its handles to fit, a faint ghost box appears around it, big enough that the corner dot and
+        all four side pills sit comfortably apart. The object itself stays exactly its real size
+        (the normal dashed box still hugs it, and the mm/cm ruler still measures the true
+        dimensions). The whole ghost is the movement box, so you can grab anywhere inside it, or on
+        the shape itself, and drag it wherever you want, while the pills and corner dot still resize
+        as usual. And it looks after itself as you grow the object: the ghost holds its size while
+        the selection expands toward it, so it quietly melts into the normal box and disappears the
+        moment your object is big enough to handle on its own.
+    </li>
+    <li><b>The selection box shows the object's real size in mm/cm</b>: select anything and a small
+        pill appears under the box reporting its physical size, not its on-screen pixel size. The
+        app knows the page's true dimensions, so it converts screen distance to real-world
+        millimetres at whatever zoom you're at, on whatever screen you're on: 12.5 cm means 12.5 cm
+        on the paper, whether you're zoomed right into a corner or looking at the whole page, and on
+        a phone or a tablet. The numbers update live as you drag or resize the box.
+    </li>
+    <li><b>The readout always shows width and height, and length too for straight lines</b>: every
+        selection reports its W (horizontal extent) and H (vertical extent). A straight line (a
+        shape-tool line, a snapped or straight pen stroke, a straight highlighter, or an arrow
+        measured by its shaft) additionally shows its true length L and its angle: <code>W 12.5 cm ·
+            H 0 · L 12.5 cm · 0°</code>. A horizontal line reads H 0 and 0°, a vertical one reads W
+        0 and ±90°, and the three numbers always agree with each other. The units adapt as well:
+        whole millimetres above 10 mm, one decimal below, centimetres past 100 mm, and both
+        dimensions always share a unit so you never see a mixed "21 cm × 3 mm".
+    </li>
+    <li><b>Arrows are measured by their shaft, not their head</b>: a selected arrow used to fall
+        back to its box's width × height, which the arrowhead's wings inflated, and it lost its
+        length and angle entirely once it got long. Arrows are now recognised by their geometry (the
+        head retraces the tip), so they're measured tail→tip exactly like a line, even after being
+        moved, resized, saved and reloaded. A horizontal arrow reads W · H 0 · L · 0° just like a
+        line, and the head's size never skews the numbers.
+    </li>
+    <li><b>You see the measurement while you're still drawing</b>: the same pill appears live under
+        a line or arrow as you drag it out with the shape tool, before you even lift the pen, and it
+        keeps updating while a held stroke is being positioned, so you can aim at an exact length or
+        angle and watch it count up before committing. Rectangles, ovals and triangles get their W ·
+        H while being drawn too.
+    </li>
+    <li><b>Draw a line, hold it, aim it, then lift</b>: draw a line with the pen, highlighter, or
+        shape tool and keep the pen still for about half a second. The line freezes and a small
+        haptic tick plus a tinted overlay tell you it's in positioning mode. Your first point stays
+        exactly where you drew it and the far end follows the pen, so you can swing the line to the
+        angle you want and stretch it to the length you want, watching the live measurement pill
+        count up as you go. Lift the pen and the line commits where you aimed it, as a normal
+        undoable stroke. Arrows do the same, with the tail pinned and the arrowhead following the
+        pen. A pen scribble still snaps to a perfect shape on hold first, and complete shapes such
+        as rectangles, ovals and triangles glide as one piece so their geometry never gets bent out
+        of shape.
+    </li>
+    <li><b>Table options: resize, merge, insert, delete</b>: tap a cell of an existing table with
+        the table tool and the cell editor now has an Options button that opens a Table options
+        popup with a live preview of the grid. Resize just the tapped row or column with −/+
+        steppers (the sizes are shown in pixels), and the table grows or shrinks around that single
+        line while every other row and column keeps its exact size. Merge right and Merge down
+        combine cells, and you can merge repeatedly to build bigger regions such as a header that
+        spans three columns; Split cell undoes a merge. Merged cells render as one clean cell, with
+        the interior grid lines clipped, the header shading flowing across the region, and the text
+        of the merged cells pulled together on the anchor cell. Row and column sizes are stored as
+        proportions, so when you resize the whole table from the selection corner or a side handle,
+        your custom widths and heights survive instead of snapping back to equal cells. Inserting a
+        row above or below, or a column to the left or right, grows the table itself and leaves
+        every existing cell untouched, while Delete row and Delete column shrink it back down,
+        splitting any merge that crosses the removed line and re-homing its text.
+    </li>
+    <li><b>Clear all in the Bin</b>: the Bin screen now has a bold <b>Clear all</b> button right
+        beside the heading (it hides when the bin is empty). Tapping it asks for confirmation with
+        the item count ("Permanently delete all N items from the bin? This can't be undone."), then
+        empties every binned folder and notebook, their whole subtrees and files included, in one
+        go, with a "Bin cleared" toast.
+    </li>
+    <li><b>New Measure tool</b>: a dedicated ruler in the toolbar. Tap two points anywhere on the
+        page, or tap the first and drag to the second, and a line with white endpoint markers
+        appears between them, with a pill at the midpoint showing the distance and angle (<code>12.5
+            cm · 32°</code>, horizontal reads 0°). It's a pure on-screen ruler: nothing is drawn,
+        saved or undoable, and it works completely independently of selection: entering the tool
+        drops any live selection so the ruler never fights it. Both points are pinned to the page,
+        so scrolling or zooming keeps the ruler exactly where you placed it, and because the
+        distance is computed from the page's real size it's the true physical length at any zoom.
+    </li>
+    <li><b>Sync your notes to a folder you choose</b>: Settings gained a Sync folder section for
+        keeping a backup in a normal, accessible folder, the way you'd manage an Obsidian vault. Tap
+        Choose folder, pick a folder in the system picker, and that pick is the permission: the app
+        gets access to exactly that folder and keeps it across restarts. From then on it mirrors
+        your data there in human-readable files you can open or copy on any computer: every
+        notebook's ink in notebooks/notebook_&lt;id&gt;.json, imported PDFs and templates in pdfs/,
+        and inserted photos in images/, with a README.txt inside the folder explaining the layout.
+        The mirror updates after every edit, when the app starts, each time you return to the home
+        screen, and from the Sync now button, and it skips files that haven't changed so saves stay
+        quick. Your internal storage stays the source of truth, so the folder is a safe live copy
+        rather than the only copy.
+    </li>
+    <li><b>Restore brings back everything now, not just the ink</b>: a restore used to return your
+        strokes, PDFs and images but quietly leave the rest behind. It now rebuilds your folder
+        structure too (names, colours, nesting, and which folders were sitting in the bin, from a
+        folders.json the mirror keeps), and drops each restored notebook back into the folder it
+        lived in, with its favourite star and tag colour intact. Tool settings come back as well:
+        pen, eraser and highlighter sizes and colours, the single-finger action, your view mode, and
+        per-note state like the page you last had open, all applied before the notes themselves so
+        restored notebooks reopen the way you left them. Notebooks that were in the bin on the old
+        device come back in the bin with their real titles instead of showing up as generic
+        "restored notebooks". Custom page-background images you'd picked for notebooks are mirrored
+        and restored too, so a notebook's custom template still renders after a restore. The whole
+        thing stays read-only: nothing in the folder is deleted, and notes already in the app are
+        left untouched.
+    </li>
+    <li><b>Restore from a different folder</b>: with a sync folder already set, tapping Restore from
+        folder now offers two choices: the usual restore from the current sync folder, or "Restore
+        from a different folder…", which opens the folder picker. Restoring from a different folder
+        clears the old one completely (its permission is released and syncing is switched off), then
+        asks whether the new folder should become your sync folder. "Yes, sync here" restores from
+        it and immediately mirrors the merged library back to it; "No, just restore" keeps syncing
+        off and only reads from that folder this once.
+    </li>
+    <li><b>Stylus &amp; finger settings redesigned</b>: the dialog now opens with a proper header
+        (an icon tile, a title and a one-line subtitle) over two tonal cards for the finger and
+        stylus sections. Single finger is a three-way segmented button (Scroll / Draw / Ignored)
+        instead of the old radio list, the two side buttons are rounded exposed dropdown menus with
+        leading icons that never summon the keyboard, and long-hold-to-erase is a simple on/off
+        switch with its explanation right under the label. The colours follow Material You, and a
+        tonal tip at the bottom warns that the S Pen can misbehave when the primary button and the
+        long-hold eraser are both switched on at the same time.
+    </li>
 </ul>
 
 <h3>v2026.8.10.v2</h3>
 <ul>
-<li>Fixed tahble tool where dotted tables did not draw borders.</li>
+    <li>Fixed tahble tool where dotted tables did not draw borders.</li>
 </ul>
 
 <h3>v2026.8.10</h3>
 <ul>
-<li>Added an onboarding screen that takes you through the basic settings and introduces the app's tools.</li>
-<li><b>Deleting or editing a dense page no longer freezes</b>: after a big delete (or any edit that changes a page with lots of ink), the page's cached ink layer used to be re-drawn stroke-by-stroke on the UI thread in a single blocking frame, so lassoing and deleting a large area on a busy page visibly stuttered. The layer is now re-rasterised on a background thread while the previous layer keeps the screen smooth, and the edit appears a frame or two later instead of freezing the whole app.</li>
+    <li>Added an onboarding screen that takes you through the basic settings and introduces the
+        app's tools.
+    </li>
+    <li><b>Deleting or editing a dense page no longer freezes</b>: after a big delete (or any edit
+        that changes a page with lots of ink), the page's cached ink layer used to be re-drawn
+        stroke-by-stroke on the UI thread in a single blocking frame, so lassoing and deleting a
+        large area on a busy page visibly stuttered. The layer is now re-rasterised on a background
+        thread while the previous layer keeps the screen smooth, and the edit appears a frame or two
+        later instead of freezing the whole app.
+    </li>
 </ul>
 
 <h3>v2026.8.9</h3>
 <ul>
-<li><b>The selection no longer follows the page</b>: scrolling or panning the canvas with an object selected used to drag the selection box (and its quick-edit bar) along with the page. It now stays exactly where you left it on screen and only moves when you drag it. Because the box stays put, you can scroll to the spot where you want the object and then drag the box there: it lands precisely where you drop it, even on another page.</li>
-<li><b>Table tool gets pen-style options</b>: the table tool's hint is gone, replaced by the pen dock's colour, thickness and border-style controls (solid / dotted / dashed). The drag preview, the rows×columns ghost and the committed table all follow your choices, and the styles survive save/reload, resize and undo/redo.</li>
-<li><b>Laser tool gets pen colours and sizes</b>: the laser now shows the pen's colour swatches and size presets (no line-style options), and it draws like a real laser, a bright tip with a trail that is already fading behind it from the very first stroke, instead of a solid pen-looking line that only faded after you lifted.</li>
-<li><b>Create dialogs stand out from the background</b>: the Create New, New Folder and New Notebook dialogs used the same surface tone as the app behind them and blended in. They now use a Material You container tone that separates them clearly (and still follows your wallpaper palette on Android 12+).</li>
-<li><b>New notebooks are auto-titled</b>: the New Notebook dialog now starts with an auto title, <b>Untitled ddmmyy hhmm</b> (e.g. <code>Untitled 090826 1730</code>), so names are never empty and naturally unique; you can edit or clear it before creating, and the title carries into the Advanced Template screen.</li>
-<li><b>Long-press + for an instant note</b>: long-pressing the <b>+</b> button on the home screen skips the dialogs and creates a note instantly, auto-titled (Untitled ddmmyy hhmm) and built on your default template.</li>
-<li><b>The stroke eraser no longer silently misses</b>: scribbling or wiggling the eraser over a stroke used to leave it untouched even though the eraser clearly covered it. The hit-test quietly failed on self-overlapping eraser strokes, and a stroke whose outline couldn't be computed was invisible to the eraser entirely. The hit-test now works like the pixel eraser's (rasterized overlap instead of fragile boolean geometry), with a point-sampling fallback for strokes that can't produce an outline, so every stroke you sweep gets erased, every time.</li>
-<li><b>The lasso always catches what you circle</b>: lassoing a loop drawn across its own trail used to leave strokes unselected even though they sat inside the loop. The same silently-failing hit-test as the stroke eraser. Selection now uses the same robust overlap check, so strokes inside any lasso, scribbled loops included, get selected.</li>
-<li><b>Active colour swatch ring follows Material You</b>: the ring around the selected pen and highlighter colour swatch used to be a fixed blue. It now uses the theme's primary colour, matching your wallpaper palette on Android 12+ and the theme on every other device.</li>
-<li><b>The top tool pill keeps its distance</b>: the centred tools pill used to touch the back/pages pill on the left and the search/overflow pill on the right whenever the side pills grew (undo/redo, search). It now holds an 8dp gap on both sides, so the three floating pills never collide.</li>
-<li><b>Size buttons show their real size</b>: the pen, eraser and highlighter size buttons used fixed thin/medium/thick icons, so setting a huge value on the first slot still showed a thin line. Each button now draws its stroke at the actual value. The largest of the three fills the icon, the others render proportionally (size ÷ largest), and equal sizes get identical icons.</li>
-<li><b>Tools in a new order</b>: the toolbar now reads Pen, Eraser, Highlighter, Select, Image, Shape, Table, Text, Laser.</li>
-<li><b>Bookmark ribbon sits flat on page thumbnails</b>: the bookmark button in the Pages view used to cast a rectangular drop shadow over the page preview. It's gone, leaving a clean flat ribbon.</li>
-<li><b>Create New dialog corners stay clean</b>: the Create New dialog used to show a square shadow behind its rounded corners (the dialog's elevation shadow rendered against the window's rectangular bounds). The shadow is gone, so the rounded card floats cleanly over the dimmed background.</li>
-<li><b>Advanced Template paper style gains None</b>: the built-in lines row in the Advanced Template screen offered only Ruled, Grid and Dots. There's now a <b>None</b> option for a completely blank page that keeps your chosen page colour, and a saved blank template reopens with None selected. The four chips wrap instead of overflowing on narrow screens.</li>
+    <li><b>The selection no longer follows the page</b>: scrolling or panning the canvas with an
+        object selected used to drag the selection box (and its quick-edit bar) along with the page.
+        It now stays exactly where you left it on screen and only moves when you drag it. Because
+        the box stays put, you can scroll to the spot where you want the object and then drag the
+        box there: it lands precisely where you drop it, even on another page.
+    </li>
+    <li><b>Table tool gets pen-style options</b>: the table tool's hint is gone, replaced by the pen
+        dock's colour, thickness and border-style controls (solid / dotted / dashed). The drag
+        preview, the rows×columns ghost and the committed table all follow your choices, and the
+        styles survive save/reload, resize and undo/redo.
+    </li>
+    <li><b>Laser tool gets pen colours and sizes</b>: the laser now shows the pen's colour swatches
+        and size presets (no line-style options), and it draws like a real laser, a bright tip with
+        a trail that is already fading behind it from the very first stroke, instead of a solid
+        pen-looking line that only faded after you lifted.
+    </li>
+    <li><b>Create dialogs stand out from the background</b>: the Create New, New Folder and New
+        Notebook dialogs used the same surface tone as the app behind them and blended in. They now
+        use a Material You container tone that separates them clearly (and still follows your
+        wallpaper palette on Android 12+).
+    </li>
+    <li><b>New notebooks are auto-titled</b>: the New Notebook dialog now starts with an auto title,
+        <b>Untitled ddmmyy hhmm</b> (e.g. <code>Untitled 090826 1730</code>), so names are never
+        empty and naturally unique; you can edit or clear it before creating, and the title carries
+        into the Advanced Template screen.
+    </li>
+    <li><b>Long-press + for an instant note</b>: long-pressing the <b>+</b> button on the home
+        screen skips the dialogs and creates a note instantly, auto-titled (Untitled ddmmyy hhmm)
+        and built on your default template.
+    </li>
+    <li><b>The stroke eraser no longer silently misses</b>: scribbling or wiggling the eraser over a
+        stroke used to leave it untouched even though the eraser clearly covered it. The hit-test
+        quietly failed on self-overlapping eraser strokes, and a stroke whose outline couldn't be
+        computed was invisible to the eraser entirely. The hit-test now works like the pixel
+        eraser's (rasterized overlap instead of fragile boolean geometry), with a point-sampling
+        fallback for strokes that can't produce an outline, so every stroke you sweep gets erased,
+        every time.
+    </li>
+    <li><b>The lasso always catches what you circle</b>: lassoing a loop drawn across its own trail
+        used to leave strokes unselected even though they sat inside the loop. The same
+        silently-failing hit-test as the stroke eraser. Selection now uses the same robust overlap
+        check, so strokes inside any lasso, scribbled loops included, get selected.
+    </li>
+    <li><b>Active colour swatch ring follows Material You</b>: the ring around the selected pen and
+        highlighter colour swatch used to be a fixed blue. It now uses the theme's primary colour,
+        matching your wallpaper palette on Android 12+ and the theme on every other device.
+    </li>
+    <li><b>The top tool pill keeps its distance</b>: the centred tools pill used to touch the
+        back/pages pill on the left and the search/overflow pill on the right whenever the side
+        pills grew (undo/redo, search). It now holds an 8dp gap on both sides, so the three floating
+        pills never collide.
+    </li>
+    <li><b>Size buttons show their real size</b>: the pen, eraser and highlighter size buttons used
+        fixed thin/medium/thick icons, so setting a huge value on the first slot still showed a thin
+        line. Each button now draws its stroke at the actual value. The largest of the three fills
+        the icon, the others render proportionally (size ÷ largest), and equal sizes get identical
+        icons.
+    </li>
+    <li><b>Tools in a new order</b>: the toolbar now reads Pen, Eraser, Highlighter, Select, Image,
+        Shape, Table, Text, Laser.
+    </li>
+    <li><b>Bookmark ribbon sits flat on page thumbnails</b>: the bookmark button in the Pages view
+        used to cast a rectangular drop shadow over the page preview. It's gone, leaving a clean
+        flat ribbon.
+    </li>
+    <li><b>Create New dialog corners stay clean</b>: the Create New dialog used to show a square
+        shadow behind its rounded corners (the dialog's elevation shadow rendered against the
+        window's rectangular bounds). The shadow is gone, so the rounded card floats cleanly over
+        the dimmed background.
+    </li>
+    <li><b>Advanced Template paper style gains None</b>: the built-in lines row in the Advanced
+        Template screen offered only Ruled, Grid and Dots. There's now a <b>None</b> option for a
+        completely blank page that keeps your chosen page colour, and a saved blank template reopens
+        with None selected. The four chips wrap instead of overflowing on narrow screens.
+    </li>
 </ul>
 
 <h3>v2026.8.8</h3>
 <ul>
-<li><b>Scribble-to-erase difficulty</b>: Settings → Editing → <b>Scribble to erase</b> lets you choose how dense the pen scribble must be before it erases the ink underneath. <b>Easy</b> (3 back-and-forth reversals, the new default) or <b>Hard</b> (4 reversals, so accidental wiggles are less likely to erase).</li>
-<li><b>Canvas color follows Material You</b>: the background behind the PDF pages used to be a fixed dark grey. It now defaults to the Material You surface tone, matching your wallpaper and system light/dark theme (the static Material palette on older devices). Picking a custom colour in Settings → Editing → <b>Canvas color</b> still works, and a new <b>Reset</b> button next to the swatch returns the canvas to Material You.</li>
-<li><b>Zooming no longer breaks while something is selected</b>: with a selection live on the page, a two-finger pinch used to do nothing. The page never zoomed and the selection box drifted away from its object. The first finger (touching the selected object or one of its handles) was being consumed by the selection drag logic, so the zoom detector never saw the gesture. A pinch now hands the entire multi-touch stream to the zoom view even when the first finger lands on a selection, and the selection re-anchors itself to its page as you zoom, staying glued to the object.</li>
-<li><b>Camera button in the image tool</b>: the image tool's options now include a camera button that opens the system camera. Snap a photo and it goes straight into the crop screen, then onto the page. No photo-permission prompt is needed (the picture is written to the app's own storage via FileProvider), and if the device has no camera app you get a friendly toast instead.</li>
-<li><b>Crop every picture before it lands on the page</b>: picking an image from the gallery, tapping a recent-image preview, or taking a photo now all open a full-screen crop screen first. Nothing is committed unless you hit <b>Done</b>. The photo sits fit-centred on black with everything outside the crop frame dimmed and a rule-of-thirds grid; drag inside the frame to move the crop, drag the corners to resize (clamped to the photo, 48dp minimum), and rotate 90° at a time with the <b>Rotate</b> button. Large photos are decoded downsampled (capped ~2560px) so 12MP camera shots don't blow up memory, transparent PNGs keep their transparency (saved as PNG instead of JPEG so they don't turn black), and the cropped result is placed on the page and opened in selection mode for immediate move/resize.</li>
-<li><b>Ink stays glued to the page the instant you rotate, with no zoom needed</b>: rotating used to rescale the stored strokes but leave every visible page overlay sized for the old page width, so ink spilled off the page's right edge in landscape and squeezed together in portrait until a zoom or pan forced a refresh. Rotation now rescales the ink and immediately re-anchors every visible page overlay to the new width (the new width is handed over directly, with no dependence on relayout timing), then re-renders the page bitmaps at the new resolution instead of stretching the old ones. Strokes are correctly placed, erasable and selectable from the very first frame after the rotation.</li>
-<li><b>Zoomed-in pages stay fresh after rotation</b>: the hi-res tiles that keep a zoomed-in page crisp were rasterised for the old layout, and after a rotation they were still blitted on top of the re-laid-out pages, pasting stale page fragments over the fresh ink until you panned. Rotating now drops the cached tiles and re-renders them from the new layout once it settles.</li>
-<li><b>Zoomed-in panning stays inside the page after rotation</b>: the pan offset was only re-clamped during pan/zoom gestures, so after rotating at zoom &gt; 1 the view could sit outside the content. A viewport change now re-clamps the pan against the new layout.</li>
-<li><b>Table, text and cell-editor popups no longer survive rotation</b>: they were only dismissed in onPause(), which a rotation the drawing screen handles itself doesn't reliably trigger, so a table's page ghost or a text editor's stale edit target could linger. The rotation path now dismisses all three (and the selection bar), and each resets its page state when it closes.</li>
-<li><b>New ink matches old ink on the first open after upgrading, even at the other orientation</b>: the codec scales stroke widths on load, but pre-upgrade preferences had no recorded base width, so the pen/eraser/highlighter stayed at their old absolute sizes and fresh strokes were thinner than the rescaled ink. The decode now reports the file's recorded page width, and the first load under pre-upgrade preferences uses it, or the same fallback width the ink was decoded with for files saved before the width was recorded, to bring the tool sizes into the current page space.</li>
-<li><b>Table tool insert flow fixed and tidied</b>: drawing a table now reliably lands it on the page, and the rows×columns popup is decluttered, gains a <b>Header</b> ON/OFF option and a <b>Highlight first column</b> option, and notes that further editing options appear once the table is on the page.</li>
-<li><b>Tables keep the colour you drew them with</b>: an inserted table now uses the pen colour it was actually drawn in, matching the drag preview, instead of the dock's current colour slot, so the committed table never comes out a different colour than you drew.</li>
-<li><b>Full table editing after insert</b>: select a table and the quick-edit bar now offers a <b>First column</b> ON/OFF toggle next to Header, colour dots for the <b>header</b> and <b>first column</b> shading (tap to pick a colour, long-press to reset to the table's line colour), and a <b>Corner radius</b> −/+ stepper for rounded corners. Every edit is undoable and saved with the notebook. Rounded corners and custom shades survive save/reload, resize, duplicate and undo/redo.</li>
-<li><b>Colour picker decluttered</b>: the “Pen colours” quick-swatch row is gone from the colour picker dialog. The palette grid and spectrum wheel remain, so picking colours works exactly as before.</li>
-<li><b>Selected tables and text keep their content while dragging</b>: moving a selection used to show an empty box for tables and text. The drag preview now renders the full table grid, header shading and cell text (and reflowed text), so what you drag is exactly what gets placed.</li>
-<li><b>Editing a selection then tapping away no longer drops the change</b>: recolouring, rotating or flipping a selected object and then deselecting without moving used to silently discard the edit. These edits now stick when you tap outside, as a single undo step that restores the pre-edit object.</li>
+    <li><b>Scribble-to-erase difficulty</b>: Settings → Editing → <b>Scribble to erase</b> lets you
+        choose how dense the pen scribble must be before it erases the ink underneath. <b>Easy</b>
+        (3 back-and-forth reversals, the new default) or <b>Hard</b> (4 reversals, so accidental
+        wiggles are less likely to erase).
+    </li>
+    <li><b>Canvas color follows Material You</b>: the background behind the PDF pages used to be a
+        fixed dark grey. It now defaults to the Material You surface tone, matching your wallpaper
+        and system light/dark theme (the static Material palette on older devices). Picking a custom
+        colour in Settings → Editing → <b>Canvas color</b> still works, and a new <b>Reset</b>
+        button next to the swatch returns the canvas to Material You.
+    </li>
+    <li><b>Zooming no longer breaks while something is selected</b>: with a selection live on the
+        page, a two-finger pinch used to do nothing. The page never zoomed and the selection box
+        drifted away from its object. The first finger (touching the selected object or one of its
+        handles) was being consumed by the selection drag logic, so the zoom detector never saw the
+        gesture. A pinch now hands the entire multi-touch stream to the zoom view even when the
+        first finger lands on a selection, and the selection re-anchors itself to its page as you
+        zoom, staying glued to the object.
+    </li>
+    <li><b>Camera button in the image tool</b>: the image tool's options now include a camera button
+        that opens the system camera. Snap a photo and it goes straight into the crop screen, then
+        onto the page. No photo-permission prompt is needed (the picture is written to the app's own
+        storage via FileProvider), and if the device has no camera app you get a friendly toast
+        instead.
+    </li>
+    <li><b>Crop every picture before it lands on the page</b>: picking an image from the gallery,
+        tapping a recent-image preview, or taking a photo now all open a full-screen crop screen
+        first. Nothing is committed unless you hit <b>Done</b>. The photo sits fit-centred on black
+        with everything outside the crop frame dimmed and a rule-of-thirds grid; drag inside the
+        frame to move the crop, drag the corners to resize (clamped to the photo, 48dp minimum), and
+        rotate 90° at a time with the <b>Rotate</b> button. Large photos are decoded downsampled
+        (capped ~2560px) so 12MP camera shots don't blow up memory, transparent PNGs keep their
+        transparency (saved as PNG instead of JPEG so they don't turn black), and the cropped result
+        is placed on the page and opened in selection mode for immediate move/resize.
+    </li>
+    <li><b>Ink stays glued to the page the instant you rotate, with no zoom needed</b>: rotating
+        used to rescale the stored strokes but leave every visible page overlay sized for the old
+        page width, so ink spilled off the page's right edge in landscape and squeezed together in
+        portrait until a zoom or pan forced a refresh. Rotation now rescales the ink and immediately
+        re-anchors every visible page overlay to the new width (the new width is handed over
+        directly, with no dependence on relayout timing), then re-renders the page bitmaps at the
+        new resolution instead of stretching the old ones. Strokes are correctly placed, erasable
+        and selectable from the very first frame after the rotation.
+    </li>
+    <li><b>Zoomed-in pages stay fresh after rotation</b>: the hi-res tiles that keep a zoomed-in
+        page crisp were rasterised for the old layout, and after a rotation they were still blitted
+        on top of the re-laid-out pages, pasting stale page fragments over the fresh ink until you
+        panned. Rotating now drops the cached tiles and re-renders them from the new layout once it
+        settles.
+    </li>
+    <li><b>Zoomed-in panning stays inside the page after rotation</b>: the pan offset was only
+        re-clamped during pan/zoom gestures, so after rotating at zoom &gt; 1 the view could sit
+        outside the content. A viewport change now re-clamps the pan against the new layout.
+    </li>
+    <li><b>Table, text and cell-editor popups no longer survive rotation</b>: they were only
+        dismissed in onPause(), which a rotation the drawing screen handles itself doesn't reliably
+        trigger, so a table's page ghost or a text editor's stale edit target could linger. The
+        rotation path now dismisses all three (and the selection bar), and each resets its page
+        state when it closes.
+    </li>
+    <li><b>New ink matches old ink on the first open after upgrading, even at the other
+        orientation</b>: the codec scales stroke widths on load, but pre-upgrade preferences had no
+        recorded base width, so the pen/eraser/highlighter stayed at their old absolute sizes and
+        fresh strokes were thinner than the rescaled ink. The decode now reports the file's recorded
+        page width, and the first load under pre-upgrade preferences uses it, or the same fallback
+        width the ink was decoded with for files saved before the width was recorded, to bring the
+        tool sizes into the current page space.
+    </li>
+    <li><b>Table tool insert flow fixed and tidied</b>: drawing a table now reliably lands it on the
+        page, and the rows×columns popup is decluttered, gains a <b>Header</b> ON/OFF option and a
+        <b>Highlight first column</b> option, and notes that further editing options appear once the
+        table is on the page.
+    </li>
+    <li><b>Tables keep the colour you drew them with</b>: an inserted table now uses the pen colour
+        it was actually drawn in, matching the drag preview, instead of the dock's current colour
+        slot, so the committed table never comes out a different colour than you drew.
+    </li>
+    <li><b>Full table editing after insert</b>: select a table and the quick-edit bar now offers a
+        <b>First column</b> ON/OFF toggle next to Header, colour dots for the <b>header</b> and <b>first
+            column</b> shading (tap to pick a colour, long-press to reset to the table's line
+        colour), and a <b>Corner radius</b> −/+ stepper for rounded corners. Every edit is undoable
+        and saved with the notebook. Rounded corners and custom shades survive save/reload, resize,
+        duplicate and undo/redo.
+    </li>
+    <li><b>Colour picker decluttered</b>: the “Pen colours” quick-swatch row is gone from the colour
+        picker dialog. The palette grid and spectrum wheel remain, so picking colours works exactly
+        as before.
+    </li>
+    <li><b>Selected tables and text keep their content while dragging</b>: moving a selection used
+        to show an empty box for tables and text. The drag preview now renders the full table grid,
+        header shading and cell text (and reflowed text), so what you drag is exactly what gets
+        placed.
+    </li>
+    <li><b>Editing a selection then tapping away no longer drops the change</b>: recolouring,
+        rotating or flipping a selected object and then deselecting without moving used to silently
+        discard the edit. These edits now stick when you tap outside, as a single undo step that
+        restores the pre-edit object.
+    </li>
 </ul>
 
 <h3>v2026.8.7</h3>
 <ul>
-<li><b>Rotating to landscape now zooms the whole page, ink included</b>: rotating used to scale only the stroke positions, so after a rotation your strokes sat at the wrong place relative to the page, drew far too big (spilling off the page), and became impossible to erase or lasso (the eraser and lasso hit-tested where the strokes *really* were, not where they were drawn). Every visible page also kept its old layout size and old-width bitmap, so the page stretched instead of re-flowing. Rotation now rebuilds every visible page at the new width, and the whole drawing (stroke positions, thickness, text size and the pen/eraser/highlighter themselves) scales with the page, so turning to landscape behaves exactly like zooming in: ink stays glued to the page, keeps its proportion, and remains fully erasable and selectable. Your tool sizes are remembered per page width, so ink you draw after rotating (or after reopening a notebook at a different orientation) still matches the ink that was already there.</li>
-<li><b>New Table tool</b>: tap the table button in the toolbar, then drag a rectangle on the page to draw the table area. The drag preview already shows the full grid so you draw a table, not a box. A popup then lets you set the number of <b>rows</b> and <b>columns</b> with −/+ steppers and a live mini-preview, while the grid is ghosted right on the page inside your drawn area (updating live as you change rows or columns), so you see the exact table before you commit. Tables use your current pen colour, get a shaded header row, and open in selection mode right away so you can move them or resize them with the corner handle. Your last rows×columns choice is remembered for next time, and tables behave like any other ink: they save and reload with your notebook, survive rotation and page resizing, support undo/redo, can be lassoed, moved across pages, recoloured and duplicated, and show up in thumbnails and exports. The erasers pass through tables (edit them with the select tool instead).</li>
-<li><b>New Laser pointer tool</b>: a presentation aid. Draw with the pen and a glowing trail follows the stroke (in your pen colour, sized to the dock's thickness), then fades out about a second after you lift. The trail is never saved, never hits undo, and leaves the page exactly as it was, so you can point at things on the page freely.</li>
-<li><b>New Text tool</b>: tap anywhere on the page and a small editor opens at that spot. Type, tweak the font size with −/+, and <b>Insert</b> places the text as a real, editable object. Text uses your current pen colour, auto-selects so you can move or resize it immediately (the text re-wraps instead of stretching), and tapping it again with the text tool re-opens the editor prefilled. The options row has quick S / M / L size presets that are remembered, and text behaves like any other ink: undo/redo, save and reload, lasso, recolour, duplicate, move across pages, thumbnails and exports. The erasers pass through text, and rotate/flip are disabled for text boxes so they can't be visually corrupted.</li>
-<li><b>Tables come alive: type inside cells</b>: tap a cell of an existing table with the table tool and a small editor opens right there. Type and <b>Insert</b>, and the text lands centred in that cell, auto-sized to fit (multi-line text wraps, the header row is bold). Blanking the text clears the cell. Every cell edit is undoable, and the text travels with the table when you move, resize (it re-flows to the new cell size), duplicate, lasso or export it.</li>
-<li><b>Quick-edit a selected table</b>: select a table and the floating bar grows a second row with <b>Rows</b> and <b>Cols</b> −/+ steppers plus a <b>Header ON / OFF</b> toggle. Tapping the steppers reshapes the grid instantly (cells that fall outside a smaller grid are dropped, and each change is a separate undo step); the header toggle shades or unshades the first row.</li>
+    <li><b>Rotating to landscape now zooms the whole page, ink included</b>: rotating used to scale
+        only the stroke positions, so after a rotation your strokes sat at the wrong place relative
+        to the page, drew far too big (spilling off the page), and became impossible to erase or
+        lasso (the eraser and lasso hit-tested where the strokes *really* were, not where they were
+        drawn). Every visible page also kept its old layout size and old-width bitmap, so the page
+        stretched instead of re-flowing. Rotation now rebuilds every visible page at the new width,
+        and the whole drawing (stroke positions, thickness, text size and the pen/eraser/highlighter
+        themselves) scales with the page, so turning to landscape behaves exactly like zooming in:
+        ink stays glued to the page, keeps its proportion, and remains fully erasable and
+        selectable. Your tool sizes are remembered per page width, so ink you draw after rotating
+        (or after reopening a notebook at a different orientation) still matches the ink that was
+        already there.
+    </li>
+    <li><b>New Table tool</b>: tap the table button in the toolbar, then drag a rectangle on the
+        page to draw the table area. The drag preview already shows the full grid so you draw a
+        table, not a box. A popup then lets you set the number of <b>rows</b> and <b>columns</b>
+        with −/+ steppers and a live mini-preview, while the grid is ghosted right on the page
+        inside your drawn area (updating live as you change rows or columns), so you see the exact
+        table before you commit. Tables use your current pen colour, get a shaded header row, and
+        open in selection mode right away so you can move them or resize them with the corner
+        handle. Your last rows×columns choice is remembered for next time, and tables behave like
+        any other ink: they save and reload with your notebook, survive rotation and page resizing,
+        support undo/redo, can be lassoed, moved across pages, recoloured and duplicated, and show
+        up in thumbnails and exports. The erasers pass through tables (edit them with the select
+        tool instead).
+    </li>
+    <li><b>New Laser pointer tool</b>: a presentation aid. Draw with the pen and a glowing trail
+        follows the stroke (in your pen colour, sized to the dock's thickness), then fades out about
+        a second after you lift. The trail is never saved, never hits undo, and leaves the page
+        exactly as it was, so you can point at things on the page freely.
+    </li>
+    <li><b>New Text tool</b>: tap anywhere on the page and a small editor opens at that spot. Type,
+        tweak the font size with −/+, and <b>Insert</b> places the text as a real, editable object.
+        Text uses your current pen colour, auto-selects so you can move or resize it immediately
+        (the text re-wraps instead of stretching), and tapping it again with the text tool re-opens
+        the editor prefilled. The options row has quick S / M / L size presets that are remembered,
+        and text behaves like any other ink: undo/redo, save and reload, lasso, recolour, duplicate,
+        move across pages, thumbnails and exports. The erasers pass through text, and rotate/flip
+        are disabled for text boxes so they can't be visually corrupted.
+    </li>
+    <li><b>Tables come alive: type inside cells</b>: tap a cell of an existing table with the table
+        tool and a small editor opens right there. Type and <b>Insert</b>, and the text lands
+        centred in that cell, auto-sized to fit (multi-line text wraps, the header row is bold).
+        Blanking the text clears the cell. Every cell edit is undoable, and the text travels with
+        the table when you move, resize (it re-flows to the new cell size), duplicate, lasso or
+        export it.
+    </li>
+    <li><b>Quick-edit a selected table</b>: select a table and the floating bar grows a second row
+        with <b>Rows</b> and <b>Cols</b> −/+ steppers plus a <b>Header ON / OFF</b> toggle. Tapping
+        the steppers reshapes the grid instantly (cells that fall outside a smaller grid are
+        dropped, and each change is a separate undo step); the header toggle shades or unshades the
+        first row.
+    </li>
 </ul>
 
 <h3>v2026.8.6.v2</h3>
 <ul>
-<li><b>Undo/redo survive rotation</b>: rotating the screen used to destroy the drawing screen and rebuild it from scratch, which wiped the undo/redo history and hid the undo/redo buttons (on phones the whole dock collapsed, making them vanish entirely). The drawing screen now handles rotation itself, so your undo history, tool state, zoom and the dock stay exactly where you left them.</li>
-<li><b>Undo now works after page resizes too</b>: any width change (rotating to landscape, unfolding a foldable, entering split-screen) used to clear the undo history because the stored ink coordinates were stale. The history is now rescaled along with the page ink instead, so you can still undo strokes you drew before the resize.</li>
-<li><b>Undo/redo buttons always stay in sync</b>: when delete, cut or paste was your very first action, the undo button wasn't refreshed and tapping it silently did nothing. Every action now updates the button state automatically, so Undo is always there when there's something to undo.</li>
-<li><b>Strokes are always erasable again</b>: a wobbly or held-down pen could emit near-zero-length path segments that made a stroke invisible to the stroke eraser and to lasso selection (the geometry hit-test silently failed). Those degenerate points are now filtered out as the stroke is drawn, so every stroke can be erased and selected.</li>
-<li><b>Folders move to the Bin together with their contents</b>: moving a folder to the Bin used to hide its notebooks and subfolders from the main list without actually binning them. They never appeared in the Bin, and permanently deleting the folder later made them all reappear. Binning a folder now carries its entire contents along, restoring brings back the whole subtree (and un-bins any binned parent folder so nothing gets stranded invisible), and <b>Delete permanently</b> deletes everything inside the folder instead of resurrecting it.</li>
-<li><b>Deleting several pages at once is now atomic</b>: multi-select delete used to rewrite the PDF once per page, interleaved with the in-memory page renumbering. If a rewrite failed partway, the file was missing some pages while the app still thought they existed, so ink could land on the wrong pages and autosave would persist the mix-up. The whole selection is now removed in a single PDF write before any in-memory state changes, so a failed delete leaves the file and the view perfectly in sync (and it's faster too, with one rewrite instead of one per page).</li>
-<li><b>Opening a notebook after rotation no longer stutters</b>: the new screen used to block the UI thread while it waited for the previous screen's ink save to finish writing. On a big notebook that was a visible freeze (and an ANR risk on slow storage) right after every rotation. The wait now happens on a background thread, so the first frames render instantly and the ink still loads with the just-saved strokes intact.</li>
-<li><b>PDF cross-reference offsets are no longer truncated</b>: xref streams written with 8-byte offset fields (<code>/W [1 8 2]</code>) used to be read through a 4-byte accumulator, silently corrupting the object table for those files. Offsets are now parsed at full width, and any offset that genuinely doesn't fit the file is treated as a corrupt PDF (a clear "can't edit" error) instead of silently pointing at the wrong object.</li>
-<li><b>Corrupt compressed streams fail cleanly instead of half-decoding</b>: a FlateDecode stream that ended early or demanded a preset dictionary we don't support used to return its partial output as if complete. For object and xref streams that meant garbage offsets rather than an error. Such streams now fail cleanly, and the affected file is reported as unreadable instead of being silently mangled.</li>
-<li><b>Thumbnail rendering hardened against late reloads</b>: the page-grid thumbnail engine could end up permanently rendering blank tiles if it was asked to reload after being closed (a latent path in the page reorder flow). Reloading now restarts the render worker pool, and close/reload can no longer race each other.</li>
+    <li><b>Undo/redo survive rotation</b>: rotating the screen used to destroy the drawing screen
+        and rebuild it from scratch, which wiped the undo/redo history and hid the undo/redo buttons
+        (on phones the whole dock collapsed, making them vanish entirely). The drawing screen now
+        handles rotation itself, so your undo history, tool state, zoom and the dock stay exactly
+        where you left them.
+    </li>
+    <li><b>Undo now works after page resizes too</b>: any width change (rotating to landscape,
+        unfolding a foldable, entering split-screen) used to clear the undo history because the
+        stored ink coordinates were stale. The history is now rescaled along with the page ink
+        instead, so you can still undo strokes you drew before the resize.
+    </li>
+    <li><b>Undo/redo buttons always stay in sync</b>: when delete, cut or paste was your very first
+        action, the undo button wasn't refreshed and tapping it silently did nothing. Every action
+        now updates the button state automatically, so Undo is always there when there's something
+        to undo.
+    </li>
+    <li><b>Strokes are always erasable again</b>: a wobbly or held-down pen could emit
+        near-zero-length path segments that made a stroke invisible to the stroke eraser and to
+        lasso selection (the geometry hit-test silently failed). Those degenerate points are now
+        filtered out as the stroke is drawn, so every stroke can be erased and selected.
+    </li>
+    <li><b>Folders move to the Bin together with their contents</b>: moving a folder to the Bin used
+        to hide its notebooks and subfolders from the main list without actually binning them. They
+        never appeared in the Bin, and permanently deleting the folder later made them all reappear.
+        Binning a folder now carries its entire contents along, restoring brings back the whole
+        subtree (and un-bins any binned parent folder so nothing gets stranded invisible), and <b>Delete
+            permanently</b> deletes everything inside the folder instead of resurrecting it.
+    </li>
+    <li><b>Deleting several pages at once is now atomic</b>: multi-select delete used to rewrite the
+        PDF once per page, interleaved with the in-memory page renumbering. If a rewrite failed
+        partway, the file was missing some pages while the app still thought they existed, so ink
+        could land on the wrong pages and autosave would persist the mix-up. The whole selection is
+        now removed in a single PDF write before any in-memory state changes, so a failed delete
+        leaves the file and the view perfectly in sync (and it's faster too, with one rewrite
+        instead of one per page).
+    </li>
+    <li><b>Opening a notebook after rotation no longer stutters</b>: the new screen used to block
+        the UI thread while it waited for the previous screen's ink save to finish writing. On a big
+        notebook that was a visible freeze (and an ANR risk on slow storage) right after every
+        rotation. The wait now happens on a background thread, so the first frames render instantly
+        and the ink still loads with the just-saved strokes intact.
+    </li>
+    <li><b>PDF cross-reference offsets are no longer truncated</b>: xref streams written with 8-byte
+        offset fields (<code>/W [1 8 2]</code>) used to be read through a 4-byte accumulator,
+        silently corrupting the object table for those files. Offsets are now parsed at full width,
+        and any offset that genuinely doesn't fit the file is treated as a corrupt PDF (a clear
+        "can't edit" error) instead of silently pointing at the wrong object.
+    </li>
+    <li><b>Corrupt compressed streams fail cleanly instead of half-decoding</b>: a FlateDecode
+        stream that ended early or demanded a preset dictionary we don't support used to return its
+        partial output as if complete. For object and xref streams that meant garbage offsets rather
+        than an error. Such streams now fail cleanly, and the affected file is reported as
+        unreadable instead of being silently mangled.
+    </li>
+    <li><b>Thumbnail rendering hardened against late reloads</b>: the page-grid thumbnail engine
+        could end up permanently rendering blank tiles if it was asked to reload after being closed
+        (a latent path in the page reorder flow). Reloading now restarts the render worker pool, and
+        close/reload can no longer race each other.
+    </li>
 </ul>
 
 <h3>v2026.8.6</h3>
 <ul>
-<li><b>Notebook tags, just like macOS Finder</b>: tap the ⋯ menu on any notebook and choose <b>Add Tag</b> to pick one of seven colours (red, orange, yellow, green, blue, purple, grey). The tag appears as a small coloured dot on the top-left of the notebook's thumbnail in both the grid and list views. Change or remove it any time from the same menu. The <b>Tags</b> chip on the home screen now opens the same palette: pick a colour to see every notebook tagged with it (the chip's icon tints to match, and the breadcrumb shows “Tag · Red”), tap the active colour again to clear the filter, or use “Clear filter”, the back button, or any other chip.</li>
-<li><b>Selecting or deleting huge regions no longer freezes</b>: lassoing a large area (or sweeping the stroke eraser across a dense page) used to run an expensive geometry hit-test against every stroke on the page on the main thread, freezing the UI before the selection even appeared. The hit-test now runs on a background thread over a safe snapshot of the page's ink, so the selection box pops in without a hitch, and if you scroll while it's computing, the selection still lands correctly on its page.</li>
-<li><b>Deleting a big selection is now near-instant</b>: removing a large group of strokes used to scan the whole page's stroke list once per deleted stroke (quadratic), which stuttered badly on big deletes. Deletion now removes every selected stroke in a single pass, so erase, delete, cut, and undo/redo stay fast no matter how much ink you remove at once.</li>
-<li><b>Dense pages render far more smoothly in landscape and at zoom</b>: every page's ink used to be re-drawn stroke-by-stroke on every frame, so any edit (or even a search highlight) forced every visible page to re-issue all of its strokes, which was worst in full-screen landscape where several pages are on screen at once. Pages with lots of ink are now rasterised once into a cached layer that is simply blitted on redraw, and the cache only re-renders a page when that page's ink actually changes. Scrolling, zooming, panning, search highlighting and undo/redo all benefit.</li>
-<li><b>Selection ghosts stay in sync with the new rendering</b>: the faint "ghost" of a selection's original position appears the moment you select and disappears the moment you deselect, commit, or undo, including shapes that auto-select right after being drawn.</li>
-<li><b>Memory-safe caching</b>: the new ink-layer cache sizes itself to the device's memory, skips very light pages (a few strokes are cheaper to draw directly), avoids caching layers too big to fit, and falls back to direct drawing under memory pressure, so nothing regresses on low-memory devices.</li>
-<li><b>AGPL-3.0 license</b>: OctopusNotes is now licensed under the GNU Affero General Public License v3.0. <b>Settings → About → Licenses</b> reflects the change with a link to the full license text.</li>
-<li>Replaced PDFBox with an in-house Kotlin engine (`pdfedit`) that performs instant incremental saves, native PDF 1.5+ parsing, and bug fixes for text extraction and outline resolution across 32 unit tests. Heavily optimised pdf rendering.</li>
-<li><b>Links in PDF</b> (⋯ menu): lists every hyperlink in the document. External URLs open in your browser, internal links jump straight to their page. Built on a new hand-rolled link reader (<code>PdfLinkReader</code>) that walks each page's <code>/Annots</code> and understands <code>/URI</code>, <code>/GoTo</code>, and <code>/Launch</code> actions plus named destinations, the same way the bookmark reader works.</li>
-<li><b>PDF properties</b> (⋯ menu): shows the page count and every distinct page size with its standard name (A4, Letter, Legal…, in mm), handy for spotting mixed-size imports.</li>
-<li><b>Current page easier to spot in Pages view</b>: the highlight border around the active page thumbnail is now thicker (3dp → 5dp), so you can find the page you're working on at a glance.</li>
-<li><b>Active page highlight wraps the whole page card</b>: in the Pages view the current-page outline now rings the entire item (the thumbnail, the page number and the ⋁ menu together) instead of just the thumbnail, so the page you're on is unmistakable at any grid size. The page-number row is part of the tappable card now too, so tapping the number opens that page.</li>
-<li><b>New filled pen icon</b>: the pen tool button uses a solid filled pen glyph instead of the old outline one. It still layers your pen colour inside the theme-tinted outline rim, so the icon stays readable against any toolbar background and updates with your current colour.</li>
-<li><b>All toolbar and menu icons elevated</b>: every icon button across the app (drawing toolbar, tool-option strips, search bar, home screen, page grid, popups and dialogs) now sits at 4dp elevation, giving the whole interface a crisper, layered look (tool buttons with a filled background get a subtle shadow; ripple-only buttons get the lift in z-order).</li>
-<li><b>Licenses screen brought up to date</b>: <b>Settings → About → Open source licenses</b> now credits Google Material Design Icons (Apache 2.0) and AndroidX RecyclerView (Apache 2.0), and lists JUnit (Eclipse Public License 2.0) with a link to the EPL text. PDFBox is gone from the list, matching its removal.</li>
-<li><b>Settings page redesigned</b>: settings are now grouped into four clean cards (<b>Editing</b>, <b>Home screen</b>, <b>Data</b> and <b>About</b>) instead of one long flat list, so related options are easy to find at a glance. One-of-N choices (notebook thumbnail, PDF thumbnail) show their current value on the row and open a single-choice dialog instead of an inline radio list; Grid/List is now a chip toggle matching the home screen's filter chips; and Export/Import moved into the Data card as tonal buttons with directional icons. All preference keys are unchanged, so existing settings carry over.</li>
-<li><b>Switch sub-texts now explain the off state</b>: the <b>Add pages continuously</b> switch says “Add new pages manually with the + icon” when off, and <b>Show tool options</b> says “Options stay closed when you switch tools until you tap the tool button”. No more guessing what turning something off actually does.</li>
-<li><b>Canvas color setting</b>: a new <b>Settings → Editing → Canvas color</b> row opens the full colour picker (palette, spectrum, hex, quick colours) and the colour you choose becomes the background around and between the PDF pages in the drawing view, great for reducing glare or matching your desk setup. Defaults to the classic dark surround.</li>
-<li><b>Notebook and folder menus tidied up</b>: the popup you get from the ⋁ arrow next to a notebook or folder name now uses proper icons (lock for Lock Note, star for Favorites, trash for Delete), consistent 52dp rows with theme-tinted icons, and a divider that separates the red Delete action from the rest, so destructive actions are unmistakable. The folder menu's colour swatches keep their grey outline now instead of tinting the whole circle.</li>
-<li><b>Marquee text for long notebook names</b>: a new <b>Settings → Home screen → Marquee text</b> switch. When on, any notebook name too wide to fit its card on the home screen slowly scrolls. It holds at the start for 2 seconds, scrolls until the end is visible, then loops. Names that fit are never animated, folders are unaffected, and switching it off restores the plain "…" truncation.</li>
-<li><b>New template, link, export and duplicate icons</b>: the ⋯ menu's <b>Change template</b> row got a proper template glyph (a grid with a plus and crop marks) instead of the reused pages-grid icon, the <b>Links in PDF</b> row uses the filled Material Symbols link, <b>Export</b> shows a real file-export icon instead of the copy glyph, and the <b>Duplicate</b> action in the Pages view now shows a circled-plus duplicate icon (matching the selection bar and notebook menu) instead of the copy icon, all in the same tinted, rounded Material Symbols family.</li>
+    <li><b>Notebook tags, just like macOS Finder</b>: tap the ⋯ menu on any notebook and choose <b>Add
+        Tag</b> to pick one of seven colours (red, orange, yellow, green, blue, purple, grey). The
+        tag appears as a small coloured dot on the top-left of the notebook's thumbnail in both the
+        grid and list views. Change or remove it any time from the same menu. The <b>Tags</b> chip
+        on the home screen now opens the same palette: pick a colour to see every notebook tagged
+        with it (the chip's icon tints to match, and the breadcrumb shows “Tag · Red”), tap the
+        active colour again to clear the filter, or use “Clear filter”, the back button, or any
+        other chip.
+    </li>
+    <li><b>Selecting or deleting huge regions no longer freezes</b>: lassoing a large area (or
+        sweeping the stroke eraser across a dense page) used to run an expensive geometry hit-test
+        against every stroke on the page on the main thread, freezing the UI before the selection
+        even appeared. The hit-test now runs on a background thread over a safe snapshot of the
+        page's ink, so the selection box pops in without a hitch, and if you scroll while it's
+        computing, the selection still lands correctly on its page.
+    </li>
+    <li><b>Deleting a big selection is now near-instant</b>: removing a large group of strokes used
+        to scan the whole page's stroke list once per deleted stroke (quadratic), which stuttered
+        badly on big deletes. Deletion now removes every selected stroke in a single pass, so erase,
+        delete, cut, and undo/redo stay fast no matter how much ink you remove at once.
+    </li>
+    <li><b>Dense pages render far more smoothly in landscape and at zoom</b>: every page's ink used
+        to be re-drawn stroke-by-stroke on every frame, so any edit (or even a search highlight)
+        forced every visible page to re-issue all of its strokes, which was worst in full-screen
+        landscape where several pages are on screen at once. Pages with lots of ink are now
+        rasterised once into a cached layer that is simply blitted on redraw, and the cache only
+        re-renders a page when that page's ink actually changes. Scrolling, zooming, panning, search
+        highlighting and undo/redo all benefit.
+    </li>
+    <li><b>Selection ghosts stay in sync with the new rendering</b>: the faint "ghost" of a
+        selection's original position appears the moment you select and disappears the moment you
+        deselect, commit, or undo, including shapes that auto-select right after being drawn.
+    </li>
+    <li><b>Memory-safe caching</b>: the new ink-layer cache sizes itself to the device's memory,
+        skips very light pages (a few strokes are cheaper to draw directly), avoids caching layers
+        too big to fit, and falls back to direct drawing under memory pressure, so nothing regresses
+        on low-memory devices.
+    </li>
+    <li><b>AGPL-3.0 license</b>: OctopusNotes is now licensed under the GNU Affero General Public
+        License v3.0. <b>Settings → About → Licenses</b> reflects the change with a link to the full
+        license text.
+    </li>
+    <li>Replaced PDFBox with an in-house Kotlin engine (`pdfedit`) that performs instant incremental
+        saves, native PDF 1.5+ parsing, and bug fixes for text extraction and outline resolution
+        across 32 unit tests. Heavily optimised pdf rendering.
+    </li>
+    <li><b>Links in PDF</b> (⋯ menu): lists every hyperlink in the document. External URLs open in
+        your browser, internal links jump straight to their page. Built on a new hand-rolled link
+        reader (<code>PdfLinkReader</code>) that walks each page's <code>/Annots</code> and
+        understands <code>/URI</code>, <code>/GoTo</code>, and <code>/Launch</code> actions plus
+        named destinations, the same way the bookmark reader works.
+    </li>
+    <li><b>PDF properties</b> (⋯ menu): shows the page count and every distinct page size with its
+        standard name (A4, Letter, Legal…, in mm), handy for spotting mixed-size imports.
+    </li>
+    <li><b>Current page easier to spot in Pages view</b>: the highlight border around the active
+        page thumbnail is now thicker (3dp → 5dp), so you can find the page you're working on at a
+        glance.
+    </li>
+    <li><b>Active page highlight wraps the whole page card</b>: in the Pages view the current-page
+        outline now rings the entire item (the thumbnail, the page number and the ⋁ menu together)
+        instead of just the thumbnail, so the page you're on is unmistakable at any grid size. The
+        page-number row is part of the tappable card now too, so tapping the number opens that page.
+    </li>
+    <li><b>New filled pen icon</b>: the pen tool button uses a solid filled pen glyph instead of the
+        old outline one. It still layers your pen colour inside the theme-tinted outline rim, so the
+        icon stays readable against any toolbar background and updates with your current colour.
+    </li>
+    <li><b>All toolbar and menu icons elevated</b>: every icon button across the app (drawing
+        toolbar, tool-option strips, search bar, home screen, page grid, popups and dialogs) now
+        sits at 4dp elevation, giving the whole interface a crisper, layered look (tool buttons with
+        a filled background get a subtle shadow; ripple-only buttons get the lift in z-order).
+    </li>
+    <li><b>Licenses screen brought up to date</b>: <b>Settings → About → Open source licenses</b>
+        now credits Google Material Design Icons (Apache 2.0) and AndroidX RecyclerView (Apache
+        2.0), and lists JUnit (Eclipse Public License 2.0) with a link to the EPL text. PDFBox is
+        gone from the list, matching its removal.
+    </li>
+    <li><b>Settings page redesigned</b>: settings are now grouped into four clean cards
+        (<b>Editing</b>, <b>Home screen</b>, <b>Data</b> and <b>About</b>) instead of one long flat
+        list, so related options are easy to find at a glance. One-of-N choices (notebook thumbnail,
+        PDF thumbnail) show their current value on the row and open a single-choice dialog instead
+        of an inline radio list; Grid/List is now a chip toggle matching the home screen's filter
+        chips; and Export/Import moved into the Data card as tonal buttons with directional icons.
+        All preference keys are unchanged, so existing settings carry over.
+    </li>
+    <li><b>Switch sub-texts now explain the off state</b>: the <b>Add pages continuously</b> switch
+        says “Add new pages manually with the + icon” when off, and <b>Show tool options</b> says
+        “Options stay closed when you switch tools until you tap the tool button”. No more guessing
+        what turning something off actually does.
+    </li>
+    <li><b>Canvas color setting</b>: a new <b>Settings → Editing → Canvas color</b> row opens the
+        full colour picker (palette, spectrum, hex, quick colours) and the colour you choose becomes
+        the background around and between the PDF pages in the drawing view, great for reducing
+        glare or matching your desk setup. Defaults to the classic dark surround.
+    </li>
+    <li><b>Notebook and folder menus tidied up</b>: the popup you get from the ⋁ arrow next to a
+        notebook or folder name now uses proper icons (lock for Lock Note, star for Favorites, trash
+        for Delete), consistent 52dp rows with theme-tinted icons, and a divider that separates the
+        red Delete action from the rest, so destructive actions are unmistakable. The folder menu's
+        colour swatches keep their grey outline now instead of tinting the whole circle.
+    </li>
+    <li><b>Marquee text for long notebook names</b>: a new <b>Settings → Home screen → Marquee
+        text</b> switch. When on, any notebook name too wide to fit its card on the home screen
+        slowly scrolls. It holds at the start for 2 seconds, scrolls until the end is visible, then
+        loops. Names that fit are never animated, folders are unaffected, and switching it off
+        restores the plain "…" truncation.
+    </li>
+    <li><b>New template, link, export and duplicate icons</b>: the ⋯ menu's <b>Change template</b>
+        row got a proper template glyph (a grid with a plus and crop marks) instead of the reused
+        pages-grid icon, the <b>Links in PDF</b> row uses the filled Material Symbols link, <b>Export</b>
+        shows a real file-export icon instead of the copy glyph, and the <b>Duplicate</b> action in
+        the Pages view now shows a circled-plus duplicate icon (matching the selection bar and
+        notebook menu) instead of the copy icon, all in the same tinted, rounded Material Symbols
+        family.
+    </li>
 </ul>
 
 <h3>v2026.8.5.v2</h3>
 <ul>
-<li><b>Material You theming (Android 12+)</b>: the app now follows your system's wallpaper-based colour palette. Toolbar pills, buttons, dialogs, swatches and settings all re-colour themselves to match your theme, the Compose dialogs (add page / change template) follow along, and the launcher icon is themed on Android 13+. Older Android versions keep the standard palette.</li>
-<li><b>Tool options behaviour setting</b>: a new <b>Settings → Tool options</b> section lets you choose how the options pill behaves. <i>Show when changing tools</i> (default) pops the options open every time you pick a tool; <i>Show only when tapped</i> keeps them hidden after switching until you tap the tool button again.</li>
-<li><b>Tools and options are two pills</b>: the top dock is now split into two separate pills: the tools row, and a second pill holding the active tool's options that appears below it (or beside it on phones) with a clean gap between them. Both pills are always centred on screen, and the tools pill never shifts when the options pill appears or changes size.</li>
-<li><b>Animated tool options</b>: the options pill now animates when it changes. It fades in when you pick a tool and glides to its new size as you switch tools, while the tools pill stays perfectly still. The icons stay centred at all times (no more drifting up and settling down as the pill appears).</li>
-<li><b>Perfect ovals in the shape tool</b>: dragging out a circle or ellipse used to leave a tiny gap at the seam where the stroke closed. The outline now meets exactly on itself, so hand-drawn ovals are as seamless as the ones placed with the Exact size button.</li>
-<li><b>Pen icon keeps its outline</b>: the pen tool button now layers the pen colour inside a fixed theme-tinted outline rim, so the icon stays clearly visible even when the pen's colour matches the toolbar pill behind it.</li>
-<li><b>Bookmarks stay visible on white pages</b>: the un-bookmarked bookmark ribbon on each page thumbnail in the Pages view is now drawn as a dark outline, so it no longer disappears into white page backgrounds (it used to be a pale white tint, which was invisible on bright pages).</li>
+    <li><b>Material You theming (Android 12+)</b>: the app now follows your system's wallpaper-based
+        colour palette. Toolbar pills, buttons, dialogs, swatches and settings all re-colour
+        themselves to match your theme, the Compose dialogs (add page / change template) follow
+        along, and the launcher icon is themed on Android 13+. Older Android versions keep the
+        standard palette.
+    </li>
+    <li><b>Tool options behaviour setting</b>: a new <b>Settings → Tool options</b> section lets you
+        choose how the options pill behaves. <i>Show when changing tools</i> (default) pops the
+        options open every time you pick a tool; <i>Show only when tapped</i> keeps them hidden
+        after switching until you tap the tool button again.
+    </li>
+    <li><b>Tools and options are two pills</b>: the top dock is now split into two separate pills:
+        the tools row, and a second pill holding the active tool's options that appears below it (or
+        beside it on phones) with a clean gap between them. Both pills are always centred on screen,
+        and the tools pill never shifts when the options pill appears or changes size.
+    </li>
+    <li><b>Animated tool options</b>: the options pill now animates when it changes. It fades in
+        when you pick a tool and glides to its new size as you switch tools, while the tools pill
+        stays perfectly still. The icons stay centred at all times (no more drifting up and settling
+        down as the pill appears).
+    </li>
+    <li><b>Perfect ovals in the shape tool</b>: dragging out a circle or ellipse used to leave a
+        tiny gap at the seam where the stroke closed. The outline now meets exactly on itself, so
+        hand-drawn ovals are as seamless as the ones placed with the Exact size button.
+    </li>
+    <li><b>Pen icon keeps its outline</b>: the pen tool button now layers the pen colour inside a
+        fixed theme-tinted outline rim, so the icon stays clearly visible even when the pen's colour
+        matches the toolbar pill behind it.
+    </li>
+    <li><b>Bookmarks stay visible on white pages</b>: the un-bookmarked bookmark ribbon on each page
+        thumbnail in the Pages view is now drawn as a dark outline, so it no longer disappears into
+        white page backgrounds (it used to be a pale white tint, which was invisible on bright
+        pages).
+    </li>
 </ul>
 
 <h3>v2026.8.5</h3>
 <ul>
-<li><b>New Shapes tool</b>: a dedicated tool (next to the lasso) for drawing perfect rectangles, ellipses, triangles, lines and arrows. Drag from a corner to the opposite corner and the geometry snaps clean. Every shape you draw is automatically selected so you can move it, resize it with the corner handle, recolour it or rotate it right away (no more hunting for it with the lasso). The options row also has an <b>Exact size…</b> button that lets you type an exact width × height (in page pixels) and places the shape centred on the page at that size.</li>
-<li><b>Duplicating now selects the copy</b>: after Duplicate, the new object is selected instead of the selection being dropped. The copy is offset from the original and stays selected so you can immediately drag it into place. No more invisible duplicates stacked on top of the original.</li>
-<li><b>Quick pen colours right in the selection bar</b>: tap the colour swatch on a selected object and the bar swaps to a row of your five pen colours. One tap recolours the object instantly, ✕ returns to the normal actions, and + opens the full colour picker (palette grid, colour wheel, eyedropper) for anything else.</li>
-<li><b>Selection overview while moving</b>: dragging a selection now leaves a faint "ghost" of the object in its starting position so you can see exactly where it came from, and the quick-edit bar (colour / angle / duplicate / delete) follows the object as it moves instead of hovering over the old spot.</li>
-<li><b>Canvas panning no longer deselects</b>: with an object selected, swiping the canvas with your finger now scrolls/pans the page and the selection rides along. It stays selected until you tap (not swipe) somewhere else, which finalises the move. Objects are still fully movable by finger or pen by dragging inside the selection box.</li>
-<li><b>Deselecting is one clean tap</b>: with anything selected, a stylus tap anywhere outside the object just dismisses the selection. It no longer starts a new stroke in the same gesture, which could lasso-grab the stroke under your pen or anchor a new shape where you only meant to deselect.</li>
-<li><b>Stroke sizes stay put when you rotate</b>: rotating portrait → landscape used to stretch every stroke ~2× thicker on screen (ink scaled with the page width while the pen's own thickness didn't, so new strokes no longer matched existing ones). Stroke widths are now a fixed pen size. Only positions follow the page, so your ink keeps its exact thickness across rotations and new strokes always match old ones.</li>
+    <li><b>New Shapes tool</b>: a dedicated tool (next to the lasso) for drawing perfect rectangles,
+        ellipses, triangles, lines and arrows. Drag from a corner to the opposite corner and the
+        geometry snaps clean. Every shape you draw is automatically selected so you can move it,
+        resize it with the corner handle, recolour it or rotate it right away (no more hunting for
+        it with the lasso). The options row also has an <b>Exact size…</b> button that lets you type
+        an exact width × height (in page pixels) and places the shape centred on the page at that
+        size.
+    </li>
+    <li><b>Duplicating now selects the copy</b>: after Duplicate, the new object is selected instead
+        of the selection being dropped. The copy is offset from the original and stays selected so
+        you can immediately drag it into place. No more invisible duplicates stacked on top of the
+        original.
+    </li>
+    <li><b>Quick pen colours right in the selection bar</b>: tap the colour swatch on a selected
+        object and the bar swaps to a row of your five pen colours. One tap recolours the object
+        instantly, ✕ returns to the normal actions, and + opens the full colour picker (palette
+        grid, colour wheel, eyedropper) for anything else.
+    </li>
+    <li><b>Selection overview while moving</b>: dragging a selection now leaves a faint "ghost" of
+        the object in its starting position so you can see exactly where it came from, and the
+        quick-edit bar (colour / angle / duplicate / delete) follows the object as it moves instead
+        of hovering over the old spot.
+    </li>
+    <li><b>Canvas panning no longer deselects</b>: with an object selected, swiping the canvas with
+        your finger now scrolls/pans the page and the selection rides along. It stays selected until
+        you tap (not swipe) somewhere else, which finalises the move. Objects are still fully
+        movable by finger or pen by dragging inside the selection box.
+    </li>
+    <li><b>Deselecting is one clean tap</b>: with anything selected, a stylus tap anywhere outside
+        the object just dismisses the selection. It no longer starts a new stroke in the same
+        gesture, which could lasso-grab the stroke under your pen or anchor a new shape where you
+        only meant to deselect.
+    </li>
+    <li><b>Stroke sizes stay put when you rotate</b>: rotating portrait → landscape used to stretch
+        every stroke ~2× thicker on screen (ink scaled with the page width while the pen's own
+        thickness didn't, so new strokes no longer matched existing ones). Stroke widths are now a
+        fixed pen size. Only positions follow the page, so your ink keeps its exact thickness across
+        rotations and new strokes always match old ones.
+    </li>
 </ul>
 
 <h3>v2026.8.4.v2</h3>
 <ul>
-<li>Fixed a bug where erasing strokes and then rotating the screen could make the deleted strokes reappear. After an erase, the only save attempt was the one fired in onPause() just before the rotate-recreate, and that save ran as a child of the activity's <code>lifecycleScope</code>, which Android cancels when the activity is destroyed. If the <code>Dispatchers.IO</code> worker hadn't picked the job up yet when <code>onDestroy</code> fired, the save was yanked before its body ran, the ink file on disk was never updated, and the new activity decoded the pre-erase strokes, bringing the deleted ink back. Saves now run on an application-scoped supervisor (<code>appSaveScope</code>) that is not cancelled by activity destruction, <code>onDestroy</code> pins the in-flight write on a background thread until it lands, and <code>loadSavedDrawingNow()</code> joins any still-running save before reading the ink file, so the post-erase state always reaches disk before anything reads it back.</li>
+    <li>Fixed a bug where erasing strokes and then rotating the screen could make the deleted
+        strokes reappear. After an erase, the only save attempt was the one fired in onPause() just
+        before the rotate-recreate, and that save ran as a child of the activity's <code>lifecycleScope</code>,
+        which Android cancels when the activity is destroyed. If the <code>Dispatchers.IO</code>
+        worker hadn't picked the job up yet when <code>onDestroy</code> fired, the save was yanked
+        before its body ran, the ink file on disk was never updated, and the new activity decoded
+        the pre-erase strokes, bringing the deleted ink back. Saves now run on an application-scoped
+        supervisor (<code>appSaveScope</code>) that is not cancelled by activity destruction, <code>onDestroy</code>
+        pins the in-flight write on a background thread until it lands, and <code>loadSavedDrawingNow()</code>
+        joins any still-running save before reading the ink file, so the post-erase state always
+        reaches disk before anything reads it back.
+    </li>
 </ul>
 
 <h3>v2026.8.4</h3>
 <ul>
-<li>Fixed a bug where Exporting or Importing a backup closed the app's database forever. After Export, going back to the home screen crashed the app; after Import, the database stayed broken until a manual restart. Export now flushes the database through SQLite's WAL checkpoint without closing it, and Import properly reopens the restored database and relaunches the app automatically so everything is rebuilt from the restored data.</li>
-<li>Fixed a bug where exporting a large page (PDF/PNG/ZIP) could fail cryptically: if rendering the page threw (e.g. an out-of-memory moment on a very large raster), the PDF page was left open, which made PdfRenderer.close() throw "Current page not closed" and masked the real error. Pages are now always released even when rendering fails, so the export either completes or reports the true error.</li>
-<li>Fixed a small renderer resource leak: if a page render failed partway through (a bad PDF page, an out-of-memory moment, or an ink-drawing error), the bitmap borrowed from the reuse pool was never handed back, silently shrinking the pool until the next render reallocated a fresh one. A failed render now returns its bitmap to the pool before rethrowing, so the reuse pool stays intact across transient render errors.</li>
-<li>Redesigned the Create New dialog with a Material 3 Expressive look. New Folder, New Notebook, and Import PDF each appear as a tinted, color-coded card (blue folder, purple notebook, red PDF) with icon, title, and description, a springy scale-in animation when the dialog opens, and a tactile press effect. The plain text-only list is gone.</li>
-<li>The notebook title you type in the basic create dialog is now carried over to the Advanced Template dialog when you tap "Choose / Edit Template", so you don't have to retype it.</li>
-<li>Shrunk the template preview in the basic create dialog so the dialog feels lighter and the title field gets more visual priority.</li>
-<li>Fixed a crash in the Pages view: fast-scrolling the page grid and closing it could crash with "Document already closed" because thumbnail renders were still queued on the app-wide scope and ran against a closed PDF renderer. The grid now runs on its own dialog-scoped coroutine that is cancelled the moment the dialog closes, and the thumbnail renderer is closed-safe. An in-flight render simply gives up instead of touching the closed document.</li>
-<li>Made the Pages view much faster on large PDFs. Thumbnails used to render one-at-a-time behind a single native renderer lock (a fast fling could queue dozens of renders waiting their turn). The renderer now keeps a small pool of independent renderers so several thumbnails draw in parallel, duplicate renders of the same page are skipped, and thumbnails for holders that scrolled off-screen are never wasted.</li>
-<li>Thumbnail loading in the Pages view now follows the same engine design that makes the main PDF view fast: renders run on their own dedicated worker threads (instead of the app-wide IO pool fighting over one lock), a page that scrolls off-screen cancels its queued render so a fast fling only draws what you're looking at, and rendered bitmaps are reused from a small pool instead of allocating fresh memory for every thumbnail, so the grid fills in noticeably faster and scrolling through huge PDFs stays smooth.</li>
-<li>Added a draggable scroll pill to the Pages view. Just like the one in the PDF view, it appears on the right edge of the page grid: drag it to glide through hundreds or thousands of pages, release to land exactly on the page you pointed at, and it fades away when you stop scrolling.</li>
-<li>Fixed a memory leak in the zoomed-in view: quickly pinching, panning, or starting a scroll-pill drag could cancel a hi-res tile render partway through, and the page bitmaps it had already produced were never recycled. Rapid zooming silently churned native memory. A cancelled render now recycles its finished tiles before the job stops.</li>
-<li>Fixed a crash when working with several large inserted images at once: the image cache could evict (and recycle) a selected picture's bitmap while the selection was still drawing it, and the next redraw threw "trying to use a recycled bitmap". Selected pictures now survive cache evictions. A recycled bitmap is re-decoded on the spot instead of drawn.</li>
-<li>Fixed opening PDFs from other apps (Open with… → Octopus Notes): the import could crash or leave an empty notebook when the file couldn't be read (e.g. a permission grant that expired between tapping and reading). Failed imports now show an error and roll back the half-created notebook.</li>
-<li>Fixed heavy stutter when a page holds several large photos. Inserting or lasso-selecting them used to decode each photo on the main thread, freezing frames for up to a second (and the frozen frames made the system skip touch events, spamming "Error processing scroll; pointer index for id 1 not found"). Photos are now decoded on a background thread, the selection appears instantly with frame outlines that fill in as pictures load, and two-finger events are no longer leaked to the list while a selection is being moved.</li>
+    <li>Fixed a bug where Exporting or Importing a backup closed the app's database forever. After
+        Export, going back to the home screen crashed the app; after Import, the database stayed
+        broken until a manual restart. Export now flushes the database through SQLite's WAL
+        checkpoint without closing it, and Import properly reopens the restored database and
+        relaunches the app automatically so everything is rebuilt from the restored data.
+    </li>
+    <li>Fixed a bug where exporting a large page (PDF/PNG/ZIP) could fail cryptically: if rendering
+        the page threw (e.g. an out-of-memory moment on a very large raster), the PDF page was left
+        open, which made PdfRenderer.close() throw "Current page not closed" and masked the real
+        error. Pages are now always released even when rendering fails, so the export either
+        completes or reports the true error.
+    </li>
+    <li>Fixed a small renderer resource leak: if a page render failed partway through (a bad PDF
+        page, an out-of-memory moment, or an ink-drawing error), the bitmap borrowed from the reuse
+        pool was never handed back, silently shrinking the pool until the next render reallocated a
+        fresh one. A failed render now returns its bitmap to the pool before rethrowing, so the
+        reuse pool stays intact across transient render errors.
+    </li>
+    <li>Redesigned the Create New dialog with a Material 3 Expressive look. New Folder, New
+        Notebook, and Import PDF each appear as a tinted, color-coded card (blue folder, purple
+        notebook, red PDF) with icon, title, and description, a springy scale-in animation when the
+        dialog opens, and a tactile press effect. The plain text-only list is gone.
+    </li>
+    <li>The notebook title you type in the basic create dialog is now carried over to the Advanced
+        Template dialog when you tap "Choose / Edit Template", so you don't have to retype it.
+    </li>
+    <li>Shrunk the template preview in the basic create dialog so the dialog feels lighter and the
+        title field gets more visual priority.
+    </li>
+    <li>Fixed a crash in the Pages view: fast-scrolling the page grid and closing it could crash
+        with "Document already closed" because thumbnail renders were still queued on the app-wide
+        scope and ran against a closed PDF renderer. The grid now runs on its own dialog-scoped
+        coroutine that is cancelled the moment the dialog closes, and the thumbnail renderer is
+        closed-safe. An in-flight render simply gives up instead of touching the closed document.
+    </li>
+    <li>Made the Pages view much faster on large PDFs. Thumbnails used to render one-at-a-time
+        behind a single native renderer lock (a fast fling could queue dozens of renders waiting
+        their turn). The renderer now keeps a small pool of independent renderers so several
+        thumbnails draw in parallel, duplicate renders of the same page are skipped, and thumbnails
+        for holders that scrolled off-screen are never wasted.
+    </li>
+    <li>Thumbnail loading in the Pages view now follows the same engine design that makes the main
+        PDF view fast: renders run on their own dedicated worker threads (instead of the app-wide IO
+        pool fighting over one lock), a page that scrolls off-screen cancels its queued render so a
+        fast fling only draws what you're looking at, and rendered bitmaps are reused from a small
+        pool instead of allocating fresh memory for every thumbnail, so the grid fills in noticeably
+        faster and scrolling through huge PDFs stays smooth.
+    </li>
+    <li>Added a draggable scroll pill to the Pages view. Just like the one in the PDF view, it
+        appears on the right edge of the page grid: drag it to glide through hundreds or thousands
+        of pages, release to land exactly on the page you pointed at, and it fades away when you
+        stop scrolling.
+    </li>
+    <li>Fixed a memory leak in the zoomed-in view: quickly pinching, panning, or starting a
+        scroll-pill drag could cancel a hi-res tile render partway through, and the page bitmaps it
+        had already produced were never recycled. Rapid zooming silently churned native memory. A
+        cancelled render now recycles its finished tiles before the job stops.
+    </li>
+    <li>Fixed a crash when working with several large inserted images at once: the image cache could
+        evict (and recycle) a selected picture's bitmap while the selection was still drawing it,
+        and the next redraw threw "trying to use a recycled bitmap". Selected pictures now survive
+        cache evictions. A recycled bitmap is re-decoded on the spot instead of drawn.
+    </li>
+    <li>Fixed opening PDFs from other apps (Open with… → Octopus Notes): the import could crash or
+        leave an empty notebook when the file couldn't be read (e.g. a permission grant that expired
+        between tapping and reading). Failed imports now show an error and roll back the
+        half-created notebook.
+    </li>
+    <li>Fixed heavy stutter when a page holds several large photos. Inserting or lasso-selecting
+        them used to decode each photo on the main thread, freezing frames for up to a second (and
+        the frozen frames made the system skip touch events, spamming "Error processing scroll;
+        pointer index for id 1 not found"). Photos are now decoded on a background thread, the
+        selection appears instantly with frame outlines that fill in as pictures load, and
+        two-finger events are no longer leaked to the list while a selection is being moved.
+    </li>
 </ul>
 
 <h3>v2026.8.2</h3>
 <ul>
-<li>Fixed a bug where fast-dragging the side scroll pill in a long PDF froze the app and triggered repeated "Application Not Responding" dialogs. Each touch-move event used to issue its own giant <code>scrollBy</code> plus dozens of page binds on the main thread, fast enough to overrun Android's 5-second input-dispatch window. The move handler now coalesces into a single <code>scrollBy</code> per Choreographer frame, the engine's size-prefetch sweep and the zoomed-in hi-res tile renderer stand down for the duration of the drag so the single render thread is dedicated to whichever page you land on, and the per-page "last viewed page" persistence is deferred until scrolling actually stops instead of firing on every page crossing.</li>
-<li>Fixed the remaining main-thread work that still caused scrolling jank and ANRs on long PDFs even after the drag fix above: every page bind used to open PDF pages natively on the UI thread, copy the whole bitmap cache on each bind/recycle, and force a layout pass, which all adds up fast when a drag flies past dozens of pages. Page sizes are now only read on the render thread, evicted-bitmap reuse uses a constant-time lookup instead of scanning the cache, item heights only re-request layout when they actually change, next-page prefetching stands down during a drag so the single render thread stays on the pages you're looking at, and the scroll-pill fade is no longer restarted on every scroll event.</li>
-<li>Fixed a bug where a single failed page render (e.g. an out-of-memory moment while scrolling fast, or a render error on one page) could permanently freeze PDF rendering for the rest of the session. The renderer only allows one page open at a time, and the engine now always releases the page it opened, even when rendering throws, so a temporary glitch can no longer wedge it and make every later page fail to load.</li>
-<li>Fixed a bug where pixel-erasing part of a closed loop (e.g. a circle or an infinity drawn as one stroke) filled the remaining loops solid with the pen color. The pixel eraser used to carve the stroke's outline and then fill the leftover pieces, which flooded the loop's interior with ink. It now cuts the stroke along its centerline where the eraser passes, so a loop that loses a small arc stays a clean open arc with a gap. Nothing gets filled.</li>
-<li>Fixed a bug where a failed save during page operations (add, delete, duplicate, move, rotate, or template change) could delete the notebook's PDF and leave nothing behind, which meant data loss. PDF edits now write to a temp file, keep a backup, verify the rename, and restore the backup if anything fails.</li>
-<li>Fixed the pixel eraser crashing or corrupting ink when used alongside other tools. The pixel eraser ran its path-splitting math on a background thread while reading the live stroke list and shared Path/Paint objects, racing the main thread's drawing, stroke eraser, and pen strokes, which could throw ConcurrentModificationException or crash Skia. Ink is now deep-copied on the main thread and the math runs only on those private copies.</li>
-<li>Fixed a bug where Export crashed on the tst (test) flavor with Couldn't find meta-data for provider with authority ${'$'}{applicationId}.fileprovider.</li>
-<li>Fixed a bug where Images donot appear in thumbnails.</li>
-<li>Fixed a bug where undo/redo worked for moving images but failed when undoing the addition of a new image.</li>
-<li>Fixed a bug where duplicating a notebook doesnt copy the strokes.</li>
-<li>Fixed `imageBitmapCache` in `StrokeManager` by replacing the unbounded `MutableMap` with an `LruCache` to auto-evict bitmaps under memory pressure.</li>
-<li>Fixed a bug where duplicating a notebook caused it to display first-page thumbnails like imported PDFs instead of retaining the original's page preferences.</li>
-<li>Fixed auto-appending in continuous scroll mode for imported PDFs by persisting the fallback template on the first auto-append.</li>
-<li>Fixed a bug where applying a template to a single page incorrectly saved it as the default template for all pages.</li>
-<li>thumb_<notebookId>.png is now copied alongside the PDF and ink files during duplication. The duplicate notebook will show the original's cover preview instantly instead of showing a blank placeholder until the next render cycle.</li>
-<li>Fixed a bug where grabbing the selection's corner resize handle slightly off-centre made the box jump to a different size on the first drag. The scale is now baselined from where the pen lands on the handle, so the box starts exactly at your grab point and resizes smoothly instead of snapping.</li>
+    <li>Fixed a bug where fast-dragging the side scroll pill in a long PDF froze the app and
+        triggered repeated "Application Not Responding" dialogs. Each touch-move event used to issue
+        its own giant <code>scrollBy</code> plus dozens of page binds on the main thread, fast
+        enough to overrun Android's 5-second input-dispatch window. The move handler now coalesces
+        into a single <code>scrollBy</code> per Choreographer frame, the engine's size-prefetch
+        sweep and the zoomed-in hi-res tile renderer stand down for the duration of the drag so the
+        single render thread is dedicated to whichever page you land on, and the per-page "last
+        viewed page" persistence is deferred until scrolling actually stops instead of firing on
+        every page crossing.
+    </li>
+    <li>Fixed the remaining main-thread work that still caused scrolling jank and ANRs on long PDFs
+        even after the drag fix above: every page bind used to open PDF pages natively on the UI
+        thread, copy the whole bitmap cache on each bind/recycle, and force a layout pass, which all
+        adds up fast when a drag flies past dozens of pages. Page sizes are now only read on the
+        render thread, evicted-bitmap reuse uses a constant-time lookup instead of scanning the
+        cache, item heights only re-request layout when they actually change, next-page prefetching
+        stands down during a drag so the single render thread stays on the pages you're looking at,
+        and the scroll-pill fade is no longer restarted on every scroll event.
+    </li>
+    <li>Fixed a bug where a single failed page render (e.g. an out-of-memory moment while scrolling
+        fast, or a render error on one page) could permanently freeze PDF rendering for the rest of
+        the session. The renderer only allows one page open at a time, and the engine now always
+        releases the page it opened, even when rendering throws, so a temporary glitch can no longer
+        wedge it and make every later page fail to load.
+    </li>
+    <li>Fixed a bug where pixel-erasing part of a closed loop (e.g. a circle or an infinity drawn as
+        one stroke) filled the remaining loops solid with the pen color. The pixel eraser used to
+        carve the stroke's outline and then fill the leftover pieces, which flooded the loop's
+        interior with ink. It now cuts the stroke along its centerline where the eraser passes, so a
+        loop that loses a small arc stays a clean open arc with a gap. Nothing gets filled.
+    </li>
+    <li>Fixed a bug where a failed save during page operations (add, delete, duplicate, move,
+        rotate, or template change) could delete the notebook's PDF and leave nothing behind, which
+        meant data loss. PDF edits now write to a temp file, keep a backup, verify the rename, and
+        restore the backup if anything fails.
+    </li>
+    <li>Fixed the pixel eraser crashing or corrupting ink when used alongside other tools. The pixel
+        eraser ran its path-splitting math on a background thread while reading the live stroke list
+        and shared Path/Paint objects, racing the main thread's drawing, stroke eraser, and pen
+        strokes, which could throw ConcurrentModificationException or crash Skia. Ink is now
+        deep-copied on the main thread and the math runs only on those private copies.
+    </li>
+    <li>Fixed a bug where Export crashed on the tst (test) flavor with Couldn't find meta-data for
+        provider with authority ${'$'}{applicationId}.fileprovider.
+    </li>
+    <li>Fixed a bug where Images donot appear in thumbnails.</li>
+    <li>Fixed a bug where undo/redo worked for moving images but failed when undoing the addition of
+        a new image.
+    </li>
+    <li>Fixed a bug where duplicating a notebook doesnt copy the strokes.</li>
+    <li>Fixed `imageBitmapCache` in `StrokeManager` by replacing the unbounded `MutableMap` with an
+        `LruCache` to auto-evict bitmaps under memory pressure.
+    </li>
+    <li>Fixed a bug where duplicating a notebook caused it to display first-page thumbnails like
+        imported PDFs instead of retaining the original's page preferences.
+    </li>
+    <li>Fixed auto-appending in continuous scroll mode for imported PDFs by persisting the fallback
+        template on the first auto-append.
+    </li>
+    <li>Fixed a bug where applying a template to a single page incorrectly saved it as the default
+        template for all pages.
+    </li>
+    <li>thumb_
+        <notebookId>.png is now copied alongside the PDF and ink files during duplication. The
+            duplicate notebook will show the original's cover preview instantly instead of showing a
+            blank placeholder until the next render cycle.
+    </li>
+    <li>Fixed a bug where grabbing the selection's corner resize handle slightly off-centre made the
+        box jump to a different size on the first drag. The scale is now baselined from where the
+        pen lands on the handle, so the box starts exactly at your grab point and resizes smoothly
+        instead of snapping.
+    </li>
 </ul>
 
 <h3>v2026.8.1</h3>
 <ul>
-<li>Important Bug fixes - Rare: Unerasable strokes | Template change failure.</li>
+    <li>Important Bug fixes - Rare: Unerasable strokes | Template change failure.</li>
 </ul>
 
 <h3>v2026.21.7</h3>
 <ul>
-<li>I have made an extensive changelog that got wiped due to a power failure. I am sorry but have done many many changes.</li>
+    <li>I have made an extensive changelog that got wiped due to a power failure. I am sorry but
+        have done many many changes.
+    </li>
 </ul>
 
 <h3>v1.9</h3>
 <ul>
-<li>fixed a bug where going back continuosly deforms curves.</li>
+    <li>fixed a bug where going back continuosly deforms curves.</li>
 </ul>
 
 <h3>v1.8</h3>
 <ul>
-<li>scribble to erase.</li>
-<li>fixed stoke shifts onPause().</li>
-<li>persistent tool settings and highlights.</li>
+    <li>scribble to erase.</li>
+    <li>fixed stoke shifts onPause().</li>
+    <li>persistent tool settings and highlights.</li>
 </ul>
 
 <h3>v1.7</h3>
 <ul>
-<li>Fixed bugs of features introduced in 1.6 on non AOSP devices.</li>
-<li>Changed all icons to rounded, Material 3 ones.</li>
+    <li>Fixed bugs of features introduced in 1.6 on non AOSP devices.</li>
+    <li>Changed all icons to rounded, Material 3 ones.</li>
 </ul>
 <h3>v1.6</h3>
 <ul>
-<li>Hold the stylus button to temporarily switch to the eraser. Release it to instantly return to your previously selected tool.</li>
-<li>Tool settings are now remembered. Each tool saves its own preferences, including size, style, and other settings.</li>
-<li>Improved the toolbar layout on small devices. Tools are now on the left, while tool options appear on the right for a more natural workflow.</li>
-<li>Added <b>Backup &amp; Restore</b>.
-  <ul>
-  <li>Export all app data as a <code>.ocd</code> backup file.</li>
-  <li>Import a backup with <b>Overwrite</b>, which replaces all existing app data.</li>
-  </ul>
-</li>
-<li>Fixed scrolling between pages while zoomed in.</li>
-<li>Fixed delayed loading of the next page when zoomed out.</li>
-<li>Fixed the text highlighter fallback. When selectable text isn't detected, it now correctly switches to freehand highlighting.</li>
-<li>Added a changelog viewer in Settings.</li>
-<li>Delete confirmation now shows how much data is being deleted.</li>
-<li>Various bug fixes, stability improvements, and performance enhancements.</li>
+    <li>Hold the stylus button to temporarily switch to the eraser. Release it to instantly return
+        to your previously selected tool.
+    </li>
+    <li>Tool settings are now remembered. Each tool saves its own preferences, including size,
+        style, and other settings.
+    </li>
+    <li>Improved the toolbar layout on small devices. Tools are now on the left, while tool options
+        appear on the right for a more natural workflow.
+    </li>
+    <li>Added <b>Backup &amp; Restore</b>.
+        <ul>
+            <li>Export all app data as a <code>.ocd</code> backup file.</li>
+            <li>Import a backup with <b>Overwrite</b>, which replaces all existing app data.</li>
+        </ul>
+    </li>
+    <li>Fixed scrolling between pages while zoomed in.</li>
+    <li>Fixed delayed loading of the next page when zoomed out.</li>
+    <li>Fixed the text highlighter fallback. When selectable text isn't detected, it now correctly
+        switches to freehand highlighting.
+    </li>
+    <li>Added a changelog viewer in Settings.</li>
+    <li>Delete confirmation now shows how much data is being deleted.</li>
+    <li>Various bug fixes, stability improvements, and performance enhancements.</li>
 </ul>
 <h3>v1.5</h3>
 <ul>
-<li>Completely reworked the PDF engine for significantly better performance and efficiency.</li>
-<li>Built a custom PDF search engine for faster searches, while keeping the previous search engine as a fallback for older devices.</li>
-<li>Fixed several small bugs introduced during the PDF engine rewrite.</li>
-<li>The Highlighter tool now properly highlights text instead of drawing over it.</li>
-<li>Fixed an issue where custom templates could appear as black pages.</li>
-<li>Added new loading animations throughout the app for a smoother user experience.</li>
-<li>Introduced page outlines along with new optimization algorithms to improve speed and responsiveness.</li>
-<li>Added <b>Hold to Draw</b>, allowing you to easily create straight lines, arrows, circles, and squares.</li>
-<li>Fixed screen flashing on older and slower devices when pages are automatically added with <b>Continuous Write</b> enabled.</li>
-<li>Resolved the conflict between the scroll pill and the back gesture.</li>
-<li>Redesigned the tool and tool options panels with scrolling support, making them work much better on smaller screens.</li>
+    <li>Completely reworked the PDF engine for significantly better performance and efficiency.</li>
+    <li>Built a custom PDF search engine for faster searches, while keeping the previous search
+        engine as a fallback for older devices.
+    </li>
+    <li>Fixed several small bugs introduced during the PDF engine rewrite.</li>
+    <li>The Highlighter tool now properly highlights text instead of drawing over it.</li>
+    <li>Fixed an issue where custom templates could appear as black pages.</li>
+    <li>Added new loading animations throughout the app for a smoother user experience.</li>
+    <li>Introduced page outlines along with new optimization algorithms to improve speed and
+        responsiveness.
+    </li>
+    <li>Added <b>Hold to Draw</b>, allowing you to easily create straight lines, arrows, circles,
+        and squares.
+    </li>
+    <li>Fixed screen flashing on older and slower devices when pages are automatically added with
+        <b>Continuous Write</b> enabled.
+    </li>
+    <li>Resolved the conflict between the scroll pill and the back gesture.</li>
+    <li>Redesigned the tool and tool options panels with scrolling support, making them work much
+        better on smaller screens.
+    </li>
 </ul>
 <h3>v1.4</h3>
 <ul>
-<li>Built a brand-new custom PDF engine from scratch for better performance and stability.</li>
-<li>Added subtle new animations across the app.</li>
-<li>Switched to a native PDF renderer with smoother scrolling, zooming, and faster page rendering.</li>
-<li>Fixed freezes when closing large PDFs.</li>
-<li>New notebooks now start with 2 pages by default.</li>
-<li>Added an option to automatically add a new page when you reach the end of your notebook.</li>
-<li>Auto-added pages now appear silently in the background without interrupting your workflow or changing your scroll position.</li>
-<li>Imported PDFs now show the full template picker when adding pages if no default template has been selected.</li>
-<li>Added solid, dotted, and dashed pen styles that are saved with your notes.</li>
-<li>Completely redesigned the toolbar with a cleaner top-center layout.</li>
-<li>Pen settings now include quick access to line styles, colors, thickness, and stroke stabilization.</li>
-<li>Highlighter settings now support freehand and straight modes, text highlighting, custom colors, and adjustable sizes.</li>
-<li>Eraser now includes Pixel and Stroke modes with customizable size presets.</li>
-<li>Lasso tool now supports freehand, rectangular, and circular selections.</li>
-<li>Re-tapping the active tool now quickly shows or hides its options.</li>
-<li>Notebook thumbnails are now generated immediately after creating or importing a notebook.</li>
-<li>Added animated loading placeholders while thumbnails are being generated.</li>
-<li>Thumbnails now refresh automatically after editing.</li>
-<li>Improved selected tool highlighting with a cleaner rounded design.</li>
-<li>Adjusted the zoom indicator layout for a cleaner interface.</li>
-<li>Removed unused resources and performed general code cleanup to improve performance.</li>
-<li>Fixed numerous bugs and improved overall stability.</li>
+    <li>Built a brand-new custom PDF engine from scratch for better performance and stability.</li>
+    <li>Added subtle new animations across the app.</li>
+    <li>Switched to a native PDF renderer with smoother scrolling, zooming, and faster page
+        rendering.
+    </li>
+    <li>Fixed freezes when closing large PDFs.</li>
+    <li>New notebooks now start with 2 pages by default.</li>
+    <li>Added an option to automatically add a new page when you reach the end of your notebook.
+    </li>
+    <li>Auto-added pages now appear silently in the background without interrupting your workflow or
+        changing your scroll position.
+    </li>
+    <li>Imported PDFs now show the full template picker when adding pages if no default template has
+        been selected.
+    </li>
+    <li>Added solid, dotted, and dashed pen styles that are saved with your notes.</li>
+    <li>Completely redesigned the toolbar with a cleaner top-center layout.</li>
+    <li>Pen settings now include quick access to line styles, colors, thickness, and stroke
+        stabilization.
+    </li>
+    <li>Highlighter settings now support freehand and straight modes, text highlighting, custom
+        colors, and adjustable sizes.
+    </li>
+    <li>Eraser now includes Pixel and Stroke modes with customizable size presets.</li>
+    <li>Lasso tool now supports freehand, rectangular, and circular selections.</li>
+    <li>Re-tapping the active tool now quickly shows or hides its options.</li>
+    <li>Notebook thumbnails are now generated immediately after creating or importing a notebook.
+    </li>
+    <li>Added animated loading placeholders while thumbnails are being generated.</li>
+    <li>Thumbnails now refresh automatically after editing.</li>
+    <li>Improved selected tool highlighting with a cleaner rounded design.</li>
+    <li>Adjusted the zoom indicator layout for a cleaner interface.</li>
+    <li>Removed unused resources and performed general code cleanup to improve performance.</li>
+    <li>Fixed numerous bugs and improved overall stability.</li>
 </ul>
 <h3>v1.3</h3>
 <ul>
-<li><b>Folder Design Overhaul</b>: Completely revamped folder appearance for better visual hierarchy.</li>
-<li><b>Removed Sidebar</b>: Cleaner, more focused interface without the navigation sidebar.</li>
-<li><b>Breadcrumbs Navigation</b>: Added breadcrumb trail for easier folder navigation.</li>
-<li><b>Reduced Page Gap</b>: Decreased spacing between pages with darker grey separator for better visual distinction.</li>
-<li>Choice of showing first page, last page, and last used page previews.</li>
-<li>Added search functionality in homescreen.</li>
-<li><b>Zoom Control</b>: New zoom slider for pages and homescreen views.</li>
-<li><b>Fixed Subfolder Creation</b>: Resolved issue where subfolders weren't being created properly.</li>
-<li><b>New Color Selection</b>: 5 curated standard color options plus custom color picker. Colors synchronized with folder long-press color options.</li>
-<li><b>Dropdown Menu</b>: New dropdown arrow near the name on the right side for quick access.</li>
-<li><b>New Selection Mode</b>: Long press now triggers selection with checkmark indicator and highlighted background.</li>
-<li><b>Floating Dock</b>: Replaces FAB during selection mode with Delete, Move, and Lock options.</li>
-<li><b>Export Functionality</b>: Fixed export issues across all formats.</li>
-<li><b>FAB Alignment</b>: Corrected bottom FAB positioning issue.</li>
-<li><b>Smoothened Animations</b>: Many UI transitions now follow Material 3 motion guidelines.</li>
-<li>Zoom out PDF.</li>
-<li>Added sorting options.</li>
+    <li><b>Folder Design Overhaul</b>: Completely revamped folder appearance for better visual
+        hierarchy.
+    </li>
+    <li><b>Removed Sidebar</b>: Cleaner, more focused interface without the navigation sidebar.</li>
+    <li><b>Breadcrumbs Navigation</b>: Added breadcrumb trail for easier folder navigation.</li>
+    <li><b>Reduced Page Gap</b>: Decreased spacing between pages with darker grey separator for
+        better visual distinction.
+    </li>
+    <li>Choice of showing first page, last page, and last used page previews.</li>
+    <li>Added search functionality in homescreen.</li>
+    <li><b>Zoom Control</b>: New zoom slider for pages and homescreen views.</li>
+    <li><b>Fixed Subfolder Creation</b>: Resolved issue where subfolders weren't being created
+        properly.
+    </li>
+    <li><b>New Color Selection</b>: 5 curated standard color options plus custom color picker.
+        Colors synchronized with folder long-press color options.
+    </li>
+    <li><b>Dropdown Menu</b>: New dropdown arrow near the name on the right side for quick access.
+    </li>
+    <li><b>New Selection Mode</b>: Long press now triggers selection with checkmark indicator and
+        highlighted background.
+    </li>
+    <li><b>Floating Dock</b>: Replaces FAB during selection mode with Delete, Move, and Lock
+        options.
+    </li>
+    <li><b>Export Functionality</b>: Fixed export issues across all formats.</li>
+    <li><b>FAB Alignment</b>: Corrected bottom FAB positioning issue.</li>
+    <li><b>Smoothened Animations</b>: Many UI transitions now follow Material 3 motion guidelines.
+    </li>
+    <li>Zoom out PDF.</li>
+    <li>Added sorting options.</li>
 </ul>
