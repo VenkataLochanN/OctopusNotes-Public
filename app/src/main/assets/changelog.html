@@ -1,8 +1,15 @@
 <h3>v2026.9.1.r</h3>
 <ul>
+    <li>Added 4 new tape patterns: zigzag, hearts, stars and waves</li>
+    <li>Notebook pages now have rounded corners matching the aesthetics of the app UI. The corner radius value can be edited in settings.</li>
+    <li>Updated some icons.</li>
+    <li>Added a tiny margin on the left and right of the tab bar for better looking UI.</li>
+    <li>Brought long press pen shift to eraser option and scribble to erase option to the stylus and finger dialog.</li>
+    <li>Stylus and finger dialog can now also be accessed from the settings.</li>
     <li>Improved performance and optimised math of Whiteboard.</li>
     <li>Fixed a bug where template cannot be changed in duplicated notebooks.</li>
     <li>Added a Remove zoom restrictions setting in Developer options</li>
+    <li>Scribble to erase can now be disabled.</li>
     <li>Fixed scribble to erase on the whiteboard</li>
     <li>You can now change the app's language in Settings</li>
     <li>New Sticky note tool, with standard and minimisable notes</li>
@@ -12,17 +19,12 @@
         open the html file present in the sync folder in a browser.)
     </li>
     <li>New Ruler tool</li>
+    <li>Fixed a bug where double tapping with stylus undoed last action even when doublt tap settings are disabled</li>
     <li>Fixed a bug where the whiteboard's tools could not be scrolled</li>
     <li>Advanced template now shows thickness and density in mm too</li>
     <li>Added Pirate and Brazilian Portuguese languages. Translations are still not finished</li>
     <li>You can now pan the notebook canvas left and right with two fingers. A center page button
         appears beside the zoom level so you can return the canvas to the middle
-    </li>
-    <li>Fixed restored copies of notebooks being opened without their PDF: a duplicated notebook's
-        PDF was saved under a temp name the sync folder and restore did not recognise, so a copied
-        note that was synced, deleted and restored came back with a blank plain sheet and a Change
-        template that said No PDF page to change. Copies now keep the id based PDF name, and restore
-        rebuilds the template PDF when one is missing
     </li>
 </ul>
 
