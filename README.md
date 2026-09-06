@@ -3,13 +3,7 @@
 The open-source codebase for **Octopus Notes** - a custom note-taking application built entirely from scratch using Kotlin.
 
 ---
-
-## 🧪 Join the Beta Testing
-
-Octopus Notes is currently in **beta testing** on the Google Play Store! If you're interested in testing the app and helping prepare it for official release, feel free to reach out:
-
-* **Email:** [lochan.silhouettes@gmail.com](mailto:lochan.silhouettes@gmail.com)
-* **Reddit:** [u/TopEntity](https://www.reddit.com/user/TopEntity)
+Also check out r/octopusnotes in Reddit. I am quite active there.
 
 
 # Download the app:
