@@ -7,8 +7,8 @@ Also check out r/octopusnotes in Reddit. I am quite active there.
 
 
 # Download the app:
-- Google Play : (May show up as item not available because of still being in beta testing.
--   https://play.google.com/store/apps/details?id=com.lochan.octopusnotes
+- Google Play :
+  - https://play.google.com/store/apps/details?id=com.lochan.octopusnotes
 - Download from releases.
 
 # Sponsor
