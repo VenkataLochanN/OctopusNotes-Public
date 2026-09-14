@@ -1,3 +1,21 @@
+35 (v2026.9.14.r)
+- Draw & Hold now snaps stars, diamonds (rhombi) and polygons (pentagon, hexagon, …) too.
+- New double-headed arrow shape.
+- Whiteboard now remembers your last location.
+- LAYERS!!!
+- Extended shape recognition.
+- Snap to shape.
+- Fixed app crash due to OOM errors when importing large pdfs.
+- User Requests section: Has setting to show eraser and lasso at the same place.
+- Natural scrolling implemented. Threshold can be chosen in settings.
+- Added opacity slider for ghost that appears in the original place when moving a selection
+- I forgot mentioning many MANY because my pc fucked up and wayland stopped working. I had to reinstall OS 😑.
+- Optimised code of whiteboard to a much better cache usage. It should now lag less.
+- Fixed Screenshot tools capture area
+- added a static toolbar in dev options.
+- Fixed sudden disappearance of some strokes when written fast. This happened due to a stray line of code in which triple taps undid/removed recent strokes. I had dropped this feature and forgot to remove the stray code. Sorry.
+
+
 <h3>v2026.9.9.r</h3>
 <ul>
     <li>Fixed a bug where some devices had a duplicate stroke of diff color in images made with screenshot tool. this was caused by the main thread beign occupied by some other system process. SO, the screenshot tool now runs on the main thread</li>
