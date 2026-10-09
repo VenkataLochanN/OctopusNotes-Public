@@ -1,3 +1,11 @@
+37 (v2026.10.3.r)
+- Fixed a crash when opening or editing any PDF on Android 14 and below (NoSuchMethodError in the PDF cross-reference parser — affected outline, page insert, template insert, auto page-append and document properties).
+- Fixed a crash where PDF pages could show "Can't draw a recycled bitmap" while scrolling or changing PDF colours.
+- Fixed a crash in the image crop screen when dragging the crop rectangle after rotating the photo, on very wide or short photos, or when touching before the photo finished loading.
+- Fixed a crash when opening the exact shape-size dialog from the shapes dock.
+- Cornell template: a page style with a cue column down the side and a summary band along the bottom. Cue column width is typed in mm or cm, and the preview follows as you type; margins, summary height, the section labels and the cue-column ruling are tucked behind a "Show advanced options" toggle. Margins take one value for all sides or each side on its own, and every value has a Reset that puts it back to the default for the current page size. Choose it as the default in Advanced Template, per notebook from the change-template menu, or when adding a page.
+- Page flip can now run vertically as well as sideways: a third scroll style that turns one page at a time down the screen. Set it in Settings or per notebook from the view options menu.
+- Handwriting on a sticky note keeps the pen, pencil or highlighter width it was drawn with, instead of being redrawn at the note's text size (which came out thinner, most visibly for the highlighter). Notes written before this keep the look they had.
 36 (v2026.9.30.r)
 - New Page Layout options - Single, Double and Cover Pages
 - New scroll options - horizontal flip, Continuous scroll (default)
